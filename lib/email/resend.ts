@@ -25,6 +25,11 @@ export async function sendEmail({
 }
 
 export async function sendMagicLinkEmail(email: string, url: string) {
+  const key = process.env.RESEND_API_KEY;
+  if (!key || key.startsWith("re_xxxx")) {
+    console.warn(`[dev] No RESEND_API_KEY set — magic link for ${email}: ${url}`);
+    return;
+  }
   await sendEmail({
     to: email,
     subject: "Your Acme sign-in link",

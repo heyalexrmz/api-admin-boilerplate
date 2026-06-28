@@ -8,12 +8,17 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-export default function LoginPage() {
+export const metadata = {
+  title: "Sign up · Acme",
+  description: "Create your Acme workspace.",
+}
+
+export default function SignupPage() {
   return (
     <AuthShell
       footer={
         <>
-          By signing in you agree to our{" "}
+          By creating an account you agree to our{" "}
           <a
             href="#"
             className="underline-offset-4 hover:text-foreground hover:underline"
@@ -33,21 +38,24 @@ export default function LoginPage() {
     >
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl text-balance">Welcome back</CardTitle>
+          <CardTitle className="text-xl text-balance">
+            Start your free trial
+          </CardTitle>
           <CardDescription className="text-pretty">
-            Enter your work email and we&apos;ll send a secure sign-in link.
+            Enter your work email and we&apos;ll send a secure link to create your workspace.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <MagicLinkForm
+            submitLabel="Create account"
             alternateLink={
               <>
-                Don&apos;t have an account?{" "}
+                Already have an account?{" "}
                 <a
-                  href="/signup"
+                  href="/"
                   className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
                 >
-                  Start a trial
+                  Sign in
                 </a>
               </>
             }
