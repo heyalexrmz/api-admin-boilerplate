@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Acme — API key management dashboard
 
-## Getting Started
+A Next.js (App Router) app with email magic-link authentication, organizations,
+API key management, and request logs. Built with Better Auth, Drizzle ORM,
+PostgreSQL, Resend, and React Email.
 
-First, run the development server:
+## Stack
+
+- **Auth:** [Better Auth](https://www.better-auth.com) — magic link + organization plugins
+- **DB:** PostgreSQL + [Drizzle ORM](https://orm.drizzle.team)
+- **Email:** [Resend](https://resend.com) + [React Email](https://react.email)
+- **UI:** [shadcn/ui](https://ui.shadcn.com) + Tailwind CSS v4
+- **Tests:** [Vitest](https://vitest.dev)
+
+## Getting started
+
+### 1. Prerequisites
+
+- Node.js 20+ and [pnpm](https://pnpm.io)
+- Docker (for the local Postgres)
+
+### 2. Install dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Configure environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Copy `.env.example` to `.env` and fill in the values:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cp .env.example .env
+```
 
-## Learn More
+Generate a Better Auth secret:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+openssl rand -base64 32
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+In development you can leave `RESEND_API_KEY` as the placeholder — magic-link
+URLs are logged to the dev server console so you can click them without a real
+Resend key. Set a real key + verified sender for production email delivery.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Start the database
 
-## Deploy on Vercel
+```bash
+pnpm db:up      # starts Postgres 17 on localhost:5433
+pnpm db:push    # creates/updates tables from the Drizzle schema
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 5. Run the app
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm dev        # http://localhost:3000
+```
+
+Enter your email on the sign-in page, then click the magic link printed in the
+server console (or emailed by Resend in production). First-time users are sent
+to `/onboarding` to create their workspace.
+
+## Scripts
+
+| Script | Description |
+| --- | --- |
+| `pnpm dev` | Next.js dev server |
+| `pnpm build` / `pnpm start` | Production build and server |
+| `pnpm lint` | ESLint |
+| `pnpm test` / `pnpm test:watch` | Vitest unit tests |
+| `pnpm db:up` | Start local Postgres via Docker Compose |
+| `pnpm db:push` | Push schema changes to the database |
+| `pnpm db:studio` | Open Drizzle Studio |
+| `pnpm db:generate` / `pnpm db:migrate` | Generate and apply migrations |
+| `pnpm email:dev` | React Email preview server at http://localhost:3030 |
+
+## Project layout
+
+```
+app/
+  actions/          Server actions (auth, settings, api-keys, onboarding)
+  api/auth/[...all] Better Auth catch-all route handler
+  dashboard/        Protected app (overview, keys, logs, settings)
+  onboarding/       Workspace creation for new users
+  lib/auth.ts       Server DAL: session, user, active organization (cached)
+lib/
+  auth.ts           Better Auth server instance
+  auth-client.ts    Better Auth React client
+  db/               Drizzle schema + connection
+  email/            Resend sender + magic-link email
+  api-keys.ts       Pure API key helpers (tested)
+  slugify.ts        Pure slug helper (tested)
+emails/             React Email templates
+proxy.ts            Optimistic route protection (cookie-only redirects)
+```
+
+## How auth works
+
+- `proxy.ts` runs on every request and redirects based on the session cookie
+  only (no DB hit): unauthed users hitting `/dashboard` or `/onboarding` go to
+  `/`; authed users hitting `/` or `/signup` go to `/dashboard`.
+- `app/lib/auth.ts` is the server Data Access Layer. `requireActiveOrganization`
+  throws a redirect to `/onboarding` when an authed user has no workspace.
+- API keys store only a SHA-256 hash and a masked preview; the plaintext secret
+  is returned to the client exactly once on creation/rotation.
