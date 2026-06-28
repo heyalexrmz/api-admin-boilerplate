@@ -1,23 +1,5 @@
 import { z } from "zod"
 
-const passwordSchema = z
-  .string()
-  .min(8, { error: "Use at least 8 characters." })
-  .regex(/[a-zA-Z]/, { error: "Include at least one letter." })
-  .regex(/[0-9]/, { error: "Include at least one number." })
-  .trim()
-
-export const InviteFormSchema = z
-  .object({
-    name: z.string().min(2, { error: "Enter your full name." }).trim(),
-    password: passwordSchema,
-    confirmPassword: z.string().min(1, { error: "Confirm your password." }).trim(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    error: "Passwords do not match.",
-    path: ["confirmPassword"],
-  })
-
 export const SsoFormSchema = z.object({
   email: z.email({ error: "Enter your work email." }).trim(),
 })
@@ -28,7 +10,6 @@ export type AuthFormState = {
   success?: boolean
 } | undefined
 
-export type InviteState = AuthFormState
 export type SsoState = AuthFormState
 
 // --- API Keys ---------------------------------------------------------------
