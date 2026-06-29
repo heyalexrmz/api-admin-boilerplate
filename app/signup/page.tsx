@@ -1,12 +1,7 @@
+import Link from "next/link"
+
 import { AuthShell } from "@/components/auth-shell"
 import { MagicLinkForm } from "@/components/magic-link-form"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 
 export const metadata = {
   title: "Sign up · Acme",
@@ -36,32 +31,30 @@ export default function SignupPage() {
         </>
       }
     >
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl text-balance">
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-xl font-semibold tracking-tight text-balance">
             Start your free trial
-          </CardTitle>
-          <CardDescription className="text-pretty">
+          </h1>
+          <p className="text-sm text-muted-foreground text-pretty">
             Enter your work email and we&apos;ll send a secure link to create your workspace.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <MagicLinkForm
-            submitLabel="Create account"
-            alternateLink={
-              <>
-                Already have an account?{" "}
-                <a
-                  href="/"
-                  className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
-                >
-                  Sign in
-                </a>
-              </>
-            }
-          />
-        </CardContent>
-      </Card>
+          </p>
+        </div>
+        <MagicLinkForm
+          submitLabel="Create account"
+          alternateLink={
+            <>
+              Already have an account?{" "}
+              <Link
+                href="/"
+                className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
+              >
+                Sign in
+              </Link>
+            </>
+          }
+        />
+      </div>
     </AuthShell>
   )
 }

@@ -128,3 +128,11 @@
     @apply font-sans;
   }
 }
+
+.auth-scene {
+  background-image: url("/mountain-daytime.svg");
+}
+
+.dark .auth-scene {
+  background-image: url("/mountain-nighttime.svg");
+}

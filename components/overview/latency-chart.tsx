@@ -1,6 +1,7 @@
 "use client"
 
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
+import { Gauge } from "lucide-react"
 
 import {
   Card,
@@ -18,58 +19,62 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 
-const data = [
-  { date: "Jun 14", p50: 138, p95: 305 },
-  { date: "Jun 15", p50: 135, p95: 298 },
-  { date: "Jun 16", p50: 142, p95: 312 },
-  { date: "Jun 17", p50: 130, p95: 288 },
-  { date: "Jun 18", p50: 133, p95: 295 },
-  { date: "Jun 19", p50: 128, p95: 280 },
-  { date: "Jun 20", p50: 131, p95: 284 },
-  { date: "Jun 21", p50: 126, p95: 276 },
-  { date: "Jun 22", p50: 129, p95: 279 },
-  { date: "Jun 23", p50: 124, p95: 270 },
-  { date: "Jun 24", p50: 127, p95: 273 },
-  { date: "Jun 25", p50: 122, p95: 265 },
-  { date: "Jun 26", p50: 144, p95: 300 },
-  { date: "Jun 27", p50: 142, p95: 296 },
-]
+export type LatencyPoint = { date: string; p50: number; p95: number }
 
 const chartConfig = {
   p50: { label: "p50", color: "var(--chart-2)" },
   p95: { label: "p95", color: "var(--chart-4)" },
 } satisfies ChartConfig
 
-export function LatencyChart() {
+export function LatencyChart({
+  data,
+  range = "Last 14 days",
+}: {
+  data: LatencyPoint[]
+  range?: string
+}) {
+  // Show point markers when there's little data, otherwise a lone bucket would
+  // render as an invisible single-point line.
+  const showDots = data.length <= 10
   return (
     <Card>
       <CardHeader>
         <CardTitle>Latency</CardTitle>
-        <CardDescription>p50 and p95 over the last 14 days</CardDescription>
+        <CardDescription>{`p50 and p95 · ${range}`}</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[240px] w-full">
-          <LineChart data={data} margin={{ left: 4, right: 12, top: 8, bottom: 8 }}>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              minTickGap={24}
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              width={44}
-              tickFormatter={(value) => `${value}ms`}
-            />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-            <Line dataKey="p50" type="natural" stroke="var(--color-p50)" strokeWidth={2} dot={false} />
-            <Line dataKey="p95" type="natural" stroke="var(--color-p95)" strokeWidth={2} dot={false} />
-            <ChartLegend content={<ChartLegendContent />} />
-          </LineChart>
-        </ChartContainer>
+        {data.length === 0 ? (
+          <div className="flex h-[240px] flex-col items-center justify-center gap-2 text-center">
+            <Gauge className="size-6 text-muted-foreground" aria-hidden="true" />
+            <p className="text-sm font-medium">No latency data yet</p>
+            <p className="text-xs text-muted-foreground">
+              Latency percentiles will appear here once your APIs start receiving traffic.
+            </p>
+          </div>
+        ) : (
+          <ChartContainer config={chartConfig} className="h-[240px] w-full">
+            <LineChart data={data} margin={{ left: 4, right: 12, top: 8, bottom: 8 }}>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                minTickGap={24}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                width={44}
+                tickFormatter={(value) => `${value}ms`}
+              />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <Line dataKey="p50" type="natural" stroke="var(--color-p50)" strokeWidth={2} dot={showDots} />
+              <Line dataKey="p95" type="natural" stroke="var(--color-p95)" strokeWidth={2} dot={showDots} />
+              <ChartLegend content={<ChartLegendContent />} />
+            </LineChart>
+          </ChartContainer>
+        )}
       </CardContent>
     </Card>
   )

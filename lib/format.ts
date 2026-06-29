@@ -52,3 +52,14 @@ export function formatDateTime(iso: string): string {
     hour12: false,
   })
 }
+
+/** Compact integer formatting for chart axes/labels: 0, 950, 1k, 1.2k, 15k, 1.5M. */
+export function formatCompact(n: number): string {
+  if (n < 1000) return String(n)
+  if (n < 1_000_000) {
+    const k = n / 1000
+    return `${k >= 10 ? Math.round(k) : k.toFixed(1)}k`.replace(/\.0k$/, "k")
+  }
+  const m = n / 1_000_000
+  return `${m >= 10 ? Math.round(m) : m.toFixed(1)}M`.replace(/\.0M$/, "M")
+}

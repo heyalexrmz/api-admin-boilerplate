@@ -14,6 +14,7 @@ const navItems = [
   { name: "Overview", href: "/dashboard" },
   { name: "API Keys", href: "/dashboard/keys" },
   { name: "Logs", href: "/dashboard/logs" },
+  { name: "Webhooks", href: "/dashboard/webhooks" },
   { name: "Settings", href: "/dashboard/settings" },
 ]
 
@@ -21,10 +22,14 @@ export function DashboardShell({
   children,
   user,
   organization,
+  organizations,
+  canManage,
 }: {
   children: React.ReactNode
   user: { name: string; email: string }
   organization: { id: string; name: string; slug: string }
+  organizations: { id: string; name: string; slug: string }[]
+  canManage: boolean
 }) {
   const pathname = usePathname()
   const [headerAction, setHeaderAction] = React.useState<React.ReactNode>(null)
@@ -37,11 +42,22 @@ export function DashboardShell({
 
   return (
     <SidebarProvider className="h-svh overflow-hidden">
-      <AppSidebar user={user} organization={organization} />
+      <AppSidebar
+        user={user}
+        organization={organization}
+        organizations={organizations}
+        canManage={canManage}
+      />
       <SidebarInset className="min-h-0 overflow-hidden">
         <DashboardHeaderActionsContext value={setHeaderAction}>
           <div className="flex min-h-0 flex-1 flex-col">
-            <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            {/* `key` remounts the entire page subtree when the active org
+                changes, so client components drop any stale org-scoped
+                state (API keys list, selected log, sessions, etc.). */}
+            <main
+              key={organization.id}
+              className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8"
+            >
               <div className="mx-auto max-w-6xl">
                 <div className="mb-6 flex items-start justify-between gap-4">
                   <div>

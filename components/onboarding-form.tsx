@@ -17,7 +17,9 @@ export function OnboardingForm() {
   );
   const [name, setName] = useState("");
 
-  const nameId = useId();
+  const firstNameId = useId();
+  const lastNameId = useId();
+  const workspaceId = useId();
   const slugPreview = slugify(name);
 
   return (
@@ -29,16 +31,55 @@ export function OnboardingForm() {
         </Alert>
       )}
 
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={firstNameId}>First name</Label>
+          <Input
+            id={firstNameId}
+            name="firstName"
+            type="text"
+            autoComplete="given-name"
+            autoFocus
+            required
+            maxLength={60}
+            placeholder="Ada"
+            aria-invalid={!!state?.errors?.firstName}
+            className="h-10"
+          />
+          {state?.errors?.firstName?.[0] && (
+            <p className="text-sm text-destructive">{state.errors.firstName[0]}</p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={lastNameId}>Last name</Label>
+          <Input
+            id={lastNameId}
+            name="lastName"
+            type="text"
+            autoComplete="family-name"
+            required
+            maxLength={60}
+            placeholder="Lovelace"
+            aria-invalid={!!state?.errors?.lastName}
+            className="h-10"
+          />
+          {state?.errors?.lastName?.[0] && (
+            <p className="text-sm text-destructive">{state.errors.lastName[0]}</p>
+          )}
+        </div>
+      </div>
+
       <div className="flex flex-col gap-2">
-        <Label htmlFor={nameId}>Workspace name</Label>
+        <Label htmlFor={workspaceId}>Workspace name</Label>
         <Input
-          id={nameId}
+          id={workspaceId}
           name="name"
           type="text"
           autoComplete="organization"
-          autoFocus
           required
           minLength={2}
+          maxLength={60}
           placeholder="Acme Inc."
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -47,7 +88,8 @@ export function OnboardingForm() {
         />
         {slugPreview && (
           <p className="text-xs text-muted-foreground">
-            Workspace URL: <span className="font-medium text-foreground">acme.com/{slugPreview}</span>
+            Workspace URL:{" "}
+            <span className="font-medium text-foreground">acme.com/{slugPreview}</span>
           </p>
         )}
         {state?.errors?.name?.[0] && (

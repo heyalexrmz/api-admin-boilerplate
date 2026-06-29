@@ -1,5 +1,9 @@
 import { DashboardShell } from "@/components/dashboard-shell"
-import { requireActiveOrganization } from "@/app/lib/auth"
+import {
+  getCanManageActiveOrg,
+  getUserOrganizations,
+  requireActiveOrganization,
+} from "@/app/lib/auth"
 
 export default async function DashboardLayout({
   children,
@@ -7,6 +11,8 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   const { user, organization } = await requireActiveOrganization()
+  const organizations = await getUserOrganizations()
+  const canManage = await getCanManageActiveOrg()
 
   return (
     <DashboardShell
@@ -16,6 +22,12 @@ export default async function DashboardLayout({
         name: organization.name,
         slug: organization.slug,
       }}
+      organizations={organizations.map((o) => ({
+        id: o.id,
+        name: o.name,
+        slug: o.slug,
+      }))}
+      canManage={canManage}
     >
       {children}
     </DashboardShell>

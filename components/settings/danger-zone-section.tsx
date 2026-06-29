@@ -20,9 +20,6 @@ import { Input } from "@/components/ui/input"
 import { Field } from "@/components/settings/field"
 import { SettingsSection } from "@/components/settings/settings-section"
 
-// Matches the signed-in user (would come from the session on the server).
-const EMAIL = "jane@company.com"
-
 function DeleteSubmitButton({ matches }: { matches: boolean }) {
   const { pending } = useFormStatus()
   return (
@@ -49,14 +46,16 @@ function DeleteSubmitButton({ matches }: { matches: boolean }) {
 function DeleteAccountDialog({
   open,
   onOpenChange,
+  userEmail,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  userEmail: string
 }) {
   const [state, action] = useActionState(deleteAccount, undefined)
   const [confirmText, setConfirmText] = useState("")
   const inputId = useId()
-  const matches = confirmText.trim().toLowerCase() === EMAIL.toLowerCase()
+  const matches = confirmText.trim().toLowerCase() === userEmail.toLowerCase()
 
   function handleOpenChange(next: boolean) {
     if (!next) setConfirmText("")
@@ -92,7 +91,7 @@ function DeleteAccountDialog({
             label={
               <>
                 Type{" "}
-                <span className="font-medium text-foreground">{EMAIL}</span>{" "}
+                <span className="font-medium text-foreground">{userEmail}</span>{" "}
                 to confirm
               </>
             }
@@ -103,7 +102,7 @@ function DeleteAccountDialog({
               name="confirm"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder={EMAIL}
+              placeholder={userEmail}
               autoComplete="off"
               autoFocus
               className="h-10"
@@ -123,7 +122,7 @@ function DeleteAccountDialog({
   )
 }
 
-export function DangerZoneSection() {
+export function DangerZoneSection({ userEmail }: { userEmail: string }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -146,7 +145,11 @@ export function DangerZoneSection() {
       <p className="text-sm text-muted-foreground">
         You&apos;ll be asked to confirm your email before anything is removed.
       </p>
-      <DeleteAccountDialog open={open} onOpenChange={setOpen} />
+      <DeleteAccountDialog
+        open={open}
+        onOpenChange={setOpen}
+        userEmail={userEmail}
+      />
     </SettingsSection>
   )
 }

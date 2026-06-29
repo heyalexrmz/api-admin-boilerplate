@@ -18,12 +18,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 type InviteFormProps = {
+  invitationId: string
   email: string
   inviterName: string
   workspaceName: string
 }
 
 export function InviteForm({
+  invitationId,
   email,
   inviterName,
   workspaceName,
@@ -43,7 +45,7 @@ export function InviteForm({
     const { error } = await authClient.signIn.magicLink({
       email,
       name: name || undefined,
-      callbackURL: "/",
+      callbackURL: `/invite/accept?invitationId=${encodeURIComponent(invitationId)}`,
     })
     setLoading(false)
     if (error) {

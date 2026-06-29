@@ -4,17 +4,9 @@ import { useActionState, useEffect, useId, useState } from "react"
 import { toast } from "@/lib/toast"
 
 import { updateProfile } from "@/app/actions/settings"
-import { TIMEZONES } from "@/app/lib/definitions"
+import type { SettingsUser } from "@/app/lib/definitions"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { DangerZoneSection } from "@/components/settings/danger-zone-section"
 import { Field } from "@/components/settings/field"
 import { SaveButton } from "@/components/settings/save-button"
@@ -29,14 +21,19 @@ function initials(name: string) {
     .toUpperCase()
 }
 
-export function AccountTab() {
+export function AccountTab({ user }: { user: SettingsUser }) {
   const [state, action] = useActionState(updateProfile, undefined)
-  const [name, setName] = useState("Jane Doe")
+  const [firstName, setFirstName] = useState(user.firstName ?? "")
+  const [lastName, setLastName] = useState(user.lastName ?? "")
 
-  const nameId = useId()
+  const firstNameId = useId()
+  const lastNameId = useId()
   const emailId = useId()
-  const timezoneId = useId()
-  const bioId = useId()
+
+  const fullName = `${firstName} ${lastName}`.trim()
+  const savedFirstName = state?.success ? state.firstName ?? "" : user.firstName ?? ""
+  const savedLastName = state?.success ? state.lastName ?? "" : user.lastName ?? ""
+  const hasChanges = firstName !== savedFirstName || lastName !== savedLastName
 
   useEffect(() => {
     if (state?.success) toast.success("Profile updated")
@@ -48,11 +45,12 @@ export function AccountTab() {
         <SettingsSection
           title="Account details"
           description="This is how others will see you across the workspace."
+          footer={<SaveButton disabled={!hasChanges} />}
         >
           <div className="flex items-center gap-4">
             <Avatar className="size-14 rounded-lg">
               <AvatarFallback className="rounded-lg bg-primary text-primary-foreground text-sm">
-                {initials(name) || "—"}
+                {initials(fullName) || "—"}
               </AvatarFallback>
             </Avatar>
             <div className="text-sm text-muted-foreground">
@@ -60,82 +58,61 @@ export function AccountTab() {
             </div>
           </div>
 
-          <Field
-            id={nameId}
-            label="Full name"
-            error={state?.errors?.name?.[0]}
-          >
-            <Input
-              id={nameId}
-              name="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={60}
-              required
-              className="h-10"
-            />
-          </Field>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field
+              id={firstNameId}
+              label="First name"
+              error={state?.errors?.firstName?.[0]}
+            >
+              <Input
+                id={firstNameId}
+                name="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                maxLength={60}
+                required
+                autoComplete="given-name"
+                className="h-10"
+              />
+            </Field>
+
+            <Field
+              id={lastNameId}
+              label="Last name"
+              error={state?.errors?.lastName?.[0]}
+            >
+              <Input
+                id={lastNameId}
+                name="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                maxLength={60}
+                required
+                autoComplete="family-name"
+                className="h-10"
+              />
+            </Field>
+          </div>
 
           <Field
             id={emailId}
             label="Work email"
-            error={state?.errors?.email?.[0]}
+            description="Your sign-in email. Magic link only — contact support to change it."
           >
             <Input
               id={emailId}
-              name="email"
               type="email"
+              readOnly
+              value={user.email}
               autoComplete="email"
-              defaultValue="jane@company.com"
-              required
-              className="h-10"
-            />
-          </Field>
-        </SettingsSection>
-
-        <SettingsSection
-          title="Preferences"
-          description="Localize your experience and tell people a bit about you."
-          footer={<SaveButton />}
-        >
-          <Field
-            id={timezoneId}
-            label="Timezone"
-            error={state?.errors?.timezone?.[0]}
-            description="Used for emails, logs, and scheduling."
-          >
-            <Select name="timezone" defaultValue="America/Chicago" required>
-              <SelectTrigger id={timezoneId} className="h-10 w-full">
-                <SelectValue placeholder="Select a timezone" />
-              </SelectTrigger>
-              <SelectContent>
-                {TIMEZONES.map((tz) => (
-                  <SelectItem key={tz} value={tz}>
-                    {tz.replace(/_/g, " ")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-
-          <Field
-            id={bioId}
-            label="Bio"
-            error={state?.errors?.bio?.[0]}
-            description="Up to 160 characters."
-          >
-            <Textarea
-              id={bioId}
-              name="bio"
-              maxLength={160}
-              defaultValue="Building APIs at Acme."
-              className="min-h-20"
+              className="h-10 bg-muted/40 text-muted-foreground"
+              tabIndex={-1}
             />
           </Field>
         </SettingsSection>
       </form>
 
-      <DangerZoneSection />
+      <DangerZoneSection userEmail={user.email} />
     </div>
   )
 }

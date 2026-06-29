@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, CreditCard, ShieldCheck, SunMoon, User } from "lucide-react"
+import { Bell, CreditCard, ShieldCheck, SunMoon, User, Users } from "lucide-react"
 
 import {
   Tabs,
@@ -12,15 +12,51 @@ import { AccountTab } from "@/components/settings/account-tab"
 import { AppearanceTab } from "@/components/settings/appearance-tab"
 import { BillingTab } from "@/components/settings/billing-tab"
 import { NotificationsTab } from "@/components/settings/notifications-tab"
+import { OrganizationTab } from "@/components/settings/organization-tab"
 import { SecurityTab } from "@/components/settings/security-tab"
+import type {
+  OrganizationDetails,
+  SessionView,
+  SettingsUser,
+  TeamInvitation,
+  TeamMember,
+} from "@/app/lib/definitions"
+import type { SettingsTab } from "@/app/lib/settings"
+import { useQueryParams } from "@/lib/use-query-params"
 
-export function SettingsView() {
+export function SettingsView({
+  user,
+  sessions,
+  organization,
+  members,
+  invitations,
+  canManage,
+  initialTab,
+}: {
+  user: SettingsUser
+  sessions: SessionView[]
+  organization: OrganizationDetails
+  members: TeamMember[]
+  invitations: TeamInvitation[]
+  canManage: boolean
+  initialTab: SettingsTab
+}) {
+  const { setQueryParams } = useQueryParams()
+
+  function selectTab(tab: string) {
+    setQueryParams({ tab: tab === "account" ? null : tab })
+  }
+
   return (
-    <Tabs defaultValue="account" className="gap-6">
+    <Tabs value={initialTab} onValueChange={selectTab} className="gap-6">
       <TabsList className="justify-start">
         <TabsTrigger value="account">
           <User />
           Account
+        </TabsTrigger>
+        <TabsTrigger value="organization">
+          <Users />
+          Organization
         </TabsTrigger>
         <TabsTrigger value="billing">
           <CreditCard />
@@ -41,13 +77,21 @@ export function SettingsView() {
       </TabsList>
 
       <TabsContent value="account" className="mt-0">
-        <AccountTab />
+        <AccountTab user={user} />
+      </TabsContent>
+      <TabsContent value="organization" className="mt-0">
+        <OrganizationTab
+          organization={organization}
+          members={members}
+          invitations={invitations}
+          canManage={canManage}
+        />
       </TabsContent>
       <TabsContent value="billing" className="mt-0">
         <BillingTab />
       </TabsContent>
       <TabsContent value="security" className="mt-0">
-        <SecurityTab />
+        <SecurityTab initialSessions={sessions} />
       </TabsContent>
       <TabsContent value="appearance" className="mt-0">
         <AppearanceTab />

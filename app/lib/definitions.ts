@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { isValidWebhookUrlSyntax } from "@/lib/webhook-url-policy"
+
 export const SsoFormSchema = z.object({
   email: z.email({ error: "Enter your work email." }).trim(),
 })
@@ -11,6 +13,24 @@ export type AuthFormState = {
 } | undefined
 
 export type SsoState = AuthFormState
+
+export const OnboardingFormSchema = z.object({
+  firstName: z
+    .string()
+    .min(1, { error: "Enter your first name." })
+    .max(60, { error: "Keep it under 60 characters." })
+    .trim(),
+  lastName: z
+    .string()
+    .min(1, { error: "Enter your last name." })
+    .max(60, { error: "Keep it under 60 characters." })
+    .trim(),
+  name: z
+    .string()
+    .min(2, { error: "Use at least 2 characters." })
+    .max(60, { error: "Keep the name under 60 characters." })
+    .trim(),
+})
 
 // --- API Keys ---------------------------------------------------------------
 
@@ -145,41 +165,299 @@ export type RequestLog = {
   responseBody: string | null
 }
 
-// --- Settings ---------------------------------------------------------------
+// --- Webhooks ---------------------------------------------------------------
 
-export const TIMEZONES = [
-  "Pacific/Honolulu",
-  "America/Anchorage",
-  "America/Los_Angeles",
-  "America/Denver",
-  "America/Chicago",
-  "America/New_York",
-  "America/Sao_Paulo",
-  "Europe/London",
-  "Europe/Paris",
-  "Europe/Berlin",
-  "Africa/Cairo",
-  "Asia/Dubai",
-  "Asia/Kolkata",
-  "Asia/Shanghai",
-  "Asia/Tokyo",
-  "Australia/Sydney",
-  "Pacific/Auckland",
+export const WEBHOOK_EVENTS = [
+  "api_key.created",
+  "api_key.rotated",
+  "api_key.revoked",
+  "member.invited",
+  "member.removed",
 ] as const
+export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number]
 
-export const ProfileFormSchema = z.object({
-  name: z.string().min(2, { error: "Enter your full name." }).max(60).trim(),
-  email: z.email({ error: "Enter a valid work email." }).trim(),
-  timezone: z.string().min(1, { error: "Select a timezone." }),
-  bio: z
+export type WebhookStatus = "active" | "disabled"
+
+export type Webhook = {
+  id: string
+  name: string
+  url: string
+  description: string | null
+  events: WebhookEvent[]
+  enabled: boolean
+  /** Masked signing-secret preview, e.g. `whsec_••••••••1234`. */
+  secretPreview: string
+  createdAt: string
+  updatedAt: string
+  lastFiredAt: string | null
+  /** ISO timestamp of the last secret rotation, or null if never rotated. */
+  lastRotatedAt: string | null
+  status: WebhookStatus
+}
+
+/** Returned exactly once, right after creation. Carries the plaintext secret. */
+export type NewWebhook = {
+  id: string
+  name: string
+  url: string
+  description: string | null
+  events: WebhookEvent[]
+  enabled: boolean
+  secret: string
+  createdAt: string
+  lastRotatedAt: string | null
+}
+
+/** Returned exactly once after a rotation. Carries the new plaintext secret. */
+export type RotatedWebhookSecret = {
+  id: string
+  secret: string
+  preview: string
+  lastRotatedAt: string
+}
+
+export const WebhookEventLabels: Record<WebhookEvent, string> = {
+  "api_key.created": "API key created",
+  "api_key.rotated": "API key rotated",
+  "api_key.revoked": "API key revoked",
+  "member.invited": "Member invited",
+  "member.removed": "Member removed",
+}
+
+export const CreateWebhookFormSchema = z.object({
+  name: z
     .string()
-    .max(160, { error: "Keep your bio under 160 characters." })
+    .min(1, { error: "Give your webhook a name." })
+    .max(40, { error: "Keep the name under 40 characters." })
+    .trim(),
+  url: z
+    .url({ error: "Enter a valid URL." })
+    .refine(isValidWebhookUrlSyntax, {
+      error: "Webhook URLs must use a public HTTPS endpoint.",
+    }),
+  description: z
+    .string()
+    .max(160, { error: "Keep the description under 160 characters." })
     .trim()
     .optional(),
+  events: z
+    .array(z.enum(WEBHOOK_EVENTS))
+    .min(1, { error: "Select at least one event to subscribe to." }),
+})
+
+export const UpdateWebhookFormSchema = z.object({
+  name: z
+    .string()
+    .min(1, { error: "Name can't be empty." })
+    .max(40, { error: "Keep the name under 40 characters." })
+    .trim(),
+  url: z
+    .url({ error: "Enter a valid URL." })
+    .refine(isValidWebhookUrlSyntax, {
+      error: "Webhook URLs must use a public HTTPS endpoint.",
+    }),
+  description: z
+    .string()
+    .max(160, { error: "Keep the description under 160 characters." })
+    .trim()
+    .optional(),
+  events: z
+    .array(z.enum(WEBHOOK_EVENTS))
+    .min(1, { error: "Select at least one event to subscribe to." }),
+})
+
+export type UpdatedWebhook = {
+  name: string
+  url: string
+  description: string | null
+  events: WebhookEvent[]
+}
+
+export type CreateWebhookState = {
+  errors?: Record<string, string[] | undefined>
+  message?: string
+  webhook?: NewWebhook
+} | undefined
+
+export type UpdateWebhookState = {
+  errors?: Record<string, string[] | undefined>
+  message?: string
+  webhook?: UpdatedWebhook
+} | undefined
+
+/** Result of delivering a test event: the recorded log + updated last-delivery
+ *  timestamp, or an error message. */
+export type TestEventResult =
+  | { eventLog: WebhookEventLog; lastFiredAt: string }
+  | { error: string }
+
+// --- Webhook Event Logs -----------------------------------------------------
+
+export type WebhookEventLogStatus = "success" | "failed" | "pending" | "retrying"
+
+export type WebhookEventLog = {
+  id: string
+  webhookId: string
+  /** Unique id of the delivered event, sent in the payload headers. */
+  eventId: string
+  /** Event type, e.g. `api_key.created`. */
+  eventType: string
+  status: WebhookEventLogStatus
+  /** HTTP status code returned by the endpoint, or null if not delivered. */
+  httpStatus: number | null
+  attemptCount: number
+  /** Round-trip latency in milliseconds, or null if not delivered. */
+  latencyMs: number | null
+  /** The JSON payload that was sent. */
+  payload: unknown
+  responseHeaders: { name: string; value: string }[] | null
+  responseBody: string | null
+  createdAt: string
+  deliveredAt: string | null
+}
+
+export const WebhookEventLogStatusLabels: Record<WebhookEventLogStatus, string> = {
+  success: "Success",
+  failed: "Failed",
+  pending: "Pending",
+  retrying: "Retrying",
+}
+
+// --- Settings ---------------------------------------------------------------
+
+export type SettingsUser = {
+  firstName: string | null
+  lastName: string | null
+  email: string
+  timezone: string | null
+  bio: string | null
+}
+
+export const ProfileFormSchema = z.object({
+  firstName: z
+    .string()
+    .min(1, { error: "Enter your first name." })
+    .max(60, { error: "Keep it under 60 characters." })
+    .trim(),
+  lastName: z
+    .string()
+    .min(1, { error: "Enter your last name." })
+    .max(60, { error: "Keep it under 60 characters." })
+    .trim(),
 })
 
 export type SettingsFormState = {
   errors?: Record<string, string[] | undefined>
   message?: string
   success?: boolean
+  firstName?: string
+  lastName?: string
 } | undefined
+
+// --- Sessions ----------------------------------------------------------------
+
+export type SessionView = {
+  id: string
+  /** Short human-readable device label derived from the user agent. */
+  device: string
+  /** Coarse location label (city/region or country) derived from the IP, or null. */
+  location: string | null
+  /** Relative-time label for the session's last activity, e.g. "Active now". */
+  lastActive: string
+  /** True for the session matching the current request's cookie. */
+  current: boolean
+  /** Whether the session was made from a mobile device. */
+  isMobile: boolean
+}
+
+// --- Organization ------------------------------------------------------------
+
+export const ORGANIZATION_ROLES = ["owner", "admin", "member"] as const
+export type OrganizationRole = (typeof ORGANIZATION_ROLES)[number]
+
+export const OrganizationRoleLabels: Record<OrganizationRole, string> = {
+  owner: "Owner",
+  admin: "Admin",
+  member: "Member",
+}
+
+/** Roles an admin/owner can assign when inviting a new member. */
+export const INVITABLE_ROLES = ["admin", "member"] as const
+export type InvitableRole = (typeof INVITABLE_ROLES)[number]
+
+export type OrganizationDetails = {
+  id: string
+  name: string
+  slug: string
+  /** Logo URL or null. Always null for now — image upload isn't supported yet. */
+  logo: string | null
+}
+
+export type TeamMember = {
+  id: string
+  userId: string
+  name: string
+  email: string
+  role: OrganizationRole
+  /** ISO timestamp of when the member joined the organization. */
+  joinedAt: string
+  /** True when this row is the currently signed-in user. */
+  isCurrentUser: boolean
+}
+
+export type TeamInvitation = {
+  id: string
+  email: string
+  role: OrganizationRole
+  status: "pending" | "accepted" | "rejected" | "canceled"
+  /** ISO timestamp of when the invitation was created. */
+  createdAt: string
+  /** ISO timestamp of when the invitation expires, or null when it never does. */
+  expiresAt: string | null
+  /** True when the signed-in user can cancel this invitation. */
+  canCancel: boolean
+}
+
+export const UpdateOrganizationFormSchema = z.object({
+  name: z
+    .string()
+    .min(2, { error: "Use at least 2 characters." })
+    .max(60, { error: "Keep the name under 60 characters." })
+    .trim(),
+})
+
+export type UpdateOrganizationState = {
+  errors?: Record<string, string[] | undefined>
+  message?: string
+  success?: boolean
+  name?: string
+} | undefined
+
+export const InviteMemberFormSchema = z.object({
+  email: z.email({ error: "Enter a valid work email." }).trim(),
+  role: z.enum(INVITABLE_ROLES),
+})
+
+export type InviteMemberState = {
+  errors?: Record<string, string[] | undefined>
+  message?: string
+  success?: boolean
+  invitation?: TeamInvitation
+} | undefined
+
+export type MemberActionResponse =
+  | { success: true }
+  | { error: string }
+
+export type UpdateMemberRoleResponse =
+  | { success: true; role: OrganizationRole }
+  | { error: string }
+
+// --- Invitations -------------------------------------------------------------
+
+export type InvitationDetails = {
+  id: string
+  email: string
+  inviterName: string
+  workspaceName: string
+}

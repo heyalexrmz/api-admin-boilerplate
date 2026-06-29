@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { getSession } from "@/app/lib/auth";
 import { slugify } from "@/lib/slugify";
+import { OnboardingFormSchema } from "@/app/lib/definitions";
 
 export type OnboardingState = {
   errors?: Record<string, string[] | undefined>;
@@ -22,19 +23,42 @@ export async function createOrganization(
     redirect("/");
   }
 
-  const name = String(formData.get("name") ?? "").trim();
-  if (name.length < 2) {
-    return { errors: { name: ["Use at least 2 characters."] } };
+  const validated = OnboardingFormSchema.safeParse({
+    firstName: formData.get("firstName"),
+    lastName: formData.get("lastName"),
+    name: formData.get("name"),
+  });
+
+  if (!validated.success) {
+    return { errors: validated.error.flatten().fieldErrors };
   }
 
+  const { firstName, lastName, name } = validated.data;
   const slug = slugify(name);
   if (!slug) {
     return { errors: { name: ["Choose a name with letters or numbers."] } };
   }
 
+  const fullName = `${firstName} ${lastName}`.trim();
+  const requestHeaders = await headers();
+
+  try {
+    await auth.api.updateUser({
+      headers: requestHeaders,
+      body: { name: fullName, firstName, lastName },
+    });
+  } catch (error) {
+    return {
+      message:
+        error instanceof Error
+          ? error.message
+          : "Could not save your profile. Try again.",
+    };
+  }
+
   try {
     await auth.api.createOrganization({
-      headers: await headers(),
+      headers: requestHeaders,
       body: { name, slug },
     });
   } catch (error) {

@@ -1,60 +1,79 @@
 "use server"
 
+import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
+import { auth } from "@/lib/auth"
+import { getSession } from "@/app/lib/auth"
 import {
   ProfileFormSchema,
   type SettingsFormState,
 } from "@/app/lib/definitions"
 
-async function simulateNetworkDelay() {
-  await new Promise((resolve) => setTimeout(resolve, 900))
-}
-
-// Every settings action must verify the session — Server Functions are
-// reachable via direct POST, not just through the UI.
-async function requireAuth() {
-  await simulateNetworkDelay()
-  // const session = await auth()
-  // if (!session?.user) throw new Error("Unauthorized")
-  // return session
-}
-
 export async function updateProfile(
   prevState: SettingsFormState,
   formData: FormData
 ): Promise<SettingsFormState> {
-  await requireAuth()
+  const session = await getSession()
+  if (!session) {
+    throw new Error("Unauthorized")
+  }
 
   const validated = ProfileFormSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-    timezone: formData.get("timezone"),
-    bio: formData.get("bio"),
+    firstName: formData.get("firstName"),
+    lastName: formData.get("lastName"),
   })
 
   if (!validated.success) {
     return { errors: validated.error.flatten().fieldErrors }
   }
 
-  // await store.updateUser(session.user.id, validated.data)
-  return { success: true }
+  const { firstName, lastName } = validated.data
+  const name = `${firstName} ${lastName}`.trim()
+
+  try {
+    await auth.api.updateUser({
+      headers: await headers(),
+      body: { name, firstName, lastName },
+    })
+  } catch (error) {
+    return {
+      message:
+        error instanceof Error
+          ? error.message
+          : "Could not update your profile.",
+    }
+  }
+
+  return { success: true, firstName, lastName }
 }
 
 export async function deleteAccount(
   prevState: SettingsFormState,
   formData: FormData
 ): Promise<SettingsFormState> {
-  await requireAuth()
+  const session = await getSession()
+  if (!session) {
+    throw new Error("Unauthorized")
+  }
 
   const confirmed = String(formData.get("confirm") ?? "")
-  // In production this comes from the session, never from the client.
-  const sessionEmail = "jane@company.com"
-
-  if (confirmed.trim().toLowerCase() !== sessionEmail.toLowerCase()) {
+  if (
+    confirmed.trim().toLowerCase() !== session.user.email.toLowerCase()
+  ) {
     return { message: "Type your email exactly to confirm deletion." }
   }
 
-  // await store.deleteUser(session.user.id)
+  try {
+    await auth.api.deleteUser({ headers: await headers(), body: {} })
+  } catch (error) {
+    return {
+      message:
+        error instanceof Error
+          ? error.message
+          : "Could not delete your account.",
+    }
+  }
+
   redirect("/")
 }

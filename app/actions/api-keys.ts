@@ -1,10 +1,14 @@
 "use server";
 
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, count, desc, eq, isNull, gt, or } from "drizzle-orm";
 
 import { apiKey } from "@/lib/db/schema";
 import { db } from "@/lib/db";
-import { requireActiveOrganization } from "@/app/lib/auth";
+import {
+  requireActiveOrganization,
+  requireOrganizationManager,
+} from "@/app/lib/auth";
+import { dispatchOrganizationWebhookEvent } from "@/lib/webhook-dispatch";
 import {
   computeExpiry,
   generateApiKeySecret,
@@ -48,7 +52,7 @@ function toApiKey(row: ApiKeyRow): ApiKey {
 }
 
 export async function listApiKeys(): Promise<ApiKey[]> {
-  const { organization } = await requireActiveOrganization();
+  const { organization } = await requireOrganizationManager();
   const rows = await db
     .select()
     .from(apiKey)
@@ -57,11 +61,26 @@ export async function listApiKeys(): Promise<ApiKey[]> {
   return rows.map(toApiKey);
 }
 
+export async function countActiveApiKeys(): Promise<number> {
+  const { organization } = await requireActiveOrganization();
+  const [row] = await db
+    .select({ value: count() })
+    .from(apiKey)
+    .where(
+      and(
+        eq(apiKey.organizationId, organization.id),
+        isNull(apiKey.revokedAt),
+        or(isNull(apiKey.expiresAt), gt(apiKey.expiresAt, new Date()))
+      )
+    );
+  return row?.value ?? 0;
+}
+
 export async function createApiKey(
   prevState: CreateApiKeyState,
   formData: FormData
 ): Promise<CreateApiKeyState> {
-  const { user, organization } = await requireActiveOrganization();
+  const { user, organization } = await requireOrganizationManager();
 
   const validated = CreateApiKeyFormSchema.safeParse({
     name: formData.get("name"),
@@ -94,6 +113,17 @@ export async function createApiKey(
     return { message: "Could not create the API key. Try again." };
   }
 
+  dispatchOrganizationWebhookEvent(organization.id, "api_key.created", {
+    id: row.id,
+    name: row.name,
+    preview: row.preview,
+    scopes: row.scopes,
+    expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
+    createdAt: row.createdAt.toISOString(),
+  }).catch((error) => {
+    console.error("[webhooks] api_key.created dispatch failed", error);
+  });
+
   const newKey: NewApiKey = {
     id: row.id,
     name,
@@ -111,13 +141,15 @@ export async function createApiKey(
 export async function revokeApiKey(
   id: string
 ): Promise<{ success: true } | { error: string }> {
-  const { organization } = await requireActiveOrganization();
+  const { organization } = await requireOrganizationManager();
 
   if (!id) return { error: "Missing key id." };
 
+  const revokedAt = new Date();
+
   const [row] = await db
     .update(apiKey)
-    .set({ revokedAt: new Date() })
+    .set({ revokedAt })
     .where(
       and(
         eq(apiKey.id, id),
@@ -129,6 +161,13 @@ export async function revokeApiKey(
 
   if (!row) return { error: "Key not found or already revoked." };
 
+  dispatchOrganizationWebhookEvent(organization.id, "api_key.revoked", {
+    id: row.id,
+    revokedAt: revokedAt.toISOString(),
+  }).catch((error) => {
+    console.error("[webhooks] api_key.revoked dispatch failed", error);
+  });
+
   return { success: true };
 }
 
@@ -136,7 +175,7 @@ export async function renameApiKey(
   prevState: RenameApiKeyState,
   formData: FormData
 ): Promise<RenameApiKeyState> {
-  const { organization } = await requireActiveOrganization();
+  const { organization } = await requireOrganizationManager();
 
   const id = String(formData.get("id") ?? "");
   if (!id) return { message: "Missing key id." };
@@ -163,7 +202,7 @@ export async function renameApiKey(
 export async function rotateApiKey(
   id: string
 ): Promise<{ key: RotatedApiKey } | { error: string }> {
-  const { organization } = await requireActiveOrganization();
+  const { organization } = await requireOrganizationManager();
 
   if (!id) return { error: "Missing key id." };
 
@@ -187,6 +226,14 @@ export async function rotateApiKey(
     .returning({ id: apiKey.id });
 
   if (!row) return { error: "Key not found or revoked." };
+
+  dispatchOrganizationWebhookEvent(organization.id, "api_key.rotated", {
+    id: row.id,
+    preview: maskSecret(secret),
+    lastRotatedAt: now.toISOString(),
+  }).catch((error) => {
+    console.error("[webhooks] api_key.rotated dispatch failed", error);
+  });
 
   return {
     key: {

@@ -12,8 +12,8 @@ import {
 import { getUser, getUserOrganizations } from "@/app/lib/auth";
 
 export const metadata = {
-  title: "Create your workspace · Acme",
-  description: "Name your Acme workspace to finish signing up.",
+  title: "Set up your workspace · Acme",
+  description: "Add your name and create your first Acme workspace.",
 };
 
 export default async function OnboardingPage() {
@@ -48,10 +48,10 @@ export default async function OnboardingPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-xl text-balance">
-            Create your workspace
+            Set up your workspace
           </CardTitle>
           <CardDescription className="text-pretty">
-            Name your workspace. You can rename it later in settings.
+            Tell us your name and name your first workspace. You can change both later.
           </CardDescription>
         </CardHeader>
         <CardContent>

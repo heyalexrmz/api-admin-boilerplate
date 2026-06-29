@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState, useEffect, useId, useState } from "react"
+import { useFormStatus } from "react-dom"
 import { Check } from "lucide-react"
 
 import { renameApiKey } from "@/app/actions/api-keys"
@@ -19,6 +20,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "@/lib/toast"
 
+function RenameSubmitButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus()
+  return (
+    <Button type="submit" disabled={pending || disabled}>
+      <Check />
+      Save
+    </Button>
+  )
+}
+
 export function RenameApiKeyDialog({
   apiKey,
   open,
@@ -34,6 +45,7 @@ export function RenameApiKeyDialog({
   const inputId = useId()
   const errorId = useId()
   const [value, setValue] = useState(apiKey.name)
+  const hasChanges = value.trim() !== apiKey.name
 
   useEffect(() => {
     if (state?.name) {
@@ -88,10 +100,7 @@ export function RenameApiKeyDialog({
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit">
-              <Check />
-              Save
-            </Button>
+            <RenameSubmitButton disabled={!hasChanges} />
           </DialogFooter>
         </form>
       </DialogContent>

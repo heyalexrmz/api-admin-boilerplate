@@ -8,10 +8,11 @@ import {
   FileText,
   KeyRound,
   Settings,
-  Sparkles,
+  Webhook,
 } from "lucide-react"
 
 import { NavUser } from "@/components/nav-user"
+import { OrgSwitcher } from "@/components/org-switcher"
 import {
   Sidebar,
   SidebarContent,
@@ -36,11 +37,19 @@ const navMain = [
     title: "API Keys",
     url: "/dashboard/keys",
     icon: KeyRound,
+    managerOnly: true,
   },
   {
     title: "Logs",
     url: "/dashboard/logs",
     icon: FileText,
+    managerOnly: true,
+  },
+  {
+    title: "Webhooks",
+    url: "/dashboard/webhooks",
+    icon: Webhook,
+    managerOnly: true,
   },
   {
     title: "Settings",
@@ -52,32 +61,32 @@ const navMain = [
 export function AppSidebar({
   user,
   organization,
+  organizations,
+  canManage,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   user: { name: string; email: string }
   organization: { id: string; name: string; slug: string }
+  organizations: { id: string; name: string; slug: string }[]
+  canManage: boolean
 }) {
   const pathname = usePathname()
+  const items = navMain.filter((item) => !item.managerOnly || canManage)
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-2 text-lg font-semibold tracking-tight">
-          <span className="inline-flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Sparkles className="size-4" />
-          </span>
-          <span className="group-data-[collapsible=icon]:hidden">Acme</span>
-        </div>
-        <div className="px-2 pb-1 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-          {organization.name}
-        </div>
+        <OrgSwitcher
+          organizations={organizations}
+          activeOrganization={organization}
+        />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Platform</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navMain.map((item) => {
+              {items.map((item) => {
                 const isActive =
                   item.url === "/dashboard"
                     ? pathname === "/dashboard"

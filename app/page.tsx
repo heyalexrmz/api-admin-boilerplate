@@ -1,12 +1,7 @@
+import Link from "next/link"
+
 import { AuthShell } from "@/components/auth-shell"
 import { MagicLinkForm } from "@/components/magic-link-form"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 
 export default function LoginPage() {
   return (
@@ -31,29 +26,29 @@ export default function LoginPage() {
         </>
       }
     >
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl text-balance">Welcome back</CardTitle>
-          <CardDescription className="text-pretty">
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-xl font-semibold tracking-tight text-balance">
+            Welcome back
+          </h1>
+          <p className="text-sm text-muted-foreground text-pretty">
             Enter your work email and we&apos;ll send a secure sign-in link.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <MagicLinkForm
-            alternateLink={
-              <>
-                Don&apos;t have an account?{" "}
-                <a
-                  href="/signup"
-                  className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
-                >
-                  Start a trial
-                </a>
-              </>
-            }
-          />
-        </CardContent>
-      </Card>
+          </p>
+        </div>
+        <MagicLinkForm
+          alternateLink={
+            <>
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/signup"
+                className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
+              >
+                Start a trial
+              </Link>
+            </>
+          }
+        />
+      </div>
     </AuthShell>
   )
 }

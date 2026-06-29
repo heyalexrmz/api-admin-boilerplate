@@ -25,9 +25,12 @@ export const auth = betterAuth({
   emailAndPassword: { enabled: false },
   user: {
     additionalFields: {
+      firstName: { type: "string", required: false },
+      lastName: { type: "string", required: false },
       bio: { type: "string", required: false },
       timezone: { type: "string", required: false },
     },
+    deleteUser: { enabled: true },
   },
   plugins: [
     magicLink({

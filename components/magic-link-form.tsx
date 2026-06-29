@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useId, useState } from "react"
 import { ArrowRight, CheckCircle2, LoaderCircle, Mail, TriangleAlert } from "lucide-react"
 
@@ -9,11 +8,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { GoogleIcon, MicrosoftIcon } from "@/components/brand-icons"
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function isValidEmail(value: string): boolean {
+  return EMAIL_RE.test(value.trim())
+}
 
 export function MagicLinkForm({
-  submitLabel = "Send sign-in link",
+  submitLabel = "Continue",
   alternateLink,
 }: {
   submitLabel?: string
@@ -27,13 +30,16 @@ export function MagicLinkForm({
   const [loading, setLoading] = useState(false)
   const [sentTo, setSentTo] = useState<string | null>(null)
 
+  const emailValid = isValidEmail(email)
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (!isValidEmail(email)) return
     setError(null)
     setLoading(true)
     const { error } = await authClient.signIn.magicLink({
       email,
-      callbackURL: "/",
+      callbackURL: "/dashboard",
     })
     setLoading(false)
     if (error) {
@@ -113,7 +119,7 @@ export function MagicLinkForm({
       <Button
         type="submit"
         size="lg"
-        disabled={loading}
+        disabled={!emailValid || loading}
         className="h-10 w-full transition-transform active:scale-[0.96]"
       >
         {loading ? (
@@ -128,35 +134,6 @@ export function MagicLinkForm({
           </>
         )}
       </Button>
-
-      <div className="relative py-1">
-        <Separator />
-        <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs text-muted-foreground">
-          or continue with
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          className="h-10 transition-transform active:scale-[0.96]"
-        >
-          <GoogleIcon className="size-4" />
-          Google
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-10 transition-transform active:scale-[0.96]"
-          asChild
-        >
-          <Link href="/sso">
-            <MicrosoftIcon className="size-4" />
-            Microsoft
-          </Link>
-        </Button>
-      </div>
 
       {alternateLink && (
         <p className="text-center text-sm text-balance text-muted-foreground">

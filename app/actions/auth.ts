@@ -1,7 +1,5 @@
 "use server"
 
-import { redirect } from "next/navigation"
-
 import { SsoFormSchema, type SsoState } from "@/app/lib/definitions"
 
 async function simulateNetworkDelay() {
@@ -21,5 +19,8 @@ export async function ssoLogin(
   }
 
   await simulateNetworkDelay()
-  redirect("/dashboard")
+  return {
+    message:
+      "SSO is not configured for this workspace yet. Use a magic link or contact your administrator.",
+  }
 }

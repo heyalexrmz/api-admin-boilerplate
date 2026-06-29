@@ -1,120 +1,34 @@
-"use client"
+import { Bell } from "lucide-react"
 
-import { useState } from "react"
-import { toast } from "@/lib/toast"
-
-import { Switch } from "@/components/ui/switch"
-import { SettingsSection } from "@/components/settings/settings-section"
-
-type Pref = {
-  id: string
-  label: string
-  description: string
-  checked: boolean
-}
-
-const EMAIL_PREFS: Pref[] = [
-  {
-    id: "product",
-    label: "Product updates",
-    description: "New features and improvements as they ship.",
-    checked: true,
-  },
-  {
-    id: "security",
-    label: "Security alerts",
-    description: "Sign-ins from new devices and password changes.",
-    checked: true,
-  },
-  {
-    id: "billing",
-    label: "Billing reminders",
-    description: "Receipts, renewal notices, and usage thresholds.",
-    checked: false,
-  },
-]
-
-const INAPP_PREFS: Pref[] = [
-  {
-    id: "mentions",
-    label: "Mention notifications",
-    description: "When someone mentions you in a comment.",
-    checked: true,
-  },
-  {
-    id: "usage",
-    label: "Usage spikes",
-    description: "Alert when API traffic exceeds the normal range.",
-    checked: false,
-  },
-]
-
-function PrefRow({
-  pref,
-  onToggle,
-}: {
-  pref: Pref
-  onToggle: (id: string, checked: boolean) => void
-}) {
-  return (
-    <li className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-      <div className="min-w-0">
-        <p className="text-sm font-medium">{pref.label}</p>
-        <p className="text-xs text-muted-foreground">{pref.description}</p>
-      </div>
-      <Switch
-        checked={pref.checked}
-        onCheckedChange={(checked) => onToggle(pref.id, checked)}
-        aria-label={pref.label}
-      />
-    </li>
-  )
-}
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 
 export function NotificationsTab() {
-  const [email, setEmail] = useState<Pref[]>(EMAIL_PREFS)
-  const [inApp, setInApp] = useState<Pref[]>(INAPP_PREFS)
-
-  function toggle(
-    setter: React.Dispatch<React.SetStateAction<Pref[]>>,
-    id: string,
-    checked: boolean
-  ) {
-    setter((prev) => prev.map((p) => (p.id === id ? { ...p, checked } : p)))
-    toast.success(`${checked ? "Enabled" : "Disabled"} notifications`)
-  }
-
   return (
-    <div className="flex flex-col gap-6">
-      <SettingsSection
-        title="Email notifications"
-        description="Messages we send to your inbox."
-      >
-        <ul className="flex flex-col divide-y divide-border">
-          {email.map((pref) => (
-            <PrefRow
-              key={pref.id}
-              pref={pref}
-              onToggle={(id, checked) => toggle(setEmail, id, checked)}
-            />
-          ))}
-        </ul>
-      </SettingsSection>
-
-      <SettingsSection
-        title="In-app notifications"
-        description="What you see inside the dashboard."
-      >
-        <ul className="flex flex-col divide-y divide-border">
-          {inApp.map((pref) => (
-            <PrefRow
-              key={pref.id}
-              pref={pref}
-              onToggle={(id, checked) => toggle(setInApp, id, checked)}
-            />
-          ))}
-        </ul>
-      </SettingsSection>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Notifications</CardTitle>
+        <CardDescription>
+          Choose which updates we send to your inbox and the dashboard.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-6 py-10 text-center">
+          <span className="inline-flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Bell className="size-5" aria-hidden="true" />
+          </span>
+          <p className="text-sm font-medium">Not configurable yet</p>
+          <p className="max-w-sm text-sm text-pretty text-muted-foreground">
+            Notification preferences will appear here once they&apos;re available for your
+            workspace.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
