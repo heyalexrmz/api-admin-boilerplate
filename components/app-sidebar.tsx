@@ -66,8 +66,8 @@ export function AppSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   user: { name: string; email: string }
-  organization: { id: string; name: string; slug: string }
-  organizations: { id: string; name: string; slug: string }[]
+  organization: { id: string; name: string; slug: string; color: string }
+  organizations: { id: string; name: string; slug: string; color: string }[]
   canManage: boolean
 }) {
   const pathname = usePathname()

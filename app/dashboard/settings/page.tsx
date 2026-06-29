@@ -7,6 +7,7 @@ import {
 import { getCanManageActiveOrg, requireUser } from "@/app/lib/auth"
 import { parseSettingsTab } from "@/app/lib/settings"
 import { SettingsView } from "@/components/settings/settings-view"
+import { ORG_COLORS } from "@/lib/org-branding"
 
 export const metadata = {
   title: "Settings · Dashboard",
@@ -45,6 +46,7 @@ export default async function SettingsPage({
           name: "",
           slug: "",
           logo: null,
+          color: ORG_COLORS[0],
         }
       }
       members={members}

@@ -7,6 +7,7 @@ import { Check, ChevronsUpDown, LoaderCircle, Plus } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
 import { toast } from "@/lib/toast"
 import { CreateOrganizationDialog } from "@/components/create-organization-dialog"
+import { getOrgColor, orgInitials } from "@/lib/org-branding"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,13 +28,27 @@ type Org = {
   id: string
   name: string
   slug: string
+  color?: string | null
 }
 
-function orgInitials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return "?"
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
-  return (words[0][0] + words[1][0]).toUpperCase()
+function OrgAvatar({
+  org,
+  className,
+}: {
+  org: Org
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-center rounded-lg text-xs font-semibold text-white",
+        className
+      )}
+      style={{ backgroundColor: getOrgColor(org) }}
+    >
+      {orgInitials(org.name)}
+    </div>
+  )
 }
 
 export function OrgSwitcher({
@@ -81,9 +96,7 @@ export function OrgSwitcher({
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground text-xs font-semibold">
-                {orgInitials(activeOrganization.name)}
-              </div>
+              <OrgAvatar org={activeOrganization} className="aspect-square size-8" />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">
                   {activeOrganization.name}
@@ -111,9 +124,7 @@ export function OrgSwitcher({
                   disabled={pending || isActive}
                   className="gap-2 p-2"
                 >
-                  <div className="flex size-6 items-center justify-center rounded-md border bg-transparent text-[10px] font-semibold">
-                    {orgInitials(org.name)}
-                  </div>
+                  <OrgAvatar org={org} className="size-6 text-[10px]" />
                   <span className="flex-1 truncate">{org.name}</span>
                   <Check
                     className={cn(

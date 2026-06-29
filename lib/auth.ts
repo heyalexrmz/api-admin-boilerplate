@@ -5,6 +5,7 @@ import { magicLink, organization } from "better-auth/plugins";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { sendMagicLinkEmail } from "@/lib/email/resend";
+import { randomOrgColor } from "@/lib/org-branding";
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
@@ -38,6 +39,22 @@ export const auth = betterAuth({
         await sendMagicLinkEmail(email, url);
       },
     }),
-    organization(),
+    organization({
+      schema: {
+        organization: {
+          additionalFields: {
+            color: { type: "string", required: false },
+          },
+        },
+      },
+      organizationHooks: {
+        beforeCreateOrganization: async ({ organization: org }) => ({
+          data: {
+            ...org,
+            color: randomOrgColor(),
+          },
+        }),
+      },
+    }),
   ],
 });

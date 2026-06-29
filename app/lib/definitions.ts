@@ -391,6 +391,8 @@ export type OrganizationDetails = {
   slug: string
   /** Logo URL or null. Always null for now — image upload isn't supported yet. */
   logo: string | null
+  /** Hex accent color for avatars and badges. */
+  color: string
 }
 
 export type TeamMember = {

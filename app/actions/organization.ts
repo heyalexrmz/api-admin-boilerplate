@@ -9,6 +9,7 @@ import { db } from "@/lib/db"
 import { invitation, member, user } from "@/lib/db/schema"
 import { sendInvitationEmail } from "@/lib/email/resend"
 import { dispatchOrganizationWebhookEvent } from "@/lib/webhook-dispatch"
+import { getOrgColor } from "@/lib/org-branding"
 import {
   getActiveMembership,
   requireActiveOrganization,
@@ -83,6 +84,7 @@ export async function getOrganizationDetails(): Promise<OrganizationDetails | nu
     name: organization.name,
     slug: organization.slug,
     logo: organization.logo ?? null,
+    color: getOrgColor(organization),
   }
 }
 

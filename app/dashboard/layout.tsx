@@ -4,6 +4,7 @@ import {
   getUserOrganizations,
   requireActiveOrganization,
 } from "@/app/lib/auth"
+import { getOrgColor } from "@/lib/org-branding"
 
 export default async function DashboardLayout({
   children,
@@ -21,11 +22,13 @@ export default async function DashboardLayout({
         id: organization.id,
         name: organization.name,
         slug: organization.slug,
+        color: getOrgColor(organization),
       }}
       organizations={organizations.map((o) => ({
         id: o.id,
         name: o.name,
         slug: o.slug,
+        color: getOrgColor(o),
       }))}
       canManage={canManage}
     >

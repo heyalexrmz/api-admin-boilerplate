@@ -10,13 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Field } from "@/components/settings/field"
 import { SaveButton } from "@/components/settings/save-button"
 import { SettingsSection } from "@/components/settings/settings-section"
-
-function orgInitials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return "?"
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
-  return (words[0][0] + words[1][0]).toUpperCase()
-}
+import { getOrgColor, orgInitials } from "@/lib/org-branding"
 
 export function OrganizationDetailsCard({
   organization,
@@ -33,12 +27,13 @@ export function OrganizationDetailsCard({
 
   const savedName = state?.success ? state.name ?? "" : organization.name
   const hasChanges = name.trim() !== savedName.trim() && name.trim().length > 0
+  const accentColor = getOrgColor(organization)
 
   useEffect(() => {
     if (state?.success) toast.success("Organization updated")
   }, [state])
 
-  return (
+  const details = (
     <SettingsSection
       title="Organization details"
       description="This name appears across the dashboard and in invitations."
@@ -46,7 +41,10 @@ export function OrganizationDetailsCard({
     >
       <div className="flex items-center gap-4">
         <Avatar className="size-14 rounded-lg" size="lg">
-          <AvatarFallback className="rounded-lg bg-primary text-primary-foreground text-sm font-semibold">
+          <AvatarFallback
+            className="rounded-lg text-sm font-semibold text-white"
+            style={{ backgroundColor: accentColor }}
+          >
             {orgInitials(name || organization.name)}
           </AvatarFallback>
         </Avatar>
@@ -56,66 +54,59 @@ export function OrganizationDetailsCard({
         </div>
       </div>
 
-      {canManage ? (
-        <form action={action} className="flex flex-col gap-4" noValidate>
-          <Field
-            id={nameId}
-            label="Organization name"
-            error={state?.errors?.name?.[0]}
-          >
-            <Input
-              id={nameId}
-              name="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={60}
-              required
-              className="h-10"
-            />
-          </Field>
-          <Field
-            id={slugId}
-            label="Slug"
-            description="The unique identifier for this workspace. It can't be changed here."
-          >
-            <Input
-              id={slugId}
-              type="text"
-              readOnly
-              value={organization.slug}
-              tabIndex={-1}
-              className="h-10 bg-muted/40 font-mono text-sm text-muted-foreground"
-            />
-          </Field>
-        </form>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field id={nameId} label="Organization name">
-            <Input
-              id={nameId}
-              type="text"
-              readOnly
-              value={organization.name}
-              tabIndex={-1}
-              className="h-10 bg-muted/40 text-muted-foreground"
-            />
-          </Field>
-          <Field id={slugId} label="Slug">
-            <Input
-              id={slugId}
-              type="text"
-              readOnly
-              value={organization.slug}
-              tabIndex={-1}
-              className="h-10 bg-muted/40 font-mono text-sm text-muted-foreground"
-            />
-          </Field>
-        </div>
-      )}
+      <Field
+        id={nameId}
+        label="Organization name"
+        error={state?.errors?.name?.[0]}
+      >
+        <Input
+          id={nameId}
+          name="name"
+          value={name}
+          onChange={canManage ? (e) => setName(e.target.value) : undefined}
+          readOnly={!canManage}
+          maxLength={60}
+          required={canManage}
+          tabIndex={canManage ? undefined : -1}
+          className={
+            canManage
+              ? "h-10"
+              : "h-10 bg-muted/40 text-muted-foreground"
+          }
+        />
+      </Field>
+      <Field
+        id={slugId}
+        label="Slug"
+        description={
+          canManage
+            ? "The unique identifier for this workspace. It can't be changed here."
+            : undefined
+        }
+      >
+        <Input
+          id={slugId}
+          type="text"
+          readOnly
+          value={organization.slug}
+          tabIndex={-1}
+          className="h-10 bg-muted/40 font-mono text-sm text-muted-foreground"
+        />
+      </Field>
 
       {state?.message && !state.success && (
         <p className="text-sm text-destructive">{state.message}</p>
       )}
     </SettingsSection>
+  )
+
+  if (!canManage) {
+    return details
+  }
+
+  return (
+    <form action={action} noValidate>
+      {details}
+    </form>
   )
 }
