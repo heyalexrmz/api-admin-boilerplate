@@ -16,12 +16,14 @@ export function OrganizationTab({
   invitations,
   latencyThresholds,
   canManage,
+  canEditLatencyThresholds,
 }: {
   organization: OrganizationDetails
   members: TeamMember[]
   invitations: TeamInvitation[]
   latencyThresholds: LatencyThresholds
   canManage: boolean
+  canEditLatencyThresholds: boolean
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -29,7 +31,10 @@ export function OrganizationTab({
         organization={organization}
         canManage={canManage}
       />
-      <LatencyThresholdCard thresholds={latencyThresholds} canManage={canManage} />
+      <LatencyThresholdCard
+        thresholds={latencyThresholds}
+        canEdit={canEditLatencyThresholds}
+      />
       <TeamCard
         initialMembers={members}
         initialInvitations={invitations}

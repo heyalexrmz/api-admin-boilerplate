@@ -17,6 +17,7 @@ import {
 import {
   getActiveMembership,
   requireActiveOrganization,
+  requireActiveOrganizationRole,
   requireOrganizationManager,
 } from "@/app/lib/auth"
 import {
@@ -102,7 +103,7 @@ export async function updateLatencyThresholds(
   _prevState: { message?: string; success?: boolean } | undefined,
   formData: FormData
 ): Promise<{ message?: string; success?: boolean }> {
-  const { organization } = await requireOrganizationManager()
+  const { organization } = await requireActiveOrganizationRole(["owner"])
   const warningMs = Number(formData.get("warningMs"))
   const criticalMs = Number(formData.get("criticalMs"))
 

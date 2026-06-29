@@ -1,6 +1,6 @@
 "use server"
 
-import { and, count, desc, eq } from "drizzle-orm"
+import { and, count, desc, eq, sql } from "drizzle-orm"
 
 import {
   requireActiveOrganization,
@@ -12,6 +12,7 @@ import type {
   DashboardInvoiceDetail,
   DashboardTicket,
   DashboardTicketDetail,
+  DashboardTicketOverview,
 } from "@/app/lib/definitions"
 import { db } from "@/lib/db"
 import {
@@ -28,6 +29,8 @@ import {
   ticketProviderResponseView,
 } from "@/lib/facturador/responses"
 import { createSignedDocumentUrl } from "@/lib/storage/document-links"
+
+const DAY_MS = 24 * 60 * 60 * 1000
 
 function toTicket(row: {
   id: string
@@ -91,6 +94,13 @@ function ticketErrorView(row: {
 
 export async function listDashboardTickets(): Promise<DashboardTicket[]> {
   const { organization } = await requireActiveOrganization()
+  return listDashboardTicketsForOrganization(organization.id, 300)
+}
+
+async function listDashboardTicketsForOrganization(
+  organizationId: string,
+  limit: number
+): Promise<DashboardTicket[]> {
   const rows = await db
     .select({
       id: ticket.id,
@@ -113,12 +123,41 @@ export async function listDashboardTickets(): Promise<DashboardTicket[]> {
     .leftJoin(invoice, eq(invoice.ticketId, ticket.id))
     .leftJoin(ticketDocument, eq(ticketDocument.ticketId, ticket.id))
     .leftJoin(document, eq(document.id, ticketDocument.documentId))
-    .where(eq(ticket.organizationId, organization.id))
+    .where(eq(ticket.organizationId, organizationId))
     .groupBy(ticket.id, taxpayer.rfc, invoice.id, invoice.satUuid)
     .orderBy(desc(ticket.createdAt))
-    .limit(300)
+    .limit(limit)
 
   return rows.map(toTicket)
+}
+
+export async function getDashboardTicketOverview(): Promise<DashboardTicketOverview> {
+  const { organization } = await requireActiveOrganization()
+  const since = new Date(Date.now() - DAY_MS)
+
+  const [stats] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      last24h: sql<number>`(count(*) filter (where ${ticket.createdAt} >= ${since}))::int`,
+      finalized: sql<number>`(count(*) filter (where ${ticket.status} = 'finalized'))::int`,
+      active: sql<number>`(count(*) filter (where ${ticket.status} in ('received', 'queued', 'pending', 'processing')))::int`,
+      failed: sql<number>`(count(*) filter (where ${ticket.status} = 'failed'))::int`,
+      live: sql<number>`(count(*) filter (where ${ticket.mode} = 'live'))::int`,
+      sandbox: sql<number>`(count(*) filter (where ${ticket.mode} = 'test'))::int`,
+    })
+    .from(ticket)
+    .where(eq(ticket.organizationId, organization.id))
+
+  return {
+    total: stats?.total ?? 0,
+    last24h: stats?.last24h ?? 0,
+    finalized: stats?.finalized ?? 0,
+    active: stats?.active ?? 0,
+    failed: stats?.failed ?? 0,
+    live: stats?.live ?? 0,
+    sandbox: stats?.sandbox ?? 0,
+    recentTickets: await listDashboardTicketsForOrganization(organization.id, 8),
+  }
 }
 
 export async function listDashboardInvoices(): Promise<DashboardInvoice[]> {
@@ -213,6 +252,18 @@ export async function getDashboardTicketDetail(
     .innerJoin(document, eq(document.id, ticketDocument.documentId))
     .where(eq(ticketDocument.ticketId, id))
 
+  const invoiceDocs = row.invoiceId
+    ? await db
+        .select({ document })
+        .from(invoiceDocument)
+        .innerJoin(document, eq(document.id, invoiceDocument.documentId))
+        .where(eq(invoiceDocument.invoiceId, row.invoiceId))
+    : []
+  const allDocs = [...docs, ...invoiceDocs]
+  const uniqueDocuments = Array.from(
+    new Map(allDocs.map((doc) => [doc.document.id, doc.document])).values()
+  )
+
   const invoiceDetail = row.invoiceId
     ? {
         id: row.invoiceId,
@@ -233,7 +284,7 @@ export async function getDashboardTicketDetail(
     : null
 
   return {
-    ...toTicket({ ...row, documentCount: docs.length }),
+    ...toTicket({ ...row, documentCount: uniqueDocuments.length }),
     submitRequest: row.submitRequest,
     lastResponse: ticketProviderResponseView({
       ticketId: row.id,
@@ -249,7 +300,7 @@ export async function getDashboardTicketDetail(
       invoiceUuid: row.invoiceUuid,
       error: ticketErrorView(row),
     }),
-    documents: docs.map((doc) => toDocument(doc.document)),
+    documents: uniqueDocuments.map(toDocument),
     invoice: invoiceDetail,
   }
 }

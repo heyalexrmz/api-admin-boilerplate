@@ -19,7 +19,7 @@ export type TocinoError = {
 };
 
 export type TocinoSubmitResult =
-  | { ok: true; novaRequestId: string; provider: "tocino"; raw: unknown }
+  | { ok: true; novaRequestId: string; raw: unknown }
   | { ok: false; error: TocinoError; raw?: unknown };
 
 export type TocinoConfig = {
@@ -126,7 +126,6 @@ export async function submitToTocino(input: {
       return {
         ok: true,
         novaRequestId: String(json.nova_request_id),
-        provider: "tocino",
         raw: json,
       };
     }

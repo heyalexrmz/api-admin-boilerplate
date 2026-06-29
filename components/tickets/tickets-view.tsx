@@ -15,17 +15,13 @@ import type { DashboardTicket, DashboardTicketDetail } from "@/app/lib/definitio
 import { EmptyState } from "@/components/empty-state"
 import { FilterBar, FilterSearchInput } from "@/components/filter-bar"
 import { DataTable } from "@/components/data-table"
+import { StatusBadge } from "@/components/status-badge"
 import { TicketDetailSheet } from "@/components/tickets/ticket-detail-sheet"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/lib/toast"
 import { formatDate, formatRelativeTime } from "@/lib/format"
-
-function StatusBadge({ status }: { status: string }) {
-  const variant = status === "finalized" ? "default" : status === "failed" ? "destructive" : "outline"
-  return <Badge variant={variant}>{status}</Badge>
-}
 
 function ModeBadge({ livemode }: { livemode: boolean }) {
   return <Badge variant={livemode ? "outline" : "secondary"}>{livemode ? "Live" : "Sandbox"}</Badge>

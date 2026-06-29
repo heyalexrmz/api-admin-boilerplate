@@ -49,6 +49,7 @@ export const invoiceStatus = pgEnum("invoice_status", [
 
 export const jobType = pgEnum("job_type", [
   "submit_ticket",
+  "process_upstream_webhook",
   "refresh_ticket",
   "redeliver_ticket",
   "dispatch_webhook",

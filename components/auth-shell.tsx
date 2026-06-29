@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { Building2 } from "lucide-react"
 
 export function AuthShell({
@@ -26,10 +27,15 @@ export function AuthShell({
         </div>
       </main>
 
-      <aside className="relative hidden overflow-hidden lg:flex">
-        <div
+      <aside className="relative hidden overflow-hidden bg-white lg:flex">
+        <Image
+          src="/tickets.png"
+          alt=""
           aria-hidden="true"
-          className="auth-scene absolute inset-0 bg-cover bg-center"
+          fill
+          priority
+          sizes="50vw"
+          className="object-cover"
         />
       </aside>
     </div>

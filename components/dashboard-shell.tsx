@@ -13,7 +13,7 @@ import {
 const navItems = [
   { name: "Overview", href: "/dashboard" },
   { name: "Tickets", href: "/dashboard/tickets" },
-  { name: "Invoices", href: "/dashboard/invoices" },
+  { name: "API Overview", href: "/dashboard/api-overview" },
   { name: "API Keys", href: "/dashboard/keys" },
   { name: "Logs", href: "/dashboard/logs" },
   { name: "Webhooks", href: "/dashboard/webhooks" },

@@ -36,10 +36,10 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
 
 export function LatencyThresholdCard({
   thresholds,
-  canManage,
+  canEdit,
 }: {
   thresholds: LatencyThresholds
-  canManage: boolean
+  canEdit: boolean
 }) {
   const [state, action] = useActionState(updateLatencyThresholds, undefined)
 
@@ -65,7 +65,7 @@ export function LatencyThresholdCard({
               type="number"
               min={1}
               defaultValue={thresholds.warningMs}
-              disabled={!canManage}
+              disabled={!canEdit}
             />
           </div>
           <div className="flex flex-col gap-2">
@@ -76,10 +76,15 @@ export function LatencyThresholdCard({
               type="number"
               min={1}
               defaultValue={thresholds.criticalMs}
-              disabled={!canManage}
+              disabled={!canEdit}
             />
           </div>
-          <SubmitButton disabled={!canManage} />
+          <SubmitButton disabled={!canEdit} />
+          {!canEdit && (
+            <p className="text-sm text-muted-foreground sm:col-span-3">
+              Only the organization owner can edit latency thresholds.
+            </p>
+          )}
           {state?.message && (
             <p className="text-sm text-destructive sm:col-span-3">{state.message}</p>
           )}

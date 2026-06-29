@@ -1,9 +1,7 @@
-import { listDashboardInvoices } from "@/app/actions/facturador"
-import { InvoicesView } from "@/components/invoices/invoices-view"
+import { redirect } from "next/navigation"
 
 export const dynamic = "force-dynamic"
 
 export default async function InvoicesPage() {
-  const invoices = await listDashboardInvoices()
-  return <InvoicesView initialInvoices={invoices} />
+  redirect("/dashboard/tickets")
 }

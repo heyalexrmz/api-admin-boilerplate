@@ -14,6 +14,7 @@ export const FACTURADOR_WEBHOOK_EVENTS = [
   "ticket.failed",
   "invoice.created",
   "invoice.finalized",
+  "invoice.failed",
   "document.created",
   "document.attached",
   "document.failed",
