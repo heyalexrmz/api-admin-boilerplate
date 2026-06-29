@@ -7,7 +7,7 @@ export const httpMethod = pgEnum("http_method", ["GET", "POST", "PUT", "PATCH", 
 
 export const requestLog = pgTable("request_log", {
   id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: text("organization_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id").references(() => organization.id, { onDelete: "cascade" }),
   apiKeyId: uuid("api_key_id").references(() => apiKey.id, { onDelete: "set null" }),
   requestId: text("request_id").notNull(),
   timestamp: timestamp("timestamp", { withTimezone: true }).notNull().defaultNow(),

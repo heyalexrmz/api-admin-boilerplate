@@ -10,6 +10,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { organization, user } from "./auth";
+import { apiKey } from "./api-keys";
 
 export const webhookEventStatus = pgEnum("webhook_event_status", [
   "success",
@@ -21,7 +22,8 @@ export const webhookEventStatus = pgEnum("webhook_event_status", [
 export const webhook = pgTable("webhook", {
   id: uuid("id").primaryKey().defaultRandom(),
   organizationId: text("organization_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
-  createdByUserId: text("created_by_user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),
+  createdByApiKeyId: uuid("created_by_api_key_id").references(() => apiKey.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   url: text("url").notNull(),
   description: text("description"),
@@ -58,6 +60,7 @@ export const webhookEventLog = pgTable("webhook_event_log", {
 export const webhookRelations = relations(webhook, ({ one, many }) => ({
   organization: one(organization, { fields: [webhook.organizationId], references: [organization.id] }),
   createdBy: one(user, { fields: [webhook.createdByUserId], references: [user.id] }),
+  createdByApiKey: one(apiKey, { fields: [webhook.createdByApiKeyId], references: [apiKey.id] }),
   eventLogs: many(webhookEventLog),
 }));
 

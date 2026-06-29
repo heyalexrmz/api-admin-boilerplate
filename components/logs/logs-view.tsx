@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { format } from "date-fns"
 import { ScrollText } from "lucide-react"
 
-import type { RequestLog } from "@/app/lib/definitions"
+import type { LatencyThresholds, RequestLog } from "@/app/lib/definitions"
 import { EmptyState } from "@/components/empty-state"
 import { LogDetailsSheet } from "@/components/logs/log-details-sheet"
 import {
@@ -24,7 +24,13 @@ function statusMatches(status: number, filter: LogFilters["status"]): boolean {
   return true
 }
 
-export function LogsView({ initialLogs }: { initialLogs: RequestLog[] }) {
+export function LogsView({
+  initialLogs,
+  latencyThresholds,
+}: {
+  initialLogs: RequestLog[]
+  latencyThresholds: LatencyThresholds
+}) {
   const [selected, setSelected] = useState<RequestLog | null>(null)
   const { searchParams, setQueryParams } = useQueryParams()
   const filters = useMemo(
@@ -95,7 +101,11 @@ export function LogsView({ initialLogs }: { initialLogs: RequestLog[] }) {
         resultCount={filteredLogs.length}
         totalCount={initialLogs.length}
       />
-      <LogsTable logs={filteredLogs} onSelect={setSelected} />
+      <LogsTable
+        logs={filteredLogs}
+        latencyThresholds={latencyThresholds}
+        onSelect={setSelected}
+      />
       <LogDetailsSheet
         log={selected}
         open={selected !== null}

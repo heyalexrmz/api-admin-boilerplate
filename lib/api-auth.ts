@@ -8,6 +8,7 @@ import { hashSecret } from "@/lib/api-keys";
 export type AuthenticatedKey = {
   id: string;
   name: string;
+  mode: "live" | "test";
   scopes: string[];
   organizationId: string;
 };
@@ -87,6 +88,7 @@ export async function authenticateApiKey(
     .select({
       id: apiKey.id,
       name: apiKey.name,
+      mode: apiKey.mode,
       scopes: apiKey.scopes,
       organizationId: apiKey.organizationId,
       orgName: organization.name,
@@ -123,6 +125,7 @@ export async function authenticateApiKey(
     key: {
       id: found.id,
       name: found.name,
+      mode: found.mode as "live" | "test",
       scopes: found.scopes,
       organizationId: found.organizationId,
     },

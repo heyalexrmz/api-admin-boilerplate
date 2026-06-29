@@ -12,9 +12,12 @@ import {
 
 const navItems = [
   { name: "Overview", href: "/dashboard" },
+  { name: "Tickets", href: "/dashboard/tickets" },
+  { name: "Invoices", href: "/dashboard/invoices" },
   { name: "API Keys", href: "/dashboard/keys" },
   { name: "Logs", href: "/dashboard/logs" },
   { name: "Webhooks", href: "/dashboard/webhooks" },
+  { name: "Superadmin", href: "/dashboard/superadmin" },
   { name: "Settings", href: "/dashboard/settings" },
 ]
 
@@ -24,12 +27,14 @@ export function DashboardShell({
   organization,
   organizations,
   canManage,
+  isSuperadmin,
 }: {
   children: React.ReactNode
   user: { name: string; email: string }
   organization: { id: string; name: string; slug: string; color: string }
   organizations: { id: string; name: string; slug: string; color: string }[]
   canManage: boolean
+  isSuperadmin: boolean
 }) {
   const pathname = usePathname()
   const [headerAction, setHeaderAction] = React.useState<React.ReactNode>(null)
@@ -47,6 +52,7 @@ export function DashboardShell({
         organization={organization}
         organizations={organizations}
         canManage={canManage}
+        isSuperadmin={isSuperadmin}
       />
       <SidebarInset className="min-h-0 overflow-hidden">
         <DashboardHeaderActionsContext value={setHeaderAction}>

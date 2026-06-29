@@ -5,7 +5,9 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   BarChart3,
+  FileSpreadsheet,
   FileText,
+  FolderKanban,
   KeyRound,
   Settings,
   Webhook,
@@ -24,6 +26,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
 
@@ -34,22 +39,31 @@ const navMain = [
     icon: BarChart3,
   },
   {
-    title: "API Keys",
+    title: "Tickets",
+    url: "/dashboard/tickets",
+    icon: FolderKanban,
+  },
+  {
+    title: "Invoices",
+    url: "/dashboard/invoices",
+    icon: FileSpreadsheet,
+  },
+  {
+    title: "Webservice",
     url: "/dashboard/keys",
     icon: KeyRound,
     managerOnly: true,
+    children: [
+      { title: "API Keys", url: "/dashboard/keys", icon: KeyRound },
+      { title: "Logs", url: "/dashboard/logs", icon: FileText },
+      { title: "Webhooks", url: "/dashboard/webhooks", icon: Webhook },
+    ],
   },
   {
-    title: "Logs",
-    url: "/dashboard/logs",
-    icon: FileText,
-    managerOnly: true,
-  },
-  {
-    title: "Webhooks",
-    url: "/dashboard/webhooks",
-    icon: Webhook,
-    managerOnly: true,
+    title: "Superadmin",
+    url: "/dashboard/superadmin",
+    icon: BarChart3,
+    superadminOnly: true,
   },
   {
     title: "Settings",
@@ -63,15 +77,21 @@ export function AppSidebar({
   organization,
   organizations,
   canManage,
+  isSuperadmin,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   user: { name: string; email: string }
   organization: { id: string; name: string; slug: string; color: string }
   organizations: { id: string; name: string; slug: string; color: string }[]
   canManage: boolean
+  isSuperadmin: boolean
 }) {
   const pathname = usePathname()
-  const items = navMain.filter((item) => !item.managerOnly || canManage)
+  const items = navMain.filter((item) => {
+    if (item.superadminOnly && !isSuperadmin) return false
+    if (item.managerOnly && !canManage) return false
+    return true
+  })
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -90,7 +110,9 @@ export function AppSidebar({
                 const isActive =
                   item.url === "/dashboard"
                     ? pathname === "/dashboard"
-                    : pathname.startsWith(item.url)
+                    : item.children
+                      ? item.children.some((child) => pathname.startsWith(child.url))
+                      : pathname.startsWith(item.url)
 
                 return (
                   <SidebarMenuItem key={item.title}>
@@ -100,6 +122,23 @@ export function AppSidebar({
                         <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
+                    {item.children && (
+                      <SidebarMenuSub>
+                        {item.children.map((child) => {
+                          const childActive = pathname.startsWith(child.url)
+                          return (
+                            <SidebarMenuSubItem key={child.title}>
+                              <SidebarMenuSubButton asChild isActive={childActive}>
+                                <Link href={child.url}>
+                                  <child.icon />
+                                  <span>{child.title}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          )
+                        })}
+                      </SidebarMenuSub>
+                    )}
                   </SidebarMenuItem>
                 )
               })}

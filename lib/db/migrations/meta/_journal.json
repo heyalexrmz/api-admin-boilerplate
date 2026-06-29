@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1782707604525,
+      "tag": "0000_spooky_toro",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782716940000,
+      "tag": "0001_admin_panel_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782719000000,
+      "tag": "0002_ticket_pending_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782719001000,
+      "tag": "0003_backfill_ticket_pending_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782719002000,
+      "tag": "0004_greedy_kat_farrell",
+      "breakpoints": true
+    }
+  ]
+}

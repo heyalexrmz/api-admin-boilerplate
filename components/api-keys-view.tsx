@@ -4,10 +4,10 @@ import { useMemo, useState } from "react"
 import { KeyRound } from "lucide-react"
 
 import {
-  API_KEY_SCOPES,
-  ApiKeyScopeLabels,
+  API_KEY_MODES,
+  ApiKeyModeLabels,
   type ApiKey,
-  type ApiKeyScope,
+  type ApiKeyMode,
   type ApiKeyStatus,
 } from "@/app/lib/definitions"
 import { ApiKeysTable } from "@/components/api-keys-table"
@@ -27,13 +27,13 @@ import { useQueryParams } from "@/lib/use-query-params"
 type ApiKeyFilters = {
   query: string
   status: ApiKeyStatus | "all"
-  scope: ApiKeyScope | "all"
+  mode: ApiKeyMode | "all"
 }
 
 const INITIAL_API_KEY_FILTERS: ApiKeyFilters = {
   query: "",
   status: "all",
-  scope: "all",
+  mode: "all",
 }
 
 const API_KEY_STATUS_OPTIONS: { value: ApiKeyStatus | "all"; label: string }[] = [
@@ -45,15 +45,15 @@ const API_KEY_STATUS_OPTIONS: { value: ApiKeyStatus | "all"; label: string }[] =
 
 function parseApiKeyFilters(searchParams: URLSearchParams): ApiKeyFilters {
   const status = searchParams.get("status")
-  const scope = searchParams.get("scope")
+  const mode = searchParams.get("mode")
 
   return {
     query: searchParams.get("q") ?? "",
     status: API_KEY_STATUS_OPTIONS.some((option) => option.value === status)
       ? (status as ApiKeyStatus)
       : "all",
-    scope: API_KEY_SCOPES.includes(scope as ApiKeyScope)
-      ? (scope as ApiKeyScope)
+    mode: API_KEY_MODES.includes(mode as ApiKeyMode)
+      ? (mode as ApiKeyMode)
       : "all",
   }
 }
@@ -71,7 +71,7 @@ export function ApiKeysView({ initialKeys }: { initialKeys: ApiKey[] }) {
 
     return keys.filter((key) => {
       if (filters.status !== "all" && key.status !== filters.status) return false
-      if (filters.scope !== "all" && !key.scopes.includes(filters.scope)) return false
+      if (filters.mode !== "all" && key.mode !== filters.mode) return false
       if (query) {
         const haystack = `${key.name} ${key.preview}`.toLowerCase()
         if (!haystack.includes(query)) return false
@@ -83,14 +83,14 @@ export function ApiKeysView({ initialKeys }: { initialKeys: ApiKey[] }) {
   const isFiltered =
     filters.query !== INITIAL_API_KEY_FILTERS.query ||
     filters.status !== INITIAL_API_KEY_FILTERS.status ||
-    filters.scope !== INITIAL_API_KEY_FILTERS.scope
+    filters.mode !== INITIAL_API_KEY_FILTERS.mode
 
   function updateFilters(patch: Partial<ApiKeyFilters>) {
     const next = { ...filters, ...patch }
     setQueryParams({
       q: next.query === INITIAL_API_KEY_FILTERS.query ? null : next.query,
       status: next.status === INITIAL_API_KEY_FILTERS.status ? null : next.status,
-      scope: next.scope === INITIAL_API_KEY_FILTERS.scope ? null : next.scope,
+      mode: next.mode === INITIAL_API_KEY_FILTERS.mode ? null : next.mode,
     })
   }
 
@@ -159,19 +159,19 @@ export function ApiKeysView({ initialKeys }: { initialKeys: ApiKey[] }) {
               </Select>
 
               <Select
-                value={filters.scope}
-                onValueChange={(scope) =>
-                  updateFilters({ scope: scope as ApiKeyFilters["scope"] })
+                value={filters.mode}
+                onValueChange={(mode) =>
+                  updateFilters({ mode: mode as ApiKeyFilters["mode"] })
                 }
               >
-                <SelectTrigger className="w-36" aria-label="Filter by scope">
+                <SelectTrigger className="w-36" aria-label="Filter by mode">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All scopes</SelectItem>
-                  {API_KEY_SCOPES.map((scope) => (
-                    <SelectItem key={scope} value={scope}>
-                      {ApiKeyScopeLabels[scope]}
+                  <SelectItem value="all">All modes</SelectItem>
+                  {API_KEY_MODES.map((mode) => (
+                    <SelectItem key={mode} value={mode}>
+                      {ApiKeyModeLabels[mode]}
                     </SelectItem>
                   ))}
                 </SelectContent>

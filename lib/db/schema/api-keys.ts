@@ -1,6 +1,8 @@
 import { relations } from "drizzle-orm";
-import { text, timestamp, uuid, pgTable } from "drizzle-orm/pg-core";
+import { pgEnum, text, timestamp, uuid, pgTable } from "drizzle-orm/pg-core";
 import { organization, user } from "./auth";
+
+export const apiKeyMode = pgEnum("api_key_mode", ["live", "test"]);
 
 export const apiKey = pgTable("api_key", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -9,6 +11,7 @@ export const apiKey = pgTable("api_key", {
   name: text("name").notNull(),
   hash: text("hash").notNull(),
   preview: text("preview").notNull(),
+  mode: apiKeyMode("mode").notNull().default("live"),
   scopes: text("scopes").array().notNull().default([]),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }),

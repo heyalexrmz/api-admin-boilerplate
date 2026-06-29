@@ -4,11 +4,14 @@ import { useMemo, type ReactNode } from "react"
 import { type Column, type ColumnDef } from "@tanstack/react-table"
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react"
 
-import type { RequestLog } from "@/app/lib/definitions"
+import type { LatencyThresholds, RequestLog } from "@/app/lib/definitions"
+import { ApiKeyModeLabels } from "@/app/lib/definitions"
 import { DataTable } from "@/components/data-table"
 import { MethodBadge, StatusBadge } from "@/components/logs/log-badges"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { formatRelativeTime, formatTime } from "@/lib/format"
+import { latencyColor } from "@/lib/latency-thresholds"
 
 function SortableHeader<TData>({
   column,
@@ -32,17 +35,13 @@ function SortableHeader<TData>({
   )
 }
 
-function latencyColor(ms: number): string {
-  if (ms >= 1000) return "text-rose-600 dark:text-rose-400"
-  if (ms >= 500) return "text-amber-600 dark:text-amber-400"
-  return "text-muted-foreground"
-}
-
 export function LogsTable({
   logs,
+  latencyThresholds,
   onSelect,
 }: {
   logs: RequestLog[]
+  latencyThresholds: LatencyThresholds
   onSelect: (log: RequestLog) => void
 }) {
   const columns = useMemo<ColumnDef<RequestLog>[]>(
@@ -97,7 +96,7 @@ export function LogsTable({
           <SortableHeader column={column}>Latency</SortableHeader>
         ),
         cell: ({ row }) => (
-          <span className={cn("font-mono tabular-nums", latencyColor(row.original.latencyMs))}>
+          <span className={cn("font-mono tabular-nums", latencyColor(row.original.latencyMs, latencyThresholds))}>
             {row.original.latencyMs} ms
           </span>
         ),
@@ -109,11 +108,18 @@ export function LogsTable({
           <SortableHeader column={column}>API key</SortableHeader>
         ),
         cell: ({ row }) => (
-          <span className="text-muted-foreground">{row.original.keyName}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">{row.original.keyName}</span>
+            {row.original.keyMode && (
+              <Badge variant={row.original.keyMode === "test" ? "secondary" : "outline"} className="text-xs">
+                {ApiKeyModeLabels[row.original.keyMode]}
+              </Badge>
+            )}
+          </div>
         ),
       },
     ],
-    []
+    [latencyThresholds]
   )
 
   return (

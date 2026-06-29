@@ -14,8 +14,10 @@ import { BillingTab } from "@/components/settings/billing-tab"
 import { NotificationsTab } from "@/components/settings/notifications-tab"
 import { OrganizationTab } from "@/components/settings/organization-tab"
 import { SecurityTab } from "@/components/settings/security-tab"
+import type { BillingOverview } from "@/app/actions/billing"
 import type {
   OrganizationDetails,
+  LatencyThresholds,
   SessionView,
   SettingsUser,
   TeamInvitation,
@@ -30,6 +32,8 @@ export function SettingsView({
   organization,
   members,
   invitations,
+  latencyThresholds,
+  billing,
   canManage,
   initialTab,
 }: {
@@ -38,6 +42,8 @@ export function SettingsView({
   organization: OrganizationDetails
   members: TeamMember[]
   invitations: TeamInvitation[]
+  latencyThresholds: LatencyThresholds
+  billing: BillingOverview | null
   canManage: boolean
   initialTab: SettingsTab
 }) {
@@ -84,11 +90,12 @@ export function SettingsView({
           organization={organization}
           members={members}
           invitations={invitations}
+          latencyThresholds={latencyThresholds}
           canManage={canManage}
         />
       </TabsContent>
       <TabsContent value="billing" className="mt-0">
-        <BillingTab />
+        <BillingTab billing={billing} canManage={canManage} />
       </TabsContent>
       <TabsContent value="security" className="mt-0">
         <SecurityTab initialSessions={sessions} />

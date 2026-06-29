@@ -34,8 +34,13 @@ export const OnboardingFormSchema = z.object({
 
 // --- API Keys ---------------------------------------------------------------
 
-export const API_KEY_SCOPES = ["read", "write", "admin", "billing"] as const
-export type ApiKeyScope = (typeof API_KEY_SCOPES)[number]
+export const API_KEY_SCOPES = ["access"] as const
+export type ApiKeyScope =
+  | (typeof API_KEY_SCOPES)[number]
+  | "read"
+  | "write"
+  | "admin"
+  | "billing"
 
 export const API_KEY_EXPIRIES = [
   "7d",
@@ -45,14 +50,17 @@ export const API_KEY_EXPIRIES = [
   "never",
 ] as const
 export type ApiKeyExpiry = (typeof API_KEY_EXPIRIES)[number]
+export const API_KEY_MODES = ["live", "test"] as const
 
 export type ApiKeyStatus = "active" | "revoked" | "expired"
+export type ApiKeyMode = "live" | "test"
 
 export type ApiKey = {
   id: string
   name: string
   /** Masked preview, e.g. `sk_live_••••••••1234`. The full secret is never stored. */
   preview: string
+  mode: ApiKeyMode
   scopes: ApiKeyScope[]
   /** ISO timestamp, or null when the key never expires. */
   expiresAt: string | null
@@ -81,6 +89,7 @@ export type RotatedApiKey = {
 }
 
 export const ApiKeyScopeLabels: Record<ApiKeyScope, string> = {
+  access: "General access",
   read: "Read",
   write: "Write",
   admin: "Admin",
@@ -95,6 +104,11 @@ export const ApiKeyExpiryLabels: Record<ApiKeyExpiry, string> = {
   never: "Never",
 }
 
+export const ApiKeyModeLabels: Record<ApiKeyMode, string> = {
+  live: "Live",
+  test: "Test",
+}
+
 export const CreateApiKeyFormSchema = z.object({
   name: z
     .string()
@@ -105,6 +119,7 @@ export const CreateApiKeyFormSchema = z.object({
     .array(z.enum(API_KEY_SCOPES))
     .min(1, { error: "Select at least one scope." }),
   expiry: z.enum(API_KEY_EXPIRIES),
+  mode: z.enum(API_KEY_MODES),
 })
 
 export const RenameApiKeyFormSchema = z.object({
@@ -113,6 +128,13 @@ export const RenameApiKeyFormSchema = z.object({
     .min(1, { error: "Name can't be empty." })
     .max(40, { error: "Keep the name under 40 characters." })
     .trim(),
+})
+
+export const UpdateApiKeyScopesFormSchema = z.object({
+  id: z.uuid(),
+  scopes: z
+    .array(z.enum(API_KEY_SCOPES))
+    .min(1, { error: "Select at least one scope." }),
 })
 
 export type CreateApiKeyState = {
@@ -125,6 +147,12 @@ export type RenameApiKeyState = {
   errors?: Record<string, string[] | undefined>
   message?: string
   name?: string
+} | undefined
+
+export type UpdateApiKeyScopesState = {
+  errors?: Record<string, string[] | undefined>
+  message?: string
+  scopes?: ApiKeyScope[]
 } | undefined
 
 export type ApiKeyActionResponse = {
@@ -155,6 +183,7 @@ export type RequestLog = {
   latencyMs: number
   /** Name of the API key that authenticated the request. */
   keyName: string
+  keyMode: ApiKeyMode | null
   ip: string
   userAgent: string
   requestHeaders: RequestHeader[]
@@ -173,6 +202,21 @@ export const WEBHOOK_EVENTS = [
   "api_key.revoked",
   "member.invited",
   "member.removed",
+  "taxpayer.created",
+  "taxpayer.updated",
+  "ticket.created",
+  "ticket.processing",
+  "ticket.finalized",
+  "ticket.failed",
+  "invoice.created",
+  "invoice.finalized",
+  "document.created",
+  "document.attached",
+  "document.failed",
+  "delivery.created",
+  "delivery.succeeded",
+  "delivery.failed",
+  "delivery.exhausted",
 ] as const
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number]
 
@@ -222,6 +266,21 @@ export const WebhookEventLabels: Record<WebhookEvent, string> = {
   "api_key.revoked": "API key revoked",
   "member.invited": "Member invited",
   "member.removed": "Member removed",
+  "taxpayer.created": "Taxpayer created",
+  "taxpayer.updated": "Taxpayer updated",
+  "ticket.created": "Ticket created",
+  "ticket.processing": "Ticket processing",
+  "ticket.finalized": "Ticket finalized",
+  "ticket.failed": "Ticket failed",
+  "invoice.created": "Invoice created",
+  "invoice.finalized": "Invoice finalized",
+  "document.created": "Document created",
+  "document.attached": "Document attached",
+  "document.failed": "Document failed",
+  "delivery.created": "Delivery created",
+  "delivery.succeeded": "Delivery succeeded",
+  "delivery.failed": "Delivery failed",
+  "delivery.exhausted": "Delivery exhausted",
 }
 
 export const CreateWebhookFormSchema = z.object({
@@ -374,11 +433,74 @@ export type SessionView = {
 
 export const ORGANIZATION_ROLES = ["owner", "admin", "member"] as const
 export type OrganizationRole = (typeof ORGANIZATION_ROLES)[number]
+export type PlatformRole = "user" | "superadmin"
 
 export const OrganizationRoleLabels: Record<OrganizationRole, string> = {
   owner: "Owner",
   admin: "Admin",
   member: "Member",
+}
+
+export type LatencyThresholds = {
+  warningMs: number
+  criticalMs: number
+}
+
+export type DashboardTicket = {
+  id: string
+  taxId: string
+  status: string
+  livemode: boolean
+  originalFileName: string | null
+  providerRequestId: string | null
+  errorCode: string | null
+  errorMessage: string | null
+  invoiceId: string | null
+  invoiceUuid: string | null
+  documentCount: number
+  createdAt: string
+  updatedAt: string
+  finalizedAt: string | null
+}
+
+export type DashboardInvoice = {
+  id: string
+  ticketId: string
+  taxId: string
+  status: string
+  uuid: string | null
+  series: string | null
+  folio: string | null
+  issuerTaxpayer: string | null
+  issuerRfc: string | null
+  total: string | null
+  invoiceDate: string | null
+  documentCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type DashboardDocument = {
+  id: string
+  kind: string
+  originalFileName: string
+  contentType: string
+  bytes: number | null
+  url: string
+  createdAt: string
+}
+
+export type DashboardTicketDetail = DashboardTicket & {
+  submitRequest: unknown
+  lastResponse: unknown
+  upstreamRaw: unknown
+  documents: DashboardDocument[]
+  invoice: DashboardInvoice | null
+}
+
+export type DashboardInvoiceDetail = DashboardInvoice & {
+  metadata: unknown
+  documents: DashboardDocument[]
 }
 
 /** Roles an admin/owner can assign when inviting a new member. */
