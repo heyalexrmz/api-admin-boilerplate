@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-table"
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react"
 
-import { ApiKeyScopeLabels, type ApiKey } from "@/app/lib/definitions"
+import { ApiKeyModeLabels, type ApiKey } from "@/app/lib/definitions"
 import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/data-table"
 import { ApiKeyActions } from "@/components/api-key-actions"
@@ -85,18 +85,15 @@ export function ApiKeysTable({
         },
       },
       {
-        id: "scopes",
-        size: 190,
-        header: "Scopes",
-        enableSorting: false,
+        accessorKey: "mode",
+        size: 100,
+        header: ({ column }) => (
+          <SortableHeader column={column}>Mode</SortableHeader>
+        ),
         cell: ({ row }) => (
-          <div className="flex flex-wrap gap-1">
-            {row.original.scopes.map((scope) => (
-              <Badge key={scope} variant="outline" className="text-xs">
-                {ApiKeyScopeLabels[scope]}
-              </Badge>
-            ))}
-          </div>
+          <Badge variant={row.original.mode === "test" ? "secondary" : "outline"}>
+            {ApiKeyModeLabels[row.original.mode]}
+          </Badge>
         ),
       },
       {

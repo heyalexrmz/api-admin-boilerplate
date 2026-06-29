@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 
 export type ApiKeyExpiry = "7d" | "30d" | "90d" | "365d" | "never";
+export type ApiKeyMode = "live" | "test";
 
 const EXPIRY_DAYS: Record<ApiKeyExpiry, number | null> = {
   "7d": 7,
@@ -13,8 +14,8 @@ const EXPIRY_DAYS: Record<ApiKeyExpiry, number | null> = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** 24 random bytes → 48 hex chars, prefixed for identifiability. */
-export function generateApiKeySecret(): string {
-  return `sk_live_${randomBytes(24).toString("hex")}`;
+export function generateApiKeySecret(mode: ApiKeyMode = "live"): string {
+  return `sk_${mode}_${randomBytes(24).toString("hex")}`;
 }
 
 /** SHA-256 of the plaintext secret. Only the hash is persisted. */
@@ -24,7 +25,8 @@ export function hashSecret(secret: string): string {
 
 /** Masked preview kept for display, e.g. `sk_live_••••••••1234`. */
 export function maskSecret(secret: string): string {
-  return `sk_live_${"•".repeat(8)}${secret.slice(-4)}`;
+  const prefix = secret.startsWith("sk_test_") ? "sk_test_" : "sk_live_";
+  return `${prefix}${"•".repeat(8)}${secret.slice(-4)}`;
 }
 
 /** Expiry Date for a key, or null when it never expires. */

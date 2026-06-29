@@ -1,10 +1,13 @@
 import { relations } from "drizzle-orm";
-import { boolean, text, timestamp, pgTable } from "drizzle-orm/pg-core";
+import { boolean, pgEnum, text, timestamp, pgTable } from "drizzle-orm/pg-core";
+
+export const platformRole = pgEnum("platform_role", ["user", "superadmin"]);
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
+  platformRole: platformRole("platform_role").notNull().default("user"),
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
   firstName: text("first_name"),

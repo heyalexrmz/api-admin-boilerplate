@@ -8,16 +8,15 @@ import { KeyRound, LoaderCircle, Sparkles } from "lucide-react"
 import { createApiKey } from "@/app/actions/api-keys"
 import {
   API_KEY_EXPIRIES,
-  API_KEY_SCOPES,
+  API_KEY_MODES,
   ApiKeyExpiryLabels,
-  ApiKeyScopeLabels,
+  ApiKeyModeLabels,
   type ApiKey,
   type NewApiKey,
 } from "@/app/lib/definitions"
 import { ApiKeySecretReveal } from "@/components/api-key-secret-reveal"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -37,7 +36,8 @@ import {
 } from "@/components/ui/select"
 
 function maskSecret(secret: string): string {
-  return `sk_live_${"•".repeat(8)}${secret.slice(-4)}`
+  const prefix = secret.startsWith("sk_test_") ? "sk_test_" : "sk_live_"
+  return `${prefix}${"•".repeat(8)}${secret.slice(-4)}`
 }
 
 function toApiKey(k: NewApiKey): ApiKey {
@@ -45,6 +45,7 @@ function toApiKey(k: NewApiKey): ApiKey {
     id: k.id,
     name: k.name,
     preview: maskSecret(k.secret),
+    mode: k.mode,
     scopes: k.scopes,
     expiresAt: k.expiresAt,
     createdAt: k.createdAt,
@@ -63,7 +64,6 @@ function CreateForm({
 
   const nameId = useId()
   const nameErrorId = useId()
-  const scopesErrorId = useId()
 
   useEffect(() => {
     if (state?.key) onCreated(state.key)
@@ -102,32 +102,24 @@ function CreateForm({
         )}
       </div>
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">Scopes</legend>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="api-key-mode">Mode</Label>
+        <Select name="mode" defaultValue="live" required>
+          <SelectTrigger id="api-key-mode" className="h-10 w-full">
+            <SelectValue placeholder="Choose a mode" />
+          </SelectTrigger>
+          <SelectContent>
+            {API_KEY_MODES.map((mode) => (
+              <SelectItem key={mode} value={mode}>
+                {ApiKeyModeLabels[mode]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <p className="text-xs text-muted-foreground">
-          Grant the least privilege the integration needs.
+          Test keys use sandbox processing and never call Tocino.
         </p>
-        <div className="grid grid-cols-2 gap-2">
-          {API_KEY_SCOPES.map((scope) => (
-            <label
-              key={scope}
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-input px-3 py-2 text-sm transition-colors has-checked:border-ring has-checked:bg-muted"
-            >
-              <Checkbox
-                name="scopes"
-                value={scope}
-                defaultChecked={scope === "read"}
-              />
-              {ApiKeyScopeLabels[scope]}
-            </label>
-          ))}
-        </div>
-        {state?.errors?.scopes?.[0] && (
-          <p id={scopesErrorId} className="text-sm text-destructive">
-            {state.errors.scopes[0]}
-          </p>
-        )}
-      </fieldset>
+      </div>
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="api-key-expiry">Expiry</Label>
@@ -231,7 +223,7 @@ export function CreateApiKeyDialog({
 
             <ApiKeySecretReveal
               secret={createdKey.secret}
-              onDone={() => setOpen(false)}
+              onDone={() => handleOpenChange(false)}
             />
           </div>
         ) : (

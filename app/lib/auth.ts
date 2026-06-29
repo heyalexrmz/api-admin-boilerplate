@@ -11,6 +11,7 @@ import { invitation, member, organization, session, user } from "@/lib/db/schema
 import type { InvitationDetails } from "@/app/lib/definitions";
 
 export type OrganizationRole = "owner" | "admin" | "member";
+export type PlatformRole = "user" | "superadmin";
 
 export const getSession = cache(async () => {
   return await auth.api.getSession({ headers: await headers() });
@@ -19,6 +20,17 @@ export const getSession = cache(async () => {
 export const getUser = cache(async () => {
   const session = await getSession();
   return session?.user ?? null;
+});
+
+export const getCurrentUserRecord = cache(async () => {
+  const session = await getSession();
+  if (!session) return null;
+  const [row] = await db
+    .select()
+    .from(user)
+    .where(eq(user.id, session.user.id))
+    .limit(1);
+  return row ?? null;
 });
 
 export const requireUser = cache(async () => {
@@ -77,14 +89,42 @@ export const requireActiveOrganization = cache(async () => {
 });
 
 export const getCanManageActiveOrg = cache(async (): Promise<boolean> => {
+  if (await getIsSuperadmin()) return true;
   const membership = await getActiveMembership();
   return membership?.role === "owner" || membership?.role === "admin";
+});
+
+export const getIsSuperadmin = cache(async (): Promise<boolean> => {
+  const currentUser = await getCurrentUserRecord();
+  return currentUser?.platformRole === "superadmin";
+});
+
+export const requireSuperadmin = cache(async () => {
+  const currentUser = await requireUser();
+  if (!(await getIsSuperadmin())) {
+    throw new Error("You do not have permission to perform this action.");
+  }
+  return currentUser;
+});
+
+export const getDashboardCapabilities = cache(async () => {
+  const isSuperadmin = await getIsSuperadmin();
+  const membership = await getActiveMembership();
+  const isOrgManager = membership?.role === "owner" || membership?.role === "admin";
+  return {
+    isSuperadmin,
+    canManage: isSuperadmin || isOrgManager,
+    role: (membership?.role as OrganizationRole | undefined) ?? null,
+  };
 });
 
 export const requireActiveOrganizationRole = cache(
   async (roles: OrganizationRole[]) => {
     const { user, organization } = await requireActiveOrganization();
     const membership = await getActiveMembership();
+    if (await getIsSuperadmin()) {
+      return { user, organization, membership };
+    }
     if (!membership || !roles.includes(membership.role as OrganizationRole)) {
       throw new Error("You do not have permission to perform this action.");
     }

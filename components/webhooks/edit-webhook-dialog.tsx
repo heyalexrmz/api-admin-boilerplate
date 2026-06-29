@@ -6,16 +6,14 @@ import { LoaderCircle, Pencil } from "lucide-react"
 
 import { updateWebhook } from "@/app/actions/webhooks"
 import {
-  WEBHOOK_EVENTS,
-  WebhookEventLabels,
   type UpdateWebhookState,
   type UpdatedWebhook,
   type Webhook,
   type WebhookEvent,
 } from "@/app/lib/definitions"
+import { WebhookEventPicker } from "@/components/webhooks/webhook-event-picker"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogClose,
@@ -159,27 +157,7 @@ function EditForm({
 
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">Events</legend>
-        <div className="grid grid-cols-1 gap-2">
-          {WEBHOOK_EVENTS.map((event) => (
-            <label
-              key={event}
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-input px-3 py-2 text-sm transition-colors has-checked:border-ring has-checked:bg-muted"
-            >
-              <Checkbox
-                name="events"
-                value={event}
-                checked={events.includes(event as WebhookEvent)}
-                onCheckedChange={(checked) =>
-                  toggleEvent(event as WebhookEvent, checked === true)
-                }
-              />
-              {WebhookEventLabels[event]}
-              <code className="ml-auto font-mono text-xs text-muted-foreground">
-                {event}
-              </code>
-            </label>
-          ))}
-        </div>
+        <WebhookEventPicker selected={events} onToggle={toggleEvent} />
         {state?.errors?.events?.[0] && (
           <p id={eventsErrorId} className="text-sm text-destructive">
             {state.errors.events[0]}

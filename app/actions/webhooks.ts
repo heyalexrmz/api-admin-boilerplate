@@ -370,7 +370,7 @@ export async function sendTestEvent(
   const urlError = await validateWebhookUrlForDelivery(row.url);
   if (urlError) return { error: urlError };
 
-  const logRow = await deliverWebhookEvent(row, organization.id, "test.event", {
+  const logRow = await deliverWebhookEvent(row, organization.id, "ticket.finalized", {
     webhookId: row.id,
     webhookName: row.name,
     message: "This is a test event from Acme.",

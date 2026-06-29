@@ -1,6 +1,6 @@
 import { DashboardShell } from "@/components/dashboard-shell"
 import {
-  getCanManageActiveOrg,
+  getDashboardCapabilities,
   getUserOrganizations,
   requireActiveOrganization,
 } from "@/app/lib/auth"
@@ -13,7 +13,7 @@ export default async function DashboardLayout({
 }) {
   const { user, organization } = await requireActiveOrganization()
   const organizations = await getUserOrganizations()
-  const canManage = await getCanManageActiveOrg()
+  const { canManage, isSuperadmin } = await getDashboardCapabilities()
 
   return (
     <DashboardShell
@@ -31,6 +31,7 @@ export default async function DashboardLayout({
         color: getOrgColor(o),
       }))}
       canManage={canManage}
+      isSuperadmin={isSuperadmin}
     >
       {children}
     </DashboardShell>

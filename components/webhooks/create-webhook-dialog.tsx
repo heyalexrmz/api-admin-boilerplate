@@ -5,16 +5,11 @@ import { useFormStatus } from "react-dom"
 import { LoaderCircle, Sparkles, Webhook as WebhookIcon } from "lucide-react"
 
 import { createWebhook } from "@/app/actions/webhooks"
-import {
-  WEBHOOK_EVENTS,
-  WebhookEventLabels,
-  type NewWebhook,
-  type Webhook,
-} from "@/app/lib/definitions"
+import type { NewWebhook, Webhook } from "@/app/lib/definitions"
+import { WebhookEventPicker } from "@/components/webhooks/webhook-event-picker"
 import { WebhookSecretReveal } from "@/components/webhooks/webhook-secret-reveal"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -132,20 +127,7 @@ function CreateForm({ onCreated }: { onCreated: (webhook: NewWebhook) => void })
         <p className="text-xs text-muted-foreground">
           Choose which events trigger this webhook.
         </p>
-        <div className="grid grid-cols-1 gap-2">
-          {WEBHOOK_EVENTS.map((event) => (
-            <label
-              key={event}
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-input px-3 py-2 text-sm transition-colors has-checked:border-ring has-checked:bg-muted"
-            >
-              <Checkbox name="events" value={event} defaultChecked={event === "api_key.created"} />
-              {WebhookEventLabels[event]}
-              <code className="ml-auto font-mono text-xs text-muted-foreground">
-                {event}
-              </code>
-            </label>
-          ))}
-        </div>
+        <WebhookEventPicker defaultSelected={["api_key.created"]} />
         {state?.errors?.events?.[0] && (
           <p id={eventsErrorId} className="text-sm text-destructive">
             {state.errors.events[0]}

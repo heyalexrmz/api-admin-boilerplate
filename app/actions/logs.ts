@@ -28,6 +28,7 @@ export async function listRequestLogs(): Promise<RequestLog[]> {
       responseHeaders: requestLog.responseHeaders,
       responseBody: requestLog.responseBody,
       keyName: apiKey.name,
+      keyMode: apiKey.mode,
     })
     .from(requestLog)
     .leftJoin(apiKey, eq(apiKey.id, requestLog.apiKeyId))
@@ -50,5 +51,6 @@ export async function listRequestLogs(): Promise<RequestLog[]> {
     responseHeaders: (row.responseHeaders as RequestHeader[]) ?? [],
     responseBody: row.responseBody,
     keyName: row.keyName ?? "Unknown",
+    keyMode: row.keyMode ?? null,
   }));
 }

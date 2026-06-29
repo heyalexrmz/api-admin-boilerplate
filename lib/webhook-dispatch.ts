@@ -1,9 +1,8 @@
-import "server-only";
-
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 
 import type { WebhookEvent, WebhookEventLogStatus } from "@/app/lib/definitions";
+import { API_VERSION, type FacturadorWebhookEvent, type EventEnvelope } from "@/lib/api-contracts";
 import { db } from "@/lib/db";
 import { webhook, webhookEventLog } from "@/lib/db/schema";
 import { validateWebhookUrlForDelivery } from "@/lib/server/webhook-url-policy";
@@ -30,16 +29,24 @@ function serializeSafeResponseHeaders(headers: Headers) {
 export async function deliverWebhookEvent(
   row: WebhookRow,
   organizationId: string,
-  eventType: string,
-  data: Record<string, unknown>
+  eventType: FacturadorWebhookEvent,
+  data: Record<string, unknown>,
+  request?: { id?: string | null; idempotencyKey?: string | null; livemode?: boolean }
 ): Promise<typeof webhookEventLog.$inferSelect | null> {
   const eventId = createEventId(eventType);
   const createdAt = new Date();
-  const payload = {
+  const payload: EventEnvelope<Record<string, unknown>> = {
     id: eventId,
+    object: "event",
+    api_version: API_VERSION,
     type: eventType,
-    createdAt: createdAt.toISOString(),
-    data,
+    created: createdAt.toISOString(),
+    livemode: request?.livemode ?? true,
+    data: { object: data },
+    request: {
+      id: request?.id ?? null,
+      idempotency_key: request?.idempotencyKey ?? null,
+    },
   };
 
   if (!row.secret) {
@@ -147,7 +154,8 @@ export async function deliverWebhookEvent(
 export async function dispatchOrganizationWebhookEvent(
   organizationId: string,
   eventType: WebhookEvent,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  request?: { id?: string | null; idempotencyKey?: string | null; livemode?: boolean }
 ): Promise<void> {
   const rows = await db
     .select()
@@ -167,7 +175,13 @@ export async function dispatchOrganizationWebhookEvent(
 
   await Promise.allSettled(
     subscribers.map((row) =>
-      deliverWebhookEvent(row, organizationId, eventType, data)
+      deliverWebhookEvent(
+        row,
+        organizationId,
+        eventType as FacturadorWebhookEvent,
+        data,
+        request
+      )
     )
   );
 }

@@ -18,6 +18,7 @@ import {
 import {
   CreateApiKeyFormSchema,
   RenameApiKeyFormSchema,
+  UpdateApiKeyScopesFormSchema,
   type ApiKey,
   type ApiKeyScope,
   type ApiKeyStatus,
@@ -25,6 +26,7 @@ import {
   type NewApiKey,
   type RenameApiKeyState,
   type RotatedApiKey,
+  type UpdateApiKeyScopesState,
 } from "@/app/lib/definitions";
 
 type ApiKeyRow = typeof apiKey.$inferSelect;
@@ -42,6 +44,7 @@ function toApiKey(row: ApiKeyRow): ApiKey {
     id: row.id,
     name: row.name,
     preview: row.preview,
+    mode: row.mode,
     scopes: row.scopes as ApiKeyScope[],
     expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
@@ -84,16 +87,17 @@ export async function createApiKey(
 
   const validated = CreateApiKeyFormSchema.safeParse({
     name: formData.get("name"),
-    scopes: formData.getAll("scopes"),
+    scopes: ["access"],
     expiry: formData.get("expiry"),
+    mode: formData.get("mode"),
   });
 
   if (!validated.success) {
     return { errors: validated.error.flatten().fieldErrors };
   }
 
-  const { name, scopes, expiry } = validated.data;
-  const secret = generateApiKeySecret();
+  const { name, scopes, expiry, mode } = validated.data;
+  const secret = generateApiKeySecret(mode);
   const expiresAt = computeExpiry(expiry);
 
   const [row] = await db
@@ -104,6 +108,7 @@ export async function createApiKey(
       name,
       hash: hashSecret(secret),
       preview: maskSecret(secret),
+      mode,
       scopes,
       expiresAt,
     })
@@ -128,6 +133,7 @@ export async function createApiKey(
     id: row.id,
     name,
     secret,
+    mode: row.mode,
     scopes: scopes as ApiKeyScope[],
     expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
@@ -197,6 +203,36 @@ export async function renameApiKey(
   if (!row) return { message: "Key not found." };
 
   return { name: row.name };
+}
+
+export async function updateApiKeyScopes(
+  prevState: UpdateApiKeyScopesState,
+  formData: FormData
+): Promise<UpdateApiKeyScopesState> {
+  const { organization } = await requireOrganizationManager();
+  const validated = UpdateApiKeyScopesFormSchema.safeParse({
+    id: formData.get("id"),
+    scopes: formData.getAll("scopes"),
+  });
+
+  if (!validated.success) {
+    return { errors: validated.error.flatten().fieldErrors };
+  }
+
+  const [row] = await db
+    .update(apiKey)
+    .set({ scopes: validated.data.scopes })
+    .where(
+      and(
+        eq(apiKey.id, validated.data.id),
+        eq(apiKey.organizationId, organization.id),
+        isNull(apiKey.revokedAt)
+      )
+    )
+    .returning({ scopes: apiKey.scopes });
+
+  if (!row) return { message: "Key not found or revoked." };
+  return { scopes: row.scopes as ApiKeyScope[] };
 }
 
 export async function rotateApiKey(

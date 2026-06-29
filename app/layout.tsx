@@ -32,16 +32,14 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
-      <head>
+      <body>
         {process.env.NODE_ENV === "development" && (
           <Script
-            src="//unpkg.com/react-grab/dist/index.global.js"
+            src="https://unpkg.com/react-grab/dist/index.global.js"
             crossOrigin="anonymous"
             strategy="beforeInteractive"
           />
         )}
-      </head>
-      <body>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
