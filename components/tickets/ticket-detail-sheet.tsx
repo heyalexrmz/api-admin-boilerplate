@@ -37,6 +37,15 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
+function sameOriginUrl(url: string) {
+  try {
+    const parsed = new URL(url)
+    return `${parsed.pathname}${parsed.search}`
+  } catch {
+    return url
+  }
+}
+
 export function TicketDetailSheet({
   ticket,
   open,
@@ -78,12 +87,12 @@ export function TicketDetailSheet({
                 <AccordionTrigger>Ticket image</AccordionTrigger>
                 <AccordionContent>
                   {image ? (
-                    <div className="overflow-hidden rounded-lg border bg-muted/20">
+                    <div className="flex min-h-80 items-center justify-center overflow-hidden rounded-lg border bg-muted/20">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={image.url}
+                        src={sameOriginUrl(image.url)}
                         alt={image.originalFileName}
-                        className="max-h-[34rem] w-full object-contain"
+                        className="max-h-[34rem] max-w-full object-contain"
                       />
                     </div>
                   ) : (
