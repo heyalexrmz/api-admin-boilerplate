@@ -5,7 +5,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   BarChart3,
-  FileSpreadsheet,
   FileText,
   FolderKanban,
   KeyRound,
@@ -44,16 +43,12 @@ const navMain = [
     icon: FolderKanban,
   },
   {
-    title: "Invoices",
-    url: "/dashboard/invoices",
-    icon: FileSpreadsheet,
-  },
-  {
     title: "Webservice",
-    url: "/dashboard/keys",
+    url: "/dashboard/api-overview",
     icon: KeyRound,
     managerOnly: true,
     children: [
+      { title: "API Overview", url: "/dashboard/api-overview", icon: BarChart3 },
       { title: "API Keys", url: "/dashboard/keys", icon: KeyRound },
       { title: "Logs", url: "/dashboard/logs", icon: FileText },
       { title: "Webhooks", url: "/dashboard/webhooks", icon: Webhook },

@@ -28,7 +28,13 @@ import {
 import {
   createSignedDocumentUrl,
 } from "@/lib/storage/document-links";
-import { ticketProviderResponseView } from "@/lib/facturador/responses";
+import {
+  invoiceFailedWebhookPayload,
+  invoiceFinalizedWebhookPayload,
+  ticketProviderResponseView,
+  ticketWebhookRequestMetadata,
+} from "@/lib/facturador/responses";
+import { createTocinoWebhookJobValues } from "@/lib/facturador/upstream-webhooks";
 import {
   documentObjectKey,
   getS3StorageConfig,
@@ -418,11 +424,11 @@ export async function createTicketFromFormData(input: {
     input.organizationId,
     "ticket.created",
     response,
-    {
-      id: input.requestId,
+    ticketWebhookRequestMetadata({
+      ticketId,
       idempotencyKey,
       livemode: input.mode === "live",
-    }
+    })
   ).catch((error) => console.error("[facturador] ticket.created webhook failed", error));
 
   const finishIntake = async () => {
@@ -554,6 +560,41 @@ export async function enqueueTicketJob(input: {
     },
     idempotencyKey: `${input.type}:${input.ticketId}:${input.destinationId ?? "all"}`,
   }).onConflictDoNothing();
+}
+
+export async function enqueueTocinoWebhookEvent(raw: unknown) {
+  const payload = raw as Record<string, unknown>;
+  const idempotencyKey = payload.idempotency_key ? String(payload.idempotency_key) : null;
+  const providerRequestId = payload.nova_request_id ? String(payload.nova_request_id) : null;
+
+  const conditions = [];
+  if (idempotencyKey) conditions.push(eq(ticket.idempotencyKey, idempotencyKey));
+  if (providerRequestId) conditions.push(eq(ticket.providerRequestId, providerRequestId));
+  if (conditions.length === 0) {
+    throw new ApiError({
+      status: 400,
+      code: "invalid_payload",
+      type: "validation_error",
+      message: "Missing idempotency_key or nova_request_id.",
+    });
+  }
+
+  const [row] = await db
+    .select({
+      organizationId: ticket.organizationId,
+    })
+    .from(ticket)
+    .where(conditions.length === 1 ? conditions[0]! : or(...conditions))
+    .limit(1);
+
+  if (!row) return { ok: true, parked: true, queued: false };
+
+  await db
+    .insert(job)
+    .values(createTocinoWebhookJobValues({ organizationId: row.organizationId, raw: payload }))
+    .onConflictDoNothing();
+
+  return { ok: true, parked: false, queued: true };
 }
 
 export async function getStats(organizationId: string, days = 30) {
@@ -701,7 +742,11 @@ export async function submitTicketToTocino(input: {
     input.organizationId,
     "ticket.processing",
     { object: "ticket", id: row.ticket.id, status: "processing" },
-    { livemode: true }
+    ticketWebhookRequestMetadata({
+      ticketId: row.ticket.id,
+      idempotencyKey: row.ticket.idempotencyKey,
+      livemode: true,
+    })
   );
 
   const result = await submitToTocino({
@@ -719,7 +764,6 @@ export async function submitTicketToTocino(input: {
       .update(ticket)
       .set({
         status: "pending",
-        provider: result.provider,
         providerRequestId: result.novaRequestId,
         lastResponse: normalizedResponse,
         updatedAt: new Date(),
@@ -728,7 +772,6 @@ export async function submitTicketToTocino(input: {
     return {
       outcome: "tocino_pending" as const,
       novaRequestId: result.novaRequestId,
-      provider: result.provider,
     };
   }
 
@@ -767,7 +810,11 @@ export async function submitTicketToTocino(input: {
         message: mapped.errorMessage,
       },
     },
-    { livemode: true }
+    ticketWebhookRequestMetadata({
+      ticketId: row.ticket.id,
+      idempotencyKey: row.ticket.idempotencyKey,
+      livemode: true,
+    })
   );
 
   return {
@@ -843,7 +890,31 @@ export async function applyTocinoWebhookEvent(raw: unknown) {
           message: mapped.errorMessage,
         },
       },
-      { livemode: row.ticket.mode === "live" }
+      ticketWebhookRequestMetadata({
+        ticketId: row.ticket.id,
+        idempotencyKey: row.ticket.idempotencyKey,
+        livemode: row.ticket.mode === "live",
+      })
+    );
+    await dispatchOrganizationWebhookEvent(
+      row.ticket.organizationId,
+      "invoice.failed",
+      invoiceFailedWebhookPayload({
+        ticket: {
+          id: row.ticket.id,
+          livemode: row.ticket.mode === "live",
+        },
+        error: {
+          code: mapped.errorCode,
+          type: mapped.errorType,
+          message: mapped.errorMessage,
+        },
+      }),
+      ticketWebhookRequestMetadata({
+        ticketId: row.ticket.id,
+        idempotencyKey: row.ticket.idempotencyKey,
+        livemode: row.ticket.mode === "live",
+      })
     );
     return { ok: true, parked: false };
   }
@@ -942,24 +1013,51 @@ export async function applyTocinoWebhookEvent(raw: unknown) {
     .returning();
   if (!updatedTicket) throw new Error("Could not finalize Tocino ticket.");
 
+  const allDocuments = [...(await documentsForTicket(row.ticket.id)), ...storedInvoiceDocuments];
   const eventPayload = ticketView({
     ticket: updatedTicket,
     taxpayerRfc: row.taxpayer.rfc,
     invoice: invoiceRow,
-    documents: [...(await documentsForTicket(row.ticket.id)), ...storedInvoiceDocuments],
+    documents: allDocuments,
+  });
+  const invoicePayload = invoiceFinalizedWebhookPayload({
+    ticket: {
+      id: updatedTicket.id,
+      livemode: updatedTicket.mode === "live",
+    },
+    invoice: {
+      id: invoiceRow.id,
+      status: invoiceRow.status,
+      uuid: invoiceRow.satUuid,
+      series: invoiceRow.series,
+      folio: invoiceRow.folio,
+      issuerTaxpayer: invoiceRow.issuerTaxpayer,
+      issuerRfc: invoiceRow.issuerRfc,
+      total: invoiceRow.total,
+      invoiceDate: invoiceRow.invoiceDate?.toISOString() ?? null,
+    },
+    documents: allDocuments.map(documentView),
   });
 
   await dispatchOrganizationWebhookEvent(
     row.ticket.organizationId,
     "invoice.finalized",
-    { object: "invoice", id: invoiceRow.id, ticket_id: row.ticket.id },
-    { livemode: row.ticket.mode === "live" }
+    invoicePayload,
+    ticketWebhookRequestMetadata({
+      ticketId: updatedTicket.id,
+      idempotencyKey: updatedTicket.idempotencyKey,
+      livemode: updatedTicket.mode === "live",
+    })
   );
   await dispatchOrganizationWebhookEvent(
     row.ticket.organizationId,
     "ticket.finalized",
     eventPayload,
-    { livemode: row.ticket.mode === "live" }
+    ticketWebhookRequestMetadata({
+      ticketId: updatedTicket.id,
+      idempotencyKey: updatedTicket.idempotencyKey,
+      livemode: updatedTicket.mode === "live",
+    })
   );
 
   return { ok: true, parked: false };
@@ -992,7 +1090,11 @@ export async function finalizeTicketWithMockProvider(input: {
     input.organizationId,
     "ticket.processing",
     { object: "ticket", id: row.ticket.id, status: "processing" },
-    { livemode: row.ticket.mode === "live" }
+    ticketWebhookRequestMetadata({
+      ticketId: row.ticket.id,
+      idempotencyKey: row.ticket.idempotencyKey,
+      livemode: row.ticket.mode === "live",
+    })
   );
 
   const now = new Date();
@@ -1061,23 +1163,50 @@ export async function finalizeTicketWithMockProvider(input: {
     .returning();
   if (!updatedTicket) throw new Error("Could not finalize ticket.");
 
+  const allDocuments = [...(await documentsForTicket(row.ticket.id)), xmlDocument, pdfDocument];
   const payload = ticketView({
     ticket: updatedTicket,
     taxpayerRfc: row.taxpayer.rfc,
     invoice: invoiceRow,
-    documents: [...(await documentsForTicket(row.ticket.id)), xmlDocument, pdfDocument],
+    documents: allDocuments,
+  });
+  const invoicePayload = invoiceFinalizedWebhookPayload({
+    ticket: {
+      id: updatedTicket.id,
+      livemode: updatedTicket.mode === "live",
+    },
+    invoice: {
+      id: invoiceRow.id,
+      status: invoiceRow.status,
+      uuid: invoiceRow.satUuid,
+      series: invoiceRow.series,
+      folio: invoiceRow.folio,
+      issuerTaxpayer: invoiceRow.issuerTaxpayer,
+      issuerRfc: invoiceRow.issuerRfc,
+      total: invoiceRow.total,
+      invoiceDate: invoiceRow.invoiceDate?.toISOString() ?? null,
+    },
+    documents: allDocuments.map(documentView),
   });
 
   await dispatchOrganizationWebhookEvent(
     input.organizationId,
     "invoice.finalized",
-    { object: "invoice", id: invoiceRow.id, ticket_id: row.ticket.id },
-    { livemode: row.ticket.mode === "live" }
+    invoicePayload,
+    ticketWebhookRequestMetadata({
+      ticketId: updatedTicket.id,
+      idempotencyKey: updatedTicket.idempotencyKey,
+      livemode: updatedTicket.mode === "live",
+    })
   );
   await dispatchOrganizationWebhookEvent(
     input.organizationId,
     "ticket.finalized",
     payload,
-    { livemode: row.ticket.mode === "live" }
+    ticketWebhookRequestMetadata({
+      ticketId: updatedTicket.id,
+      idempotencyKey: updatedTicket.idempotencyKey,
+      livemode: updatedTicket.mode === "live",
+    })
   );
 }

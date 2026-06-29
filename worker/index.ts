@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { submitTicketToTocino } from "@/lib/facturador/core";
+import { applyTocinoWebhookEvent, submitTicketToTocino } from "@/lib/facturador/core";
 
 const WORKER_ID = `worker_${randomUUID()}`;
 const POLL_INTERVAL_MS = Number(process.env.WORKER_POLL_INTERVAL_MS ?? 2_000);
@@ -10,7 +10,12 @@ const POLL_INTERVAL_MS = Number(process.env.WORKER_POLL_INTERVAL_MS ?? 2_000);
 type JobRow = {
   id: string;
   organization_id: string;
-  type: "submit_ticket" | "refresh_ticket" | "redeliver_ticket" | "dispatch_webhook";
+  type:
+    | "submit_ticket"
+    | "process_upstream_webhook"
+    | "refresh_ticket"
+    | "redeliver_ticket"
+    | "dispatch_webhook";
   payload: Record<string, unknown>;
   attempts: number;
   max_attempts: number;
@@ -94,6 +99,15 @@ async function processJob(row: JobRow) {
     } else {
       console.log(`[worker] submit_ticket no-op ticket=${ticketId}`);
     }
+    return;
+  }
+
+  if (row.type === "process_upstream_webhook") {
+    if (!("raw" in row.payload)) {
+      throw new Error("process_upstream_webhook job missing raw payload");
+    }
+    console.log(`[worker] processing upstream webhook job=${row.id}`);
+    await applyTocinoWebhookEvent(row.payload.raw);
     return;
   }
 

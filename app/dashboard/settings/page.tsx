@@ -6,7 +6,7 @@ import {
   listTeamInvitations,
   listTeamMembers,
 } from "@/app/actions/organization"
-import { getCanManageActiveOrg, requireUser } from "@/app/lib/auth"
+import { getDashboardCapabilities, requireUser } from "@/app/lib/auth"
 import { parseSettingsTab } from "@/app/lib/settings"
 import { SettingsView } from "@/components/settings/settings-view"
 import { ORG_COLORS } from "@/lib/org-branding"
@@ -25,13 +25,16 @@ export default async function SettingsPage({
   const user = await requireUser()
   const sessions = await listSessions()
 
-  const [organization, members, invitations, canManage, latencyThresholds] = await Promise.all([
+  const [organization, members, invitations, capabilities, latencyThresholds] = await Promise.all([
     getOrganizationDetails(),
     listTeamMembers(),
     listTeamInvitations(),
-    getCanManageActiveOrg(),
+    getDashboardCapabilities(),
     getOrganizationLatencyThresholds(),
   ])
+  const canManage = capabilities.canManage
+  const canEditLatencyThresholds =
+    capabilities.isSuperadmin || capabilities.role === "owner"
   const billing = canManage ? await getBillingOverview() : null
 
   return (
@@ -58,6 +61,7 @@ export default async function SettingsPage({
       latencyThresholds={latencyThresholds}
       billing={billing}
       canManage={canManage}
+      canEditLatencyThresholds={canEditLatencyThresholds}
       initialTab={parseSettingsTab(params.tab)}
     />
   )

@@ -1,6 +1,6 @@
 "use client"
 
-import { ExternalLink } from "lucide-react"
+import { Download } from "lucide-react"
 
 import type { DashboardTicketDetail } from "@/app/lib/definitions"
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { StatusBadge } from "@/components/status-badge"
 import {
   Sheet,
   SheetContent,
@@ -18,6 +19,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 function JsonBlock({ value }: { value: unknown }) {
   if (!value) return <p className="text-sm text-muted-foreground">No data</p>
@@ -35,6 +44,22 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
       <dd className="text-sm break-all">{value}</dd>
     </div>
   )
+}
+
+function invoiceMetadataRows(ticket: DashboardTicketDetail) {
+  return ticket.invoice
+    ? [
+        ["SAT UUID", ticket.invoice.uuid],
+        ["Series", ticket.invoice.series],
+        ["Folio", ticket.invoice.folio],
+        ["RFC", ticket.invoice.taxId],
+        ["Issuer", ticket.invoice.issuerTaxpayer],
+        ["Issuer RFC", ticket.invoice.issuerRfc],
+        ["Total", ticket.invoice.total],
+        ["Invoice date", ticket.invoice.invoiceDate],
+        ["Ticket ID", ticket.id],
+      ]
+    : []
 }
 
 function sameOriginUrl(url: string) {
@@ -56,6 +81,9 @@ export function TicketDetailSheet({
   onOpenChange: (open: boolean) => void
 }) {
   const image = ticket?.documents.find((doc) => doc.kind === "ticket_image")
+  const defaultAccordion = ticket?.invoice
+    ? ["image", "invoice", "documents", "request", "response"]
+    : ["image", "documents", "request", "response"]
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -74,13 +102,13 @@ export function TicketDetailSheet({
           <div className="flex-1 overflow-y-auto px-4 pb-6">
             <div className="grid gap-3 rounded-xl border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4">
               <Detail label="RFC" value={<span className="font-mono">{ticket.taxId}</span>} />
-              <Detail label="Status" value={<Badge>{ticket.status}</Badge>} />
+              <Detail label="Status" value={<StatusBadge status={ticket.status} />} />
               <Detail label="Invoice" value={ticket.invoice?.uuid ?? ticket.invoiceId ?? "—"} />
             </div>
 
             <Accordion
               type="multiple"
-              defaultValue={["image", "documents", "request", "response"]}
+              defaultValue={defaultAccordion}
               className="mt-4 rounded-xl border px-4"
             >
               <AccordionItem value="image">
@@ -101,20 +129,46 @@ export function TicketDetailSheet({
                 </AccordionContent>
               </AccordionItem>
 
+              {ticket.invoice && (
+                <AccordionItem value="invoice">
+                  <AccordionTrigger>Invoice metadata</AccordionTrigger>
+                  <AccordionContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Field</TableHead>
+                          <TableHead>Value</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invoiceMetadataRows(ticket).map(([label, value]) => (
+                          <TableRow key={label}>
+                            <TableCell className="text-muted-foreground">{label}</TableCell>
+                            <TableCell className="whitespace-normal break-all font-mono text-xs">
+                              {value ?? "-"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+
               <AccordionItem value="documents">
                 <AccordionTrigger>Documents</AccordionTrigger>
                 <AccordionContent>
                   <div className="grid gap-2">
                     {ticket.documents.map((doc) => (
-                      <div key={doc.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                      <div key={doc.id} className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">{doc.originalFileName}</p>
+                          <p className="break-all text-sm font-medium">{doc.originalFileName}</p>
                           <p className="text-xs text-muted-foreground">{doc.kind} · {doc.contentType}</p>
                         </div>
-                        <Button asChild variant="outline" size="sm">
-                          <a href={doc.url} target="_blank" rel="noreferrer">
-                            <ExternalLink />
-                            Download
+                        <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
+                          <a href={doc.url} download>
+                            <Download />
+                            Download file
                           </a>
                         </Button>
                       </div>

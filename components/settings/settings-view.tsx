@@ -35,6 +35,7 @@ export function SettingsView({
   latencyThresholds,
   billing,
   canManage,
+  canEditLatencyThresholds,
   initialTab,
 }: {
   user: SettingsUser
@@ -45,6 +46,7 @@ export function SettingsView({
   latencyThresholds: LatencyThresholds
   billing: BillingOverview | null
   canManage: boolean
+  canEditLatencyThresholds: boolean
   initialTab: SettingsTab
 }) {
   const { setQueryParams } = useQueryParams()
@@ -92,6 +94,7 @@ export function SettingsView({
           invitations={invitations}
           latencyThresholds={latencyThresholds}
           canManage={canManage}
+          canEditLatencyThresholds={canEditLatencyThresholds}
         />
       </TabsContent>
       <TabsContent value="billing" className="mt-0">

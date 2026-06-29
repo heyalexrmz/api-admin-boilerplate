@@ -1,13 +1,12 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Mail, Monitor, ShieldCheck, Smartphone } from "lucide-react"
+import { Monitor, Smartphone } from "lucide-react"
 import { toast } from "@/lib/toast"
 
 import { revokeOtherSessions, revokeSession } from "@/app/actions/sessions"
 import type { SessionView } from "@/app/lib/definitions"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
 import { SettingsSection } from "@/components/settings/settings-section"
 
 export function SecurityTab({
@@ -51,49 +50,6 @@ export function SecurityTab({
 
   return (
     <div className="flex flex-col gap-6">
-      <SettingsSection
-        title="Sign-in method"
-        description="You sign in to Acme with a secure link sent to your email address. There is no password to remember or change."
-      >
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-              <Mail />
-            </span>
-            <div>
-              <p className="text-sm font-medium">Email magic link</p>
-              <p className="text-xs text-muted-foreground">
-                We&apos;ll email a one-time link to your work address whenever you sign in.
-              </p>
-            </div>
-          </div>
-        </div>
-      </SettingsSection>
-
-      <SettingsSection
-        title="Two-factor authentication"
-        description="Add a second step at sign-in using an authenticator app."
-      >
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-              <ShieldCheck />
-            </span>
-            <div>
-              <p className="text-sm font-medium">Not configured</p>
-              <p className="text-xs text-muted-foreground">
-                Two-factor authentication isn&apos;t available yet. We&apos;ll notify you when it lands.
-              </p>
-            </div>
-          </div>
-          <Switch
-            checked={false}
-            disabled
-            aria-label="Two-factor authentication is not available"
-          />
-        </div>
-      </SettingsSection>
-
       <SettingsSection
         title="Active sessions"
         description="Devices currently signed into your account. Revoke any you don't recognize."

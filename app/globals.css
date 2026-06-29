@@ -48,6 +48,7 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -127,12 +128,4 @@
   html {
     @apply font-sans;
   }
-}
-
-.auth-scene {
-  background-image: url("/mountain-daytime.svg");
-}
-
-.dark .auth-scene {
-  background-image: url("/mountain-nighttime.svg");
 }

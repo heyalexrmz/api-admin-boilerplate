@@ -210,6 +210,7 @@ export const WEBHOOK_EVENTS = [
   "ticket.failed",
   "invoice.created",
   "invoice.finalized",
+  "invoice.failed",
   "document.created",
   "document.attached",
   "document.failed",
@@ -274,6 +275,7 @@ export const WebhookEventLabels: Record<WebhookEvent, string> = {
   "ticket.failed": "Ticket failed",
   "invoice.created": "Invoice created",
   "invoice.finalized": "Invoice finalized",
+  "invoice.failed": "Invoice failed",
   "document.created": "Document created",
   "document.attached": "Document attached",
   "document.failed": "Document failed",
@@ -461,6 +463,17 @@ export type DashboardTicket = {
   createdAt: string
   updatedAt: string
   finalizedAt: string | null
+}
+
+export type DashboardTicketOverview = {
+  total: number
+  last24h: number
+  finalized: number
+  active: number
+  failed: number
+  live: number
+  sandbox: number
+  recentTickets: DashboardTicket[]
 }
 
 export type DashboardInvoice = {

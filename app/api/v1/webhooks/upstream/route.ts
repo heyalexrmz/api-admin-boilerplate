@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { objectResponse, ApiError, errorResponse } from "@/lib/api-contracts";
-import { applyTocinoWebhookEvent } from "@/lib/facturador/core";
+import { enqueueTocinoWebhookEvent } from "@/lib/facturador/core";
 import { verifyTocinoWebhook } from "@/lib/facturador/tocino";
 import {
   clientIp,
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const result = await applyTocinoWebhookEvent(payload);
+    const result = await enqueueTocinoWebhookEvent(payload);
     response = objectResponse("upstream_webhook", result, requestId);
   } catch (error) {
     response = errorResponse(
