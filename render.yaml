@@ -38,17 +38,19 @@ services:
         sync: false
       - key: S3_FORCE_PATH_STYLE
         value: "true"
-      - key: TOCINO_BASE_URL
+      - key: UPSTREAM_BASE_URL
         sync: false
-      - key: TOCINO_API_KEY
+      - key: UPSTREAM_API_KEY
         sync: false
-      - key: TOCINO_WEBHOOK_HEADER
+      - key: UPSTREAM_WEBHOOK_HEADER
         value: typeform-signature
-      - key: TOCINO_WEBHOOK_TOKEN
+      - key: UPSTREAM_WEBHOOK_TOKEN
         sync: false
-      - key: TOCINO_WEBHOOK_SECRET
+      - key: UPSTREAM_WEBHOOK_SECRET
         sync: false
-      - key: TOCINO_ASSET_HOSTS
+      - key: UPSTREAM_WEBHOOK_SECRET_PREVIOUS
+        sync: false
+      - key: UPSTREAM_ASSET_HOSTS
         sync: false
 
   - type: worker
@@ -86,17 +88,19 @@ services:
         sync: false
       - key: S3_FORCE_PATH_STYLE
         value: "true"
-      - key: TOCINO_BASE_URL
+      - key: UPSTREAM_BASE_URL
         sync: false
-      - key: TOCINO_API_KEY
+      - key: UPSTREAM_API_KEY
         sync: false
-      - key: TOCINO_WEBHOOK_HEADER
+      - key: UPSTREAM_WEBHOOK_HEADER
         value: typeform-signature
-      - key: TOCINO_WEBHOOK_TOKEN
+      - key: UPSTREAM_WEBHOOK_TOKEN
         sync: false
-      - key: TOCINO_WEBHOOK_SECRET
+      - key: UPSTREAM_WEBHOOK_SECRET
         sync: false
-      - key: TOCINO_ASSET_HOSTS
+      - key: UPSTREAM_WEBHOOK_SECRET_PREVIOUS
+        sync: false
+      - key: UPSTREAM_ASSET_HOSTS
         sync: false
 
 databases:
