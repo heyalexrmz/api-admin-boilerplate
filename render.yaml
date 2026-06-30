@@ -101,5 +101,5 @@ services:
 
 databases:
   - name: demo-glm-db
-    plan: starter
+    plan: basic-256mb
     region: oregon
