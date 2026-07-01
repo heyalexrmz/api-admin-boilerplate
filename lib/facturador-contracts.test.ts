@@ -11,6 +11,7 @@ import {
   ticketProviderResponseView,
 } from "./facturador/responses";
 import { normalizeTicketSubmitFields } from "./facturador/submit-fields";
+import { tocinoSubmitBody } from "./facturador/provider-submit";
 import { mapTocinoError, submitToTocino } from "./facturador/tocino";
 import { createTocinoWebhookJobValues } from "./facturador/upstream-webhooks";
 import { documentObjectKey, sanitizeObjectKeySegment } from "./storage/s3";
@@ -320,6 +321,33 @@ describe("submitToTocino", () => {
       ok: true,
       novaRequestId: "nova_123",
       raw: { nova_request_id: "nova_123" },
+    });
+  });
+});
+
+describe("tocinoSubmitBody", () => {
+  it("sends only provider fields and internal defaults to Tocino", () => {
+    expect(
+      tocinoSubmitBody({
+        storedFields: {
+          tax_id: "EKU9003173C9",
+          taxpayer_name: "Empresa Demo SA de CV",
+          firstname: "",
+          file_content_type: "image/jpeg",
+          csf_pdf_file_name: "csf.pdf",
+          csf_pdf_content_type: "application/pdf",
+        },
+        imageBase64: "base64_ticket_image",
+        fileName: "ticket.jpg",
+        csfBase64: "base64_csf_pdf",
+      })
+    ).toEqual({
+      tax_id: "EKU9003173C9",
+      taxpayer_name: "Empresa Demo SA de CV",
+      country: "México",
+      file: "base64_ticket_image",
+      file_name: "ticket.jpg",
+      csf_pdf: "base64_csf_pdf",
     });
   });
 });
