@@ -11,29 +11,40 @@ export function normalizeTicketSubmitFields(
   const normalized = Object.fromEntries(
     Object.entries(fields).map(([key, value]) => [key, value.trim()])
   );
+  const taxpayer = trimmedField(normalized, "taxpayer");
   const taxpayerName = trimmedField(normalized, "taxpayer_name");
-  const firstname = trimmedField(normalized, "firstname");
-  const lastname = trimmedField(normalized, "lastname");
+  const taxpayerLastName = trimmedField(normalized, "taxpayer_last_name");
+  const taxpayerSecondLastName = trimmedField(normalized, "taxpayer_second_last_name");
 
-  if (taxpayerName) return normalized;
+  if (taxpayer) return normalized;
 
-  if (!firstname) {
+  if (!taxpayerName) {
     throw new ApiError({
       status: 400,
       code: "missing_field",
       type: "validation_error",
-      message: "firstname is required for persona fisica when taxpayer_name is not provided.",
-      param: "firstname",
+      message: "taxpayer is required for persona moral, or taxpayer_name is required for persona fisica.",
+      param: "taxpayer",
     });
   }
 
-  if (!lastname) {
+  if (!taxpayerLastName) {
     throw new ApiError({
       status: 400,
       code: "missing_field",
       type: "validation_error",
-      message: "lastname is required for persona fisica when taxpayer_name is not provided.",
-      param: "lastname",
+      message: "taxpayer_last_name is required for persona fisica.",
+      param: "taxpayer_last_name",
+    });
+  }
+
+  if (!taxpayerSecondLastName) {
+    throw new ApiError({
+      status: 400,
+      code: "missing_field",
+      type: "validation_error",
+      message: "taxpayer_second_last_name is required for persona fisica.",
+      param: "taxpayer_second_last_name",
     });
   }
 
