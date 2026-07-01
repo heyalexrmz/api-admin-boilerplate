@@ -20,7 +20,7 @@ export type TocinoError = {
 
 export type TocinoSubmitResult =
   | { ok: true; novaRequestId: string; raw: unknown }
-  | { ok: false; error: TocinoError; raw?: unknown };
+  | { ok: false; error: TocinoError; raw?: unknown; status?: number };
 
 export type TocinoConfig = {
   baseUrl: string;
@@ -77,6 +77,23 @@ function error(code: string, category: ErrorCategory, message: string): TocinoEr
   return { code, category, message };
 }
 
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function firstDetailMessage(detail: unknown): string | null {
+  if (typeof detail === "string" && detail.trim()) return detail.trim();
+  if (Array.isArray(detail)) {
+    const first = detail[0] as Record<string, unknown> | undefined;
+    return stringValue(first?.msg) ?? stringValue(first?.message);
+  }
+  if (detail && typeof detail === "object") {
+    const value = detail as Record<string, unknown>;
+    return stringValue(value.msg) ?? stringValue(value.message) ?? stringValue(value.error);
+  }
+  return null;
+}
+
 export function mapTocinoError(phase: "submit" | "process", raw: unknown): TocinoError {
   const value = raw as Record<string, unknown> | null;
   if (phase === "submit") {
@@ -88,6 +105,10 @@ export function mapTocinoError(phase: "submit" | "process", raw: unknown): Tocin
     if (value?.message === "Insufficient balance") {
       return error("INSUFFICIENT_BALANCE", "balance", "Insufficient balance.");
     }
+    const detailMessage = firstDetailMessage(value?.detail);
+    if (detailMessage) return error("UPSTREAM_VALIDATION", "validation", detailMessage);
+    const message = stringValue(value?.message) ?? stringValue(value?.error);
+    if (message) return error("UPSTREAM_REJECTED", "upstream", message);
     return error("UNKNOWN_UPSTREAM", "unknown", "Unrecognized upstream error.");
   }
 
@@ -129,7 +150,7 @@ export async function submitToTocino(input: {
         raw: json,
       };
     }
-    return { ok: false, error: mapTocinoError("submit", json), raw: json };
+    return { ok: false, error: mapTocinoError("submit", json), raw: json, status: response.status };
   } catch {
     return { ok: false, error: mapTocinoError("submit", { message: "__timeout__" }) };
   }

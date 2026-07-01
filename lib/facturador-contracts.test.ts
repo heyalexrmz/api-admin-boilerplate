@@ -11,7 +11,7 @@ import {
   ticketProviderResponseView,
 } from "./facturador/responses";
 import { normalizeTicketSubmitFields } from "./facturador/submit-fields";
-import { submitToTocino } from "./facturador/tocino";
+import { mapTocinoError, submitToTocino } from "./facturador/tocino";
 import { createTocinoWebhookJobValues } from "./facturador/upstream-webhooks";
 import { documentObjectKey, sanitizeObjectKeySegment } from "./storage/s3";
 
@@ -129,6 +129,54 @@ describe("normalizeTicketSubmitFields", () => {
 });
 
 describe("submitToTocino", () => {
+  it("maps upstream validation detail into an actionable submit error", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          detail: [
+            {
+              loc: ["body", "country"],
+              msg: "Extra inputs are not permitted",
+              type: "extra_forbidden",
+            },
+          ],
+        }),
+        {
+          status: 422,
+          headers: { "content-type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await submitToTocino({
+      idempotencyKey: "ticket_123",
+      body: {
+        tax_id: "EKU9003173C9",
+        taxpayer_name: "Empresa Demo SA de CV",
+        file: "base64_ticket_image",
+      },
+      config: {
+        baseUrl: "https://upstream.example",
+        apiKey: "api_key",
+        webhookHeader: "typeform-signature",
+        webhookToken: "webhook_token",
+        webhookSecret: "webhook_secret",
+        assetHosts: [],
+      },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: 422,
+      error: {
+        code: "UPSTREAM_VALIDATION",
+        category: "validation",
+        message: "Extra inputs are not permitted",
+      },
+    });
+  });
+
   it("forwards taxpayer_name for personas morales", async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ nova_request_id: "nova_123" }), {
@@ -234,6 +282,16 @@ describe("submitToTocino", () => {
       ok: true,
       novaRequestId: "nova_123",
       raw: { nova_request_id: "nova_123" },
+    });
+  });
+});
+
+describe("mapTocinoError", () => {
+  it("uses upstream messages when the submit response is not a known field error", () => {
+    expect(mapTocinoError("submit", { error: "Invalid taxpayer payload." })).toEqual({
+      code: "UPSTREAM_REJECTED",
+      category: "upstream",
+      message: "Invalid taxpayer payload.",
     });
   });
 });
