@@ -25,6 +25,7 @@ import {
   submitToTocino,
   type TocinoError,
 } from "@/lib/facturador/tocino";
+import { tocinoSubmitBody } from "@/lib/facturador/provider-submit";
 import { normalizeTicketSubmitFields } from "@/lib/facturador/submit-fields";
 import {
   createSignedDocumentUrl,
@@ -45,6 +46,12 @@ import {
 const IMAGE_TYPES = new Map([
   ["ffd8ff", "image/jpeg"],
   ["89504e47", "image/png"],
+]);
+const JSON_INTAKE_ONLY_FIELDS = new Set([
+  "file_name",
+  "file_content_type",
+  "csf_pdf_file_name",
+  "csf_pdf_content_type",
 ]);
 const MAX_TICKET_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TICKET_IMAGE_TYPES = new Set(["image/jpeg", "image/png"]);
@@ -482,6 +489,7 @@ export async function createTicketFromJson(input: {
     if (
       key === "file" ||
       key === "csf_pdf" ||
+      JSON_INTAKE_ONLY_FIELDS.has(key) ||
       value === null ||
       value === undefined
     ) {
@@ -854,12 +862,12 @@ export async function submitTicketToTocino(input: {
     row.ticket.submitRequest && typeof row.ticket.submitRequest === "object"
       ? (row.ticket.submitRequest as Record<string, unknown>)
       : {};
-  const body = {
-    ...storedFields,
-    file: imageBase64,
-    file_name: row.ticket.originalFileName ?? image.originalFileName,
-    ...(csfBase64 ? { csf_pdf: csfBase64 } : {}),
-  };
+  const body = tocinoSubmitBody({
+    storedFields,
+    imageBase64,
+    fileName: row.ticket.originalFileName ?? image.originalFileName,
+    csfBase64,
+  });
   const redactedSubmitRequest = {
     ...body,
     file: `<base64 omitted: ${imageBase64.length} chars>`,
