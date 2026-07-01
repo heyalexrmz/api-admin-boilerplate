@@ -1,9 +1,19 @@
 const PROVIDER_FIELD_NAMES = [
   "tax_id",
+  "taxpayer",
   "taxpayer_name",
-  "firstname",
-  "lastname",
-  "second_lastname",
+  "taxpayer_last_name",
+  "taxpayer_second_last_name",
+  "street_address_1",
+  "ext_num",
+  "int_num",
+  "street_address_2",
+  "city",
+  "state",
+  "country",
+  "postal_code",
+  "invoice_fiscal_regimen",
+  "invoice_cfdi_use",
 ] as const;
 
 export function tocinoSubmitBody(input: {
@@ -21,7 +31,7 @@ export function tocinoSubmitBody(input: {
 
   return {
     ...fields,
-    country: "México",
+    country: typeof fields.country === "string" ? fields.country : "México",
     file: input.imageBase64,
     file_name: input.fileName,
     ...(input.csfBase64 ? { csf_pdf: input.csfBase64 } : {}),
