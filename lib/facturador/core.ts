@@ -25,6 +25,7 @@ import {
   submitToTocino,
   type TocinoError,
 } from "@/lib/facturador/tocino";
+import { normalizeTicketSubmitFields } from "@/lib/facturador/submit-fields";
 import {
   createSignedDocumentUrl,
 } from "@/lib/storage/document-links";
@@ -156,6 +157,80 @@ async function fileBuffer(value: FormDataEntryValue | null, param: string): Prom
     buffer: Buffer.from(await value.arrayBuffer()),
     fileName: value.name || param,
     contentType: value.type || null,
+  };
+}
+
+type TicketInputFile = {
+  buffer: Buffer;
+  fileName: string;
+  contentType: string | null;
+};
+
+function recordValue(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new ApiError({
+      status: 400,
+      code: "invalid_payload",
+      type: "validation_error",
+      message: "Request body must be a JSON object.",
+    });
+  }
+  return value as Record<string, unknown>;
+}
+
+function stringField(
+  body: Record<string, unknown>,
+  name: string,
+  required = false
+): string | null {
+  const value = body[name];
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (required) {
+    throw new ApiError({
+      status: 400,
+      code: "missing_field",
+      type: "validation_error",
+      message: `${name} is required.`,
+      param: name,
+    });
+  }
+  return null;
+}
+
+function fileFromBase64(input: {
+  value: string | null;
+  param: string;
+  fileName: string;
+  contentType: string | null;
+}): TicketInputFile {
+  if (!input.value) {
+    throw new ApiError({
+      status: 400,
+      code: "missing_file",
+      type: "validation_error",
+      message: `${input.param} is required.`,
+      param: input.param,
+    });
+  }
+
+  const match = input.value.match(/^data:([^;]+);base64,(.*)$/);
+  const contentType = match?.[1] ?? input.contentType;
+  const base64 = match?.[2] ?? input.value;
+  const compact = base64.replace(/\s/g, "");
+  if (!compact || !/^[A-Za-z0-9+/]*={0,2}$/.test(compact)) {
+    throw new ApiError({
+      status: 400,
+      code: "invalid_base64",
+      type: "validation_error",
+      message: `${input.param} must be a valid base64 string.`,
+      param: input.param,
+    });
+  }
+
+  return {
+    buffer: Buffer.from(compact, "base64"),
+    fileName: input.fileName,
+    contentType,
   };
 }
 
@@ -362,18 +437,86 @@ export async function createTicketFromFormData(input: {
   defer?: (task: () => Promise<void>) => void;
 }) {
   const taxId = String(input.formData.get("tax_id") ?? "");
-  const submitFields = collectSubmitFields(input.formData);
-  const taxpayerRow = await ensureTaxpayer({
-    organizationId: input.organizationId,
-    rfc: taxId,
-  });
-
+  const submitFields = normalizeTicketSubmitFields(collectSubmitFields(input.formData));
   const ticketFile = await fileBuffer(input.formData.get("file"), "file");
-  const ticketContentType = assertTicketImage(ticketFile);
   const csfFile = input.formData.get("csf_pdf")
     ? await fileBuffer(input.formData.get("csf_pdf"), "csf_pdf")
     : null;
-  const csfContentType = csfFile ? assertPdf(csfFile.buffer, "csf_pdf") : null;
+
+  return createTicketFromFiles({
+    ...input,
+    taxId,
+    submitFields,
+    ticketFile,
+    csfFile,
+  });
+}
+
+export async function createTicketFromJson(input: {
+  organizationId: string;
+  apiKeyId: string;
+  mode: "live" | "test";
+  requestId: string;
+  body: unknown;
+  defer?: (task: () => Promise<void>) => void;
+}) {
+  const body = recordValue(input.body);
+  const taxId = stringField(body, "tax_id", true) ?? "";
+  const ticketFile = fileFromBase64({
+    value: stringField(body, "file", true),
+    param: "file",
+    fileName: stringField(body, "file_name") ?? "ticket.jpg",
+    contentType: stringField(body, "file_content_type"),
+  });
+  const csfValue = stringField(body, "csf_pdf");
+  const csfFile = csfValue
+    ? fileFromBase64({
+        value: csfValue,
+        param: "csf_pdf",
+        fileName: stringField(body, "csf_pdf_file_name") ?? "csf.pdf",
+        contentType: stringField(body, "csf_pdf_content_type"),
+      })
+    : null;
+  const rawSubmitFields: Record<string, string> = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (
+      key === "file" ||
+      key === "csf_pdf" ||
+      value === null ||
+      value === undefined
+    ) {
+      continue;
+    }
+    rawSubmitFields[key] = String(value);
+  }
+  const submitFields = normalizeTicketSubmitFields(rawSubmitFields);
+
+  return createTicketFromFiles({
+    ...input,
+    taxId,
+    submitFields,
+    ticketFile,
+    csfFile,
+  });
+}
+
+async function createTicketFromFiles(input: {
+  organizationId: string;
+  apiKeyId: string;
+  mode: "live" | "test";
+  requestId: string;
+  taxId: string;
+  submitFields: Record<string, string>;
+  ticketFile: TicketInputFile;
+  csfFile: TicketInputFile | null;
+  defer?: (task: () => Promise<void>) => void;
+}) {
+  const taxpayerRow = await ensureTaxpayer({
+    organizationId: input.organizationId,
+    rfc: input.taxId,
+  });
+  const ticketContentType = assertTicketImage(input.ticketFile);
+  const csfContentType = input.csfFile ? assertPdf(input.csfFile.buffer, "csf_pdf") : null;
   const ticketId = randomUUID();
   const idempotencyKey = randomUUID();
 
@@ -394,11 +537,11 @@ export async function createTicketFromFormData(input: {
       idempotencyKey,
       mode: input.mode,
       status: "received",
-      originalFileName: ticketFile.fileName,
+      originalFileName: input.ticketFile.fileName,
       submitRequest: {
-        ...submitFields,
+        ...input.submitFields,
         file: "<base64 omitted>",
-        ...(csfFile ? { csf_pdf: "<base64 omitted>" } : {}),
+        ...(input.csfFile ? { csf_pdf: "<base64 omitted>" } : {}),
       },
     })
     .returning();
@@ -439,9 +582,9 @@ export async function createTicketFromFormData(input: {
         rfc: taxpayerRow.rfc,
         ticketId,
         kind: "ticket_image",
-        fileName: ticketFile.fileName,
+        fileName: input.ticketFile.fileName,
         contentType: ticketContentType,
-        buffer: ticketFile.buffer,
+        buffer: input.ticketFile.buffer,
       });
       await db.insert(ticketDocument).values({
         ticketId,
@@ -449,16 +592,16 @@ export async function createTicketFromFormData(input: {
         role: "ticket_image",
       });
 
-      if (csfFile && csfContentType) {
+      if (input.csfFile && csfContentType) {
         const csfDocument = await storeDocument({
           organizationId: input.organizationId,
           taxpayerId: taxpayerRow.id,
           rfc: taxpayerRow.rfc,
           ticketId,
           kind: "csf_pdf",
-          fileName: csfFile.fileName,
+          fileName: input.csfFile.fileName,
           contentType: csfContentType,
-          buffer: csfFile.buffer,
+          buffer: input.csfFile.buffer,
         });
         await db.insert(ticketDocument).values({
           ticketId,
@@ -475,7 +618,7 @@ export async function createTicketFromFormData(input: {
           idempotencyKey: `submit_ticket:${ticketId}`,
         });
         await incrementUsage(input.organizationId, "tickets_submitted");
-        await incrementUsage(input.organizationId, "documents_stored", csfFile ? 2 : 1);
+        await incrementUsage(input.organizationId, "documents_stored", input.csfFile ? 2 : 1);
       } else {
         await finalizeTicketWithMockProvider({
           organizationId: input.organizationId,

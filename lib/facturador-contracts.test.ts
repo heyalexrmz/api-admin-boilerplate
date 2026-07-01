@@ -10,6 +10,7 @@ import {
   ticketFinalResponseView,
   ticketProviderResponseView,
 } from "./facturador/responses";
+import { normalizeTicketSubmitFields } from "./facturador/submit-fields";
 import { submitToTocino } from "./facturador/tocino";
 import { createTocinoWebhookJobValues } from "./facturador/upstream-webhooks";
 import { documentObjectKey, sanitizeObjectKeySegment } from "./storage/s3";
@@ -86,7 +87,126 @@ describe("ticketWebhookRequestMetadata", () => {
   });
 });
 
+describe("normalizeTicketSubmitFields", () => {
+  it("accepts taxpayer_name for personas morales", () => {
+    expect(
+      normalizeTicketSubmitFields({
+        tax_id: "EKU9003173C9",
+        taxpayer_name: " Empresa Demo SA de CV ",
+      })
+    ).toMatchObject({
+      tax_id: "EKU9003173C9",
+      taxpayer_name: "Empresa Demo SA de CV",
+    });
+  });
+
+  it("accepts taxpayer_name with parsed name fields for personas fisicas", () => {
+    expect(
+      normalizeTicketSubmitFields({
+        tax_id: "GODE561231GR8",
+        taxpayer_name: " ALEJANDRO DOMINGUEZ RAMIREZ ",
+        firstname: " ALEJANDRO ",
+        lastname: " DOMINGUEZ ",
+        second_lastname: " RAMIREZ ",
+      })
+    ).toMatchObject({
+      tax_id: "GODE561231GR8",
+      taxpayer_name: "ALEJANDRO DOMINGUEZ RAMIREZ",
+      firstname: "ALEJANDRO",
+      lastname: "DOMINGUEZ",
+      second_lastname: "RAMIREZ",
+    });
+  });
+
+  it("requires a complete persona fisica identity when taxpayer_name is absent", () => {
+    expect(() =>
+      normalizeTicketSubmitFields({
+        tax_id: "GODE561231GR8",
+        firstname: "Maria Fernanda",
+      })
+    ).toThrow("lastname is required for persona fisica");
+  });
+});
+
 describe("submitToTocino", () => {
+  it("forwards taxpayer_name for personas morales", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ nova_request_id: "nova_123" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await submitToTocino({
+      idempotencyKey: "ticket_123",
+      body: {
+        tax_id: "EKU9003173C9",
+        taxpayer_name: "Empresa Demo SA de CV",
+        file: "base64_ticket_image",
+        file_name: "ticket.jpg",
+      },
+      config: {
+        baseUrl: "https://upstream.example",
+        apiKey: "api_key",
+        webhookHeader: "typeform-signature",
+        webhookToken: "webhook_token",
+        webhookSecret: "webhook_secret",
+        assetHosts: [],
+      },
+    });
+
+    const [, requestInit] = fetchMock.mock.calls[0];
+    expect(JSON.parse(String(requestInit?.body))).toMatchObject({
+      tax_id: "EKU9003173C9",
+      taxpayer_name: "Empresa Demo SA de CV",
+      file: "base64_ticket_image",
+      file_name: "ticket.jpg",
+    });
+  });
+
+  it("forwards persona fisica name fields", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ nova_request_id: "nova_123" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await submitToTocino({
+      idempotencyKey: "ticket_123",
+      body: {
+        tax_id: "GODE561231GR8",
+        taxpayer_name: "ALEJANDRO DOMINGUEZ RAMIREZ",
+        firstname: "ALEJANDRO",
+        lastname: "DOMINGUEZ",
+        second_lastname: "RAMIREZ",
+        file: "base64_ticket_image",
+        file_name: "ticket.jpg",
+      },
+      config: {
+        baseUrl: "https://upstream.example",
+        apiKey: "api_key",
+        webhookHeader: "typeform-signature",
+        webhookToken: "webhook_token",
+        webhookSecret: "webhook_secret",
+        assetHosts: [],
+      },
+    });
+
+    const [, requestInit] = fetchMock.mock.calls[0];
+    expect(JSON.parse(String(requestInit?.body))).toMatchObject({
+      tax_id: "GODE561231GR8",
+      taxpayer_name: "ALEJANDRO DOMINGUEZ RAMIREZ",
+      firstname: "ALEJANDRO",
+      lastname: "DOMINGUEZ",
+      second_lastname: "RAMIREZ",
+      file: "base64_ticket_image",
+      file_name: "ticket.jpg",
+    });
+  });
+
   it("returns the provider request id without exposing the upstream provider name", async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ nova_request_id: "nova_123" }), {

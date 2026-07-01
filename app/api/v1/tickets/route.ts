@@ -1,9 +1,13 @@
 import type { NextRequest } from "next/server";
 import { after } from "next/server";
 
-import { objectResponse, listResponse } from "@/lib/api-contracts";
+import { ApiError, objectResponse, listResponse } from "@/lib/api-contracts";
 import { handleApiRoute } from "@/lib/api-route-handler";
-import { createTicketFromFormData, listTickets } from "@/lib/facturador/core";
+import {
+  createTicketFromFormData,
+  createTicketFromJson,
+  listTickets,
+} from "@/lib/facturador/core";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,21 +34,39 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const contentType = req.headers.get("content-type") ?? "";
+  const isJson = contentType.includes("application/json");
+
   return handleApiRoute({
     req,
     method: "POST",
     path: PATH,
     requiredScope: "write",
-    requestBodyForLog: "[multipart body omitted]",
+    requestBodyForLog: isJson ? "[json body omitted]" : "[multipart body omitted]",
     handler: async (ctx) => {
-      const ticket = await createTicketFromFormData({
+      const baseInput = {
         organizationId: ctx.organization.id,
         apiKeyId: ctx.key.id,
         mode: ctx.mode,
         requestId: ctx.requestId,
-        formData: await req.formData(),
         defer: after,
-      });
+      } as const;
+      const ticket = isJson
+        ? await createTicketFromJson({
+            ...baseInput,
+            body: await req.json().catch(() => {
+              throw new ApiError({
+                status: 400,
+                code: "invalid_json",
+                type: "validation_error",
+                message: "Request body must be valid JSON.",
+              });
+            }),
+          })
+        : await createTicketFromFormData({
+            ...baseInput,
+            formData: await req.formData(),
+          });
       return objectResponse("ticket", ticket, ctx.requestId, { status: 201 });
     },
   });
