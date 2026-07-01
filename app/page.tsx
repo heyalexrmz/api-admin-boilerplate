@@ -1,9 +1,14 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 
 import { AuthShell } from "@/components/auth-shell"
 import { MagicLinkForm } from "@/components/magic-link-form"
+import { getUser } from "@/app/lib/auth"
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const user = await getUser()
+  if (user) redirect("/dashboard")
+
   return (
     <AuthShell
       footer={

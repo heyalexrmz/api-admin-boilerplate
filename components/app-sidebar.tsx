@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   BarChart3,
+  BookOpen,
   FileText,
   FolderKanban,
   KeyRound,
@@ -41,6 +42,11 @@ const navMain = [
     title: "Tickets",
     url: "/dashboard/tickets",
     icon: FolderKanban,
+  },
+  {
+    title: "Documentación",
+    url: "/dashboard/documentation",
+    icon: BookOpen,
   },
   {
     title: "API",
