@@ -59,7 +59,7 @@ export function WebhooksTable({
         accessorKey: "name",
         size: 200,
         header: ({ column }) => (
-          <SortableHeader column={column}>Name</SortableHeader>
+          <SortableHeader column={column}>Nombre</SortableHeader>
         ),
         cell: ({ row }) => (
           <div className="flex flex-col gap-0.5">
@@ -87,7 +87,7 @@ export function WebhooksTable({
       {
         id: "events",
         size: 200,
-        header: "Events",
+        header: "Eventos",
         enableSorting: false,
         cell: ({ row }) => {
           const events = row.original.events
@@ -114,7 +114,7 @@ export function WebhooksTable({
         accessorKey: "createdAt",
         size: 130,
         header: ({ column }) => (
-          <SortableHeader column={column}>Created</SortableHeader>
+          <SortableHeader column={column}>Creado</SortableHeader>
         ),
         cell: ({ row }) => (
           <span className="text-muted-foreground">
@@ -126,7 +126,7 @@ export function WebhooksTable({
         accessorKey: "lastFiredAt",
         size: 130,
         header: ({ column }) => (
-          <SortableHeader column={column}>Last delivery</SortableHeader>
+          <SortableHeader column={column}>Última entrega</SortableHeader>
         ),
         cell: ({ row }) => (
           <span className="text-muted-foreground">
@@ -138,14 +138,14 @@ export function WebhooksTable({
         accessorKey: "status",
         size: 120,
         header: ({ column }) => (
-          <SortableHeader column={column}>Status</SortableHeader>
+          <SortableHeader column={column}>Estado</SortableHeader>
         ),
         cell: ({ row }) => <WebhookStatusBadge status={row.original.status} />,
       },
       {
         id: "actions",
         size: 64,
-        header: () => <span className="sr-only">Actions</span>,
+        header: () => <span className="sr-only">Acciones</span>,
         enableSorting: false,
         cell: ({ row }) => (
           <WebhookActions
@@ -167,7 +167,7 @@ export function WebhooksTable({
       columns={columns}
       data={webhooks}
       caption="Webhooks"
-      empty="No webhooks yet."
+      empty="Aún no hay webhooks."
     />
   )
 }

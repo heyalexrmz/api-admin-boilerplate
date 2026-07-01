@@ -12,8 +12,8 @@ import { SettingsView } from "@/components/settings/settings-view"
 import { ORG_COLORS } from "@/lib/org-branding"
 
 export const metadata = {
-  title: "Settings · Dashboard",
-  description: "Manage your account, organization, billing, security, and preferences.",
+  title: "Configuración · Taxo Timbre",
+  description: "Administra tu cuenta, organización, facturación, seguridad y preferencias.",
 }
 
 export default async function SettingsPage({

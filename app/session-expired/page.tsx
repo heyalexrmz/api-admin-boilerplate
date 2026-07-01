@@ -7,8 +7,8 @@ import { AuthShell } from "@/components/auth-shell"
 import { Button } from "@/components/ui/button"
 
 export const metadata: Metadata = {
-  title: "Session expired · Acme",
-  description: "Your session has expired. Sign in again to continue.",
+  title: "Sesión expirada · Taxo Timbre",
+  description: "Tu sesión expiró. Inicia sesión de nuevo para continuar.",
 }
 
 export default function SessionExpiredPage() {
@@ -16,13 +16,13 @@ export default function SessionExpiredPage() {
     <AuthShell
       footer={
         <>
-          Sessions expire after 12 hours of inactivity for security.
+          Por seguridad, las sesiones expiran después de 12 horas de inactividad.
         </>
       }
     >
       <AuthCard
-        title="Session expired"
-        description="For your security, we signed you out after a period of inactivity."
+        title="Sesión expirada"
+        description="Por seguridad, cerramos tu sesión después de un periodo de inactividad."
       >
         <div className="flex flex-col gap-5">
           <div className="flex flex-col items-center gap-3 rounded-lg border bg-muted/40 px-4 py-6 text-center">
@@ -30,17 +30,17 @@ export default function SessionExpiredPage() {
               <Clock3 className="size-6" aria-hidden="true" />
             </span>
             <p className="text-sm text-pretty text-muted-foreground">
-              Sign in again to pick up where you left off. Unsaved changes may
-              have been lost.
+              Inicia sesión de nuevo para continuar. Los cambios no guardados podrían
+              haberse perdido.
             </p>
           </div>
 
           <Button asChild size="lg" className="h-10 w-full">
-            <Link href="/">Sign in again</Link>
+            <Link href="/">Iniciar sesión de nuevo</Link>
           </Button>
 
           <Button asChild variant="outline" className="h-10 w-full">
-            <Link href="/sso">Continue with SSO</Link>
+            <Link href="/sso">Continuar con SSO</Link>
           </Button>
         </div>
       </AuthCard>

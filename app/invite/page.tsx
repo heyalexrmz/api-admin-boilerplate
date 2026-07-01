@@ -10,8 +10,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
 export const metadata: Metadata = {
-  title: "Accept invite · Acme",
-  description: "Join your team on Acme.",
+  title: "Aceptar invitación · Taxo Timbre",
+  description: "Únete a tu equipo en Taxo Timbre.",
 }
 
 type PageProps = {
@@ -28,19 +28,19 @@ export default async function InvitePage({ searchParams }: PageProps) {
     <AuthShell
       footer={
         <>
-          By accepting you agree to our{" "}
+          Al aceptar, estás de acuerdo con nuestros{" "}
           <a
             href="#"
             className="underline-offset-4 hover:text-foreground hover:underline"
           >
-            Terms
+            Términos
           </a>{" "}
-          and{" "}
+          y nuestra{" "}
           <a
             href="#"
             className="underline-offset-4 hover:text-foreground hover:underline"
           >
-            Privacy Policy
+            Política de privacidad
           </a>
           .
         </>
@@ -48,8 +48,8 @@ export default async function InvitePage({ searchParams }: PageProps) {
     >
       {invitation ? (
         <AuthCard
-          title="Join your team"
-          description="Set up your account to access the shared workspace."
+          title="Únete a tu equipo"
+          description="Configura tu cuenta para acceder al espacio compartido."
         >
           <InviteForm
             invitationId={invitation.id}
@@ -60,19 +60,19 @@ export default async function InvitePage({ searchParams }: PageProps) {
         </AuthCard>
       ) : (
         <AuthCard
-          title="Invitation unavailable"
-          description="This invitation link is no longer valid."
+          title="Invitación no disponible"
+          description="Este enlace de invitación ya no es válido."
         >
           <div className="flex flex-col gap-5">
             <Alert variant="destructive">
               <TriangleAlert />
               <AlertDescription>
-                The invitation may have expired, been revoked, or already been used. Ask
-                your workspace admin to send you a new invite.
+                La invitación pudo haber expirado, sido revocada o ya usada. Pide
+                a un administrador que te envíe una nueva invitación.
               </AlertDescription>
             </Alert>
             <Button asChild className="h-10">
-              <Link href="/">Back to sign in</Link>
+              <Link href="/">Volver al inicio de sesión</Link>
             </Button>
           </div>
         </AuthCard>

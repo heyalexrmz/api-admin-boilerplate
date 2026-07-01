@@ -57,7 +57,7 @@ export function ApiKeysTable({
         accessorKey: "name",
         size: 180,
         header: ({ column }) => (
-          <SortableHeader column={column}>Name</SortableHeader>
+          <SortableHeader column={column}>Nombre</SortableHeader>
         ),
         cell: ({ row }) => (
           <span className="font-medium">{row.original.name}</span>
@@ -66,7 +66,7 @@ export function ApiKeysTable({
       {
         id: "preview",
         size: 190,
-        header: "Key",
+        header: "Llave",
         enableSorting: false,
         cell: ({ row }) => {
           const key = row.original
@@ -77,7 +77,7 @@ export function ApiKeysTable({
               </code>
               {key.lastRotatedAt && (
                 <span className="text-xs text-muted-foreground">
-                  Rotated {formatRelativeTime(key.lastRotatedAt)}
+                  Rotada {formatRelativeTime(key.lastRotatedAt)}
                 </span>
               )}
             </div>
@@ -88,7 +88,7 @@ export function ApiKeysTable({
         accessorKey: "mode",
         size: 100,
         header: ({ column }) => (
-          <SortableHeader column={column}>Mode</SortableHeader>
+          <SortableHeader column={column}>Modo</SortableHeader>
         ),
         cell: ({ row }) => (
           <Badge variant={row.original.mode === "test" ? "secondary" : "outline"}>
@@ -100,7 +100,7 @@ export function ApiKeysTable({
         accessorKey: "createdAt",
         size: 130,
         header: ({ column }) => (
-          <SortableHeader column={column}>Created</SortableHeader>
+          <SortableHeader column={column}>Creada</SortableHeader>
         ),
         cell: ({ row }) => (
           <span className="text-muted-foreground">
@@ -112,7 +112,7 @@ export function ApiKeysTable({
         accessorKey: "lastUsedAt",
         size: 130,
         header: ({ column }) => (
-          <SortableHeader column={column}>Last used</SortableHeader>
+          <SortableHeader column={column}>Último uso</SortableHeader>
         ),
         cell: ({ row }) => (
           <span className="text-muted-foreground">
@@ -124,7 +124,7 @@ export function ApiKeysTable({
         accessorKey: "expiresAt",
         size: 130,
         header: ({ column }) => (
-          <SortableHeader column={column}>Expires</SortableHeader>
+          <SortableHeader column={column}>Expira</SortableHeader>
         ),
         cell: ({ row }) =>
           row.original.expiresAt ? (
@@ -132,14 +132,14 @@ export function ApiKeysTable({
               {formatDate(row.original.expiresAt)}
             </span>
           ) : (
-            <span className="text-muted-foreground">Never</span>
+            <span className="text-muted-foreground">Nunca</span>
           ),
       },
       {
         accessorKey: "status",
         size: 120,
         header: ({ column }) => (
-          <SortableHeader column={column}>Status</SortableHeader>
+          <SortableHeader column={column}>Estado</SortableHeader>
         ),
         cell: ({ row }) => (
           <ApiKeyStatusBadge status={row.original.status} />
@@ -148,7 +148,7 @@ export function ApiKeysTable({
       {
         id: "actions",
         size: 64,
-        header: () => <span className="sr-only">Actions</span>,
+        header: () => <span className="sr-only">Acciones</span>,
         enableSorting: false,
         cell: ({ row }) => (
           <ApiKeyActions
@@ -167,8 +167,8 @@ export function ApiKeysTable({
     <DataTable
       columns={columns}
       data={keys}
-      caption="API keys"
-      empty="No API keys yet."
+      caption="Llaves API"
+      empty="Aún no hay llaves API."
     />
   )
 }

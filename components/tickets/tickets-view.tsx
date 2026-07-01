@@ -24,7 +24,7 @@ import { toast } from "@/lib/toast"
 import { formatDate, formatRelativeTime } from "@/lib/format"
 
 function ModeBadge({ livemode }: { livemode: boolean }) {
-  return <Badge variant={livemode ? "outline" : "secondary"}>{livemode ? "Live" : "Sandbox"}</Badge>
+  return <Badge variant={livemode ? "outline" : "secondary"}>{livemode ? "Producción" : "Sandbox"}</Badge>
 }
 
 function SortableHeader<TData>({
@@ -115,19 +115,19 @@ export function TicketsView({
       {
         accessorKey: "status",
         size: 120,
-        header: ({ column }) => <SortableHeader column={column}>Status</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>Estado</SortableHeader>,
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
       },
       {
         accessorKey: "livemode",
         size: 110,
-        header: ({ column }) => <SortableHeader column={column}>Mode</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>Modo</SortableHeader>,
         cell: ({ row }) => <ModeBadge livemode={row.original.livemode} />,
       },
       {
         accessorKey: "invoiceUuid",
         size: 220,
-        header: "Invoice",
+        header: "Factura",
         cell: ({ row }) =>
           row.original.invoiceUuid ? (
             <span className="font-mono text-xs">{row.original.invoiceUuid}</span>
@@ -138,12 +138,12 @@ export function TicketsView({
       {
         accessorKey: "documentCount",
         size: 110,
-        header: ({ column }) => <SortableHeader column={column}>Documents</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>Documentos</SortableHeader>,
       },
       {
         accessorKey: "createdAt",
         size: 140,
-        header: ({ column }) => <SortableHeader column={column}>Created</SortableHeader>,
+        header: ({ column }) => <SortableHeader column={column}>Creado</SortableHeader>,
         cell: ({ row }) => (
           <div className="flex flex-col">
             <span>{formatRelativeTime(row.original.createdAt)}</span>
@@ -156,7 +156,7 @@ export function TicketsView({
             {
               id: "actions",
               size: 190,
-              header: () => <span className="sr-only">Actions</span>,
+              header: () => <span className="sr-only">Acciones</span>,
               enableSorting: false,
               cell: ({ row }) => (
                 <div className="flex justify-end gap-2">
@@ -169,7 +169,7 @@ export function TicketsView({
                     }}
                   >
                     <RefreshCw />
-                    Refresh
+                    Reintentar
                   </Button>
                 </div>
               ),
@@ -184,8 +184,8 @@ export function TicketsView({
     return (
       <EmptyState
         icon={FileText}
-        title="No tickets"
-        description="Ticket submissions will appear here after clients call the v1 API."
+        title="Sin tickets"
+        description="Las solicitudes de tickets aparecerán aquí cuando tus clientes usen la API v1."
       />
     )
   }
@@ -198,8 +198,8 @@ export function TicketsView({
             <FilterSearchInput
               value={query}
               onChange={setQuery}
-              placeholder="Search tickets, RFC, invoice..."
-              ariaLabel="Search tickets"
+              placeholder="Buscar tickets, RFC, factura..."
+              ariaLabel="Buscar tickets"
             />
           }
           resultCount={filtered.length}
@@ -213,12 +213,12 @@ export function TicketsView({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="received">Received</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="processing">Processing</SelectItem>
-              <SelectItem value="finalized">Finalized</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
+              <SelectItem value="all">Todos los estados</SelectItem>
+              <SelectItem value="received">Recibido</SelectItem>
+              <SelectItem value="pending">Pendiente</SelectItem>
+              <SelectItem value="processing">Procesando</SelectItem>
+              <SelectItem value="finalized">Finalizado</SelectItem>
+              <SelectItem value="failed">Fallido</SelectItem>
             </SelectContent>
           </Select>
           <Select value={mode} onValueChange={setMode}>
@@ -226,8 +226,8 @@ export function TicketsView({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All modes</SelectItem>
-              <SelectItem value="live">Live</SelectItem>
+              <SelectItem value="all">Todos los modos</SelectItem>
+              <SelectItem value="live">Producción</SelectItem>
               <SelectItem value="test">Sandbox</SelectItem>
             </SelectContent>
           </Select>
@@ -237,7 +237,7 @@ export function TicketsView({
           columns={columns}
           data={filtered}
           caption="Tickets"
-          empty="No tickets match your filters."
+          empty="No hay tickets que coincidan con tus filtros."
           onRowClick={(ticket) => openTicket(ticket.id)}
         />
       </div>

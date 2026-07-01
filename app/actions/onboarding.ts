@@ -36,7 +36,7 @@ export async function createOrganization(
   const { firstName, lastName, name } = validated.data;
   const slug = slugify(name);
   if (!slug) {
-    return { errors: { name: ["Choose a name with letters or numbers."] } };
+    return { errors: { name: ["Elige un nombre con letras o números."] } };
   }
 
   const fullName = `${firstName} ${lastName}`.trim();
@@ -52,7 +52,7 @@ export async function createOrganization(
       message:
         error instanceof Error
           ? error.message
-          : "Could not save your profile. Try again.",
+          : "No pudimos guardar tu perfil. Intenta de nuevo.",
     };
   }
 
@@ -62,9 +62,9 @@ export async function createOrganization(
       body: { name, slug },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not create your workspace.";
+    const message = error instanceof Error ? error.message : "No pudimos crear tu espacio de trabajo.";
     if (/slug|exists|taken|unique/i.test(message)) {
-      return { errors: { name: ["That workspace name is taken. Try another."] } };
+      return { errors: { name: ["Ese nombre de espacio ya está en uso. Intenta con otro."] } };
     }
     return { message };
   }

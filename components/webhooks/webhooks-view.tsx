@@ -64,14 +64,14 @@ export function WebhooksView({ initialWebhooks }: { initialWebhooks: Webhook[] }
         prev.map((w) => (w.id === id ? { ...w, lastFiredAt } : w))
       )
       if (eventLog.status === "success") {
-        toast.success("Test event delivered", {
-          description: `Endpoint responded ${eventLog.httpStatus ?? "2xx"}.`,
+        toast.success("Evento de prueba entregado", {
+          description: `El endpoint respondió ${eventLog.httpStatus ?? "2xx"}.`,
         })
       } else {
-        toast.error("Test event failed", {
+        toast.error("Falló el evento de prueba", {
           description: eventLog.httpStatus
-            ? `Endpoint responded ${eventLog.httpStatus}.`
-            : "Could not reach the endpoint.",
+            ? `El endpoint respondió ${eventLog.httpStatus}.`
+            : "No pudimos conectar con el endpoint.",
         })
       }
     })
@@ -99,8 +99,8 @@ export function WebhooksView({ initialWebhooks }: { initialWebhooks: Webhook[] }
       ) : (
         <EmptyState
           icon={WebhookIcon}
-          title="No webhooks"
-          description="Send event payloads to an HTTPS endpoint you control. Subscribe to events and inspect delivery history per webhook."
+          title="Sin webhooks"
+          description="Envía eventos a un endpoint HTTPS que controles. Suscríbete a eventos y revisa el historial de entregas por webhook."
         />
       )}
     </>

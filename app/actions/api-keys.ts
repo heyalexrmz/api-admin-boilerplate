@@ -115,7 +115,7 @@ export async function createApiKey(
     .returning();
 
   if (!row) {
-    return { message: "Could not create the API key. Try again." };
+    return { message: "No pudimos crear la llave API. Intenta de nuevo." };
   }
 
   dispatchOrganizationWebhookEvent(organization.id, "api_key.created", {
@@ -149,7 +149,7 @@ export async function revokeApiKey(
 ): Promise<{ success: true } | { error: string }> {
   const { organization } = await requireOrganizationManager();
 
-  if (!id) return { error: "Missing key id." };
+  if (!id) return { error: "Falta el ID de la llave." };
 
   const revokedAt = new Date();
 
@@ -165,7 +165,7 @@ export async function revokeApiKey(
     )
     .returning({ id: apiKey.id });
 
-  if (!row) return { error: "Key not found or already revoked." };
+  if (!row) return { error: "La llave no existe o ya fue revocada." };
 
   dispatchOrganizationWebhookEvent(organization.id, "api_key.revoked", {
     id: row.id,
@@ -184,7 +184,7 @@ export async function renameApiKey(
   const { organization } = await requireOrganizationManager();
 
   const id = String(formData.get("id") ?? "");
-  if (!id) return { message: "Missing key id." };
+  if (!id) return { message: "Falta el ID de la llave." };
 
   const validated = RenameApiKeyFormSchema.safeParse({
     name: formData.get("name"),
@@ -200,7 +200,7 @@ export async function renameApiKey(
     .where(and(eq(apiKey.id, id), eq(apiKey.organizationId, organization.id)))
     .returning({ name: apiKey.name });
 
-  if (!row) return { message: "Key not found." };
+  if (!row) return { message: "No encontramos la llave." };
 
   return { name: row.name };
 }
@@ -231,7 +231,7 @@ export async function updateApiKeyScopes(
     )
     .returning({ scopes: apiKey.scopes });
 
-  if (!row) return { message: "Key not found or revoked." };
+  if (!row) return { message: "La llave no existe o fue revocada." };
   return { scopes: row.scopes as ApiKeyScope[] };
 }
 
@@ -240,7 +240,7 @@ export async function rotateApiKey(
 ): Promise<{ key: RotatedApiKey } | { error: string }> {
   const { organization } = await requireOrganizationManager();
 
-  if (!id) return { error: "Missing key id." };
+  if (!id) return { error: "Falta el ID de la llave." };
 
   const secret = generateApiKeySecret();
   const now = new Date();

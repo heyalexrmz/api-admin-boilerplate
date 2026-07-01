@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useId, useState, useTransition } from "react"
+import { useId, useState, useTransition } from "react"
 import { LoaderCircle, Sparkles } from "lucide-react"
 
 import { authClient } from "@/lib/auth-client"
@@ -32,22 +32,23 @@ export function CreateOrganizationDialog({
 
   const slug = slugify(name)
 
-  useEffect(() => {
-    if (!open) {
+  function handleOpenChange(next: boolean) {
+    if (!next) {
       setName("")
       setError(null)
     }
-  }, [open])
+    onOpenChange(next)
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
     if (!name.trim()) {
-      setError("Enter an organization name.")
+      setError("Ingresa el nombre de la organización.")
       return
     }
     if (!slug) {
-      setError("Choose a name with letters or numbers.")
+      setError("Elige un nombre con letras o números.")
       return
     }
 
@@ -57,9 +58,9 @@ export function CreateOrganizationDialog({
         slug,
       })
       if (createError) {
-        const message = createError.message ?? "Could not create the workspace."
+        const message = createError.message ?? "No pudimos crear el espacio."
         if (/slug|exists|taken|unique/i.test(message)) {
-          setError("That workspace name is taken. Try another.")
+          setError("Ese nombre de espacio ya está en uso. Intenta con otro.")
         } else {
           setError(message)
         }
@@ -70,9 +71,9 @@ export function CreateOrganizationDialog({
         organizationSlug: slug,
       })
       if (activeError) {
-        toast.error("Workspace created, but we couldn't switch to it.")
+        toast.error("El espacio se creó, pero no pudimos cambiar a él.")
       } else {
-        toast.success("Workspace created")
+        toast.success("Espacio creado")
       }
       onOpenChange(false)
       // Hard reload so the dashboard remounts scoped to the new workspace,
@@ -82,13 +83,13 @@ export function CreateOrganizationDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <div className="flex flex-col gap-4">
           <DialogHeader>
-            <DialogTitle>Create a new workspace</DialogTitle>
+            <DialogTitle>Crear un nuevo espacio</DialogTitle>
             <DialogDescription>
-              Spin up another organization for a different team or project.
+              Crea otra organización para un equipo o proyecto distinto.
             </DialogDescription>
           </DialogHeader>
 
@@ -100,7 +101,7 @@ export function CreateOrganizationDialog({
             )}
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor={nameId}>Workspace name</Label>
+              <Label htmlFor={nameId}>Nombre del espacio</Label>
               <Input
                 id={nameId}
                 type="text"
@@ -108,7 +109,7 @@ export function CreateOrganizationDialog({
                 required
                 minLength={2}
                 maxLength={60}
-                placeholder="Acme Inc."
+                placeholder="Taxo Timbre"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="h-10"
@@ -130,12 +131,12 @@ export function CreateOrganizationDialog({
               {pending ? (
                 <>
                   <LoaderCircle className="animate-spin" />
-                  Creating…
+                  Creando…
                 </>
               ) : (
                 <>
                   <Sparkles />
-                  Create workspace
+                  Crear espacio
                 </>
               )}
             </Button>

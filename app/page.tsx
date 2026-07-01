@@ -8,19 +8,19 @@ export default function LoginPage() {
     <AuthShell
       footer={
         <>
-          By signing in you agree to our{" "}
+          Al iniciar sesión aceptas nuestros{" "}
           <a
             href="#"
             className="underline-offset-4 hover:text-foreground hover:underline"
           >
-            Terms
+            Términos
           </a>{" "}
-          and{" "}
+          y nuestra{" "}
           <a
             href="#"
             className="underline-offset-4 hover:text-foreground hover:underline"
           >
-            Privacy Policy
+            Política de privacidad
           </a>
           .
         </>
@@ -29,21 +29,21 @@ export default function LoginPage() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1.5">
           <h1 className="text-xl font-semibold tracking-tight text-balance">
-            Welcome back
+            Bienvenido de nuevo
           </h1>
           <p className="text-sm text-muted-foreground text-pretty">
-            Enter your work email and we&apos;ll send a secure sign-in link.
+            Ingresa tu correo de trabajo y te enviaremos un enlace seguro de acceso.
           </p>
         </div>
         <MagicLinkForm
           alternateLink={
             <>
-              Don&apos;t have an account?{" "}
+              ¿No tienes cuenta?{" "}
               <Link
                 href="/signup"
                 className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
               >
-                Start a trial
+                Inicia una prueba
               </Link>
             </>
           }

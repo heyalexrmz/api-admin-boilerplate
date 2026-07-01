@@ -30,13 +30,13 @@ export function OrganizationDetailsCard({
   const accentColor = getOrgColor(organization)
 
   useEffect(() => {
-    if (state?.success) toast.success("Organization updated")
+    if (state?.success) toast.success("Organización actualizada")
   }, [state])
 
   const details = (
     <SettingsSection
-      title="Organization details"
-      description="This name appears across the dashboard and in invitations."
+      title="Datos de la organización"
+      description="Este nombre aparece en el panel y en las invitaciones."
       footer={canManage ? <SaveButton disabled={!hasChanges} /> : undefined}
     >
       <div className="flex items-center gap-4">
@@ -49,14 +49,14 @@ export function OrganizationDetailsCard({
           </AvatarFallback>
         </Avatar>
         <div className="text-sm text-muted-foreground">
-          Your organization logo is generated from its initials. Image upload
-          isn&apos;t available yet.
+          El logo de tu organización se genera con sus iniciales. La carga de imagen
+          aún no está disponible.
         </div>
       </div>
 
       <Field
         id={nameId}
-        label="Organization name"
+        label="Nombre de la organización"
         error={state?.errors?.name?.[0]}
       >
         <Input
@@ -80,7 +80,7 @@ export function OrganizationDetailsCard({
         label="Slug"
         description={
           canManage
-            ? "The unique identifier for this workspace. It can't be changed here."
+            ? "El identificador único de este espacio. No se puede cambiar aquí."
             : undefined
         }
       >

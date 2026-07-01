@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card"
 
 function formatDate(value: string | null) {
-  if (!value) return "Not refilled yet"
+  if (!value) return "Aún no se recarga"
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
@@ -29,9 +29,9 @@ export function BillingTab({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Billing</CardTitle>
+          <CardTitle>Facturación</CardTitle>
           <CardDescription>
-            Plans and ticket credits for your workspace.
+            Planes y créditos de tickets para tu espacio de trabajo.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -39,9 +39,9 @@ export function BillingTab({
             <span className="inline-flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
               <CreditCard className="size-5" aria-hidden="true" />
             </span>
-            <p className="text-sm font-medium">Manager access required</p>
+            <p className="text-sm font-medium">Se requiere acceso de administrador</p>
             <p className="max-w-sm text-sm text-pretty text-muted-foreground">
-              Ask an organization owner or admin to review plan and credit details.
+              Pide al propietario o a un administrador que revise el plan y los créditos.
             </p>
           </div>
         </CardContent>
@@ -59,9 +59,9 @@ export function BillingTab({
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <CardTitle>Billing</CardTitle>
+            <CardTitle>Facturación</CardTitle>
             <CardDescription>
-              Plans and ticket credits for your workspace.
+              Planes y créditos de tickets para tu espacio de trabajo.
             </CardDescription>
           </div>
           <Badge variant="secondary">{billing.plan.name}</Badge>
@@ -70,15 +70,15 @@ export function BillingTab({
       <CardContent className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-lg border p-4">
-            <p className="text-sm text-muted-foreground">Available credits</p>
+            <p className="text-sm text-muted-foreground">Créditos disponibles</p>
             <p className="mt-2 text-3xl font-semibold tracking-tight">{balance}</p>
           </div>
           <div className="rounded-lg border p-4">
-            <p className="text-sm text-muted-foreground">Plan allowance</p>
+            <p className="text-sm text-muted-foreground">Créditos del plan</p>
             <p className="mt-2 text-3xl font-semibold tracking-tight">{allowance}</p>
           </div>
           <div className="rounded-lg border p-4">
-            <p className="text-sm text-muted-foreground">Refill cadence</p>
+            <p className="text-sm text-muted-foreground">Frecuencia de recarga</p>
             <p className="mt-2 text-lg font-medium capitalize">
               {billing.plan.refill_frequency}
             </p>
@@ -87,8 +87,8 @@ export function BillingTab({
 
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">{used} credits used this period</span>
-            <span className="font-medium">{Math.round(percent)}% remaining</span>
+            <span className="text-muted-foreground">{used} créditos usados este periodo</span>
+            <span className="font-medium">{Math.round(percent)}% restantes</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div
@@ -99,9 +99,9 @@ export function BillingTab({
         </div>
 
         <div className="rounded-lg bg-muted/40 p-4 text-sm">
-          <p className="font-medium">Next refill</p>
+          <p className="font-medium">Próxima recarga</p>
           <p className="mt-1 text-muted-foreground">
-            Credits reset to {allowance} on {formatDate(billing.credits.next_refill_at)}.
+            Los créditos se restablecen a {allowance} el {formatDate(billing.credits.next_refill_at)}.
           </p>
         </div>
       </CardContent>

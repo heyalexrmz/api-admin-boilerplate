@@ -12,8 +12,8 @@ import {
 import { getUser, getUserOrganizations } from "@/app/lib/auth";
 
 export const metadata = {
-  title: "Set up your workspace · Acme",
-  description: "Add your name and create your first Acme workspace.",
+  title: "Configura tu espacio · Taxo Timbre",
+  description: "Agrega tu nombre y crea tu primer espacio de trabajo.",
 };
 
 export default async function OnboardingPage() {
@@ -27,19 +27,19 @@ export default async function OnboardingPage() {
     <AuthShell
       footer={
         <>
-          By creating a workspace you agree to our{" "}
+          Al crear un espacio aceptas nuestros{" "}
           <a
             href="#"
             className="underline-offset-4 hover:text-foreground hover:underline"
           >
-            Terms
+            Términos
           </a>{" "}
-          and{" "}
+          y nuestra{" "}
           <a
             href="#"
             className="underline-offset-4 hover:text-foreground hover:underline"
           >
-            Privacy Policy
+            Política de privacidad
           </a>
           .
         </>
@@ -48,10 +48,10 @@ export default async function OnboardingPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-xl text-balance">
-            Set up your workspace
+            Configura tu espacio
           </CardTitle>
           <CardDescription className="text-pretty">
-            Tell us your name and name your first workspace. You can change both later.
+            Dinos tu nombre y ponle nombre a tu primer espacio. Puedes cambiar ambos después.
           </CardDescription>
         </CardHeader>
         <CardContent>

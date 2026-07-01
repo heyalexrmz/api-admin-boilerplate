@@ -11,14 +11,14 @@ import {
 } from "@/components/ui/sidebar"
 
 const navItems = [
-  { name: "Overview", href: "/dashboard" },
+  { name: "Resumen", href: "/dashboard" },
   { name: "Tickets", href: "/dashboard/tickets" },
-  { name: "API Overview", href: "/dashboard/api-overview" },
-  { name: "API Keys", href: "/dashboard/keys" },
-  { name: "Logs", href: "/dashboard/logs" },
+  { name: "Resumen API", href: "/dashboard/api-overview" },
+  { name: "Llaves API", href: "/dashboard/keys" },
+  { name: "Registros", href: "/dashboard/logs" },
   { name: "Webhooks", href: "/dashboard/webhooks" },
   { name: "Superadmin", href: "/dashboard/superadmin" },
-  { name: "Settings", href: "/dashboard/settings" },
+  { name: "Configuración", href: "/dashboard/settings" },
 ]
 
 export function DashboardShell({
@@ -71,7 +71,7 @@ export function DashboardShell({
                       {currentPage}
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      Manage your API-as-a-service platform.
+                      Administra tu plataforma de timbrado.
                     </p>
                   </div>
                   {headerAction && (

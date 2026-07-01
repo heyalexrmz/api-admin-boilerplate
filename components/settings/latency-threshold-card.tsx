@@ -25,10 +25,10 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
       {pending ? (
         <>
           <LoaderCircle className="animate-spin" />
-          Saving…
+          Guardando…
         </>
       ) : (
-        "Save thresholds"
+        "Guardar umbrales"
       )}
     </Button>
   )
@@ -44,21 +44,21 @@ export function LatencyThresholdCard({
   const [state, action] = useActionState(updateLatencyThresholds, undefined)
 
   useEffect(() => {
-    if (state?.success) toast.success("Latency thresholds updated")
+    if (state?.success) toast.success("Umbrales de latencia actualizados")
   }, [state?.success])
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Latency thresholds</CardTitle>
+        <CardTitle>Umbrales de latencia</CardTitle>
         <CardDescription>
-          Configure warning and critical latency colors for request logs.
+          Configura los colores de advertencia y crítico para los registros.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form action={action} className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="latency-warning">Warning milliseconds</Label>
+            <Label htmlFor="latency-warning">Milisegundos de advertencia</Label>
             <Input
               id="latency-warning"
               name="warningMs"
@@ -69,7 +69,7 @@ export function LatencyThresholdCard({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="latency-critical">Critical milliseconds</Label>
+            <Label htmlFor="latency-critical">Milisegundos críticos</Label>
             <Input
               id="latency-critical"
               name="criticalMs"
@@ -82,7 +82,7 @@ export function LatencyThresholdCard({
           <SubmitButton disabled={!canEdit} />
           {!canEdit && (
             <p className="text-sm text-muted-foreground sm:col-span-3">
-              Only the organization owner can edit latency thresholds.
+              Solo el propietario de la organización puede editar los umbrales de latencia.
             </p>
           )}
           {state?.message && (

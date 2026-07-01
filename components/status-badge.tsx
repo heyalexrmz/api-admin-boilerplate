@@ -68,7 +68,27 @@ const STATUS_STYLES: Record<string, { badge: string; dot: string }> = {
   },
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  active: "Activo",
+  success: "Exitoso",
+  finalized: "Finalizado",
+  accepted: "Aceptado",
+  processing: "Procesando",
+  retrying: "Reintentando",
+  pending: "Pendiente",
+  queued: "En cola",
+  received: "Recibido",
+  expired: "Expirado",
+  failed: "Fallido",
+  revoked: "Revocado",
+  rejected: "Rechazado",
+  canceled: "Cancelado",
+  cancelled: "Cancelado",
+  disabled: "Deshabilitado",
+}
+
 function statusLabel(status: string) {
+  if (STATUS_LABELS[status]) return STATUS_LABELS[status]
   return status
     .split(/[_-]/)
     .filter(Boolean)

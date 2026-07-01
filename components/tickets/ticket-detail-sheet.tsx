@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/table"
 
 function JsonBlock({ value }: { value: unknown }) {
-  if (!value) return <p className="text-sm text-muted-foreground">No data</p>
+  if (!value) return <p className="text-sm text-muted-foreground">Sin datos</p>
   return (
     <pre className="max-h-[32rem] overflow-auto rounded-lg border bg-muted/40 p-3 font-mono text-xs leading-relaxed">
       {JSON.stringify(value, null, 2)}
@@ -50,13 +50,13 @@ function invoiceMetadataRows(ticket: DashboardTicketDetail) {
   return ticket.invoice
     ? [
         ["SAT UUID", ticket.invoice.uuid],
-        ["Series", ticket.invoice.series],
+        ["Serie", ticket.invoice.series],
         ["Folio", ticket.invoice.folio],
         ["RFC", ticket.invoice.taxId],
-        ["Issuer", ticket.invoice.issuerTaxpayer],
-        ["Issuer RFC", ticket.invoice.issuerRfc],
+        ["Emisor", ticket.invoice.issuerTaxpayer],
+        ["RFC emisor", ticket.invoice.issuerRfc],
         ["Total", ticket.invoice.total],
-        ["Invoice date", ticket.invoice.invoiceDate],
+        ["Fecha de factura", ticket.invoice.invoiceDate],
         ["Ticket ID", ticket.id],
       ]
     : []
@@ -90,11 +90,11 @@ export function TicketDetailSheet({
       <SheetContent side="right" className="w-full overflow-hidden sm:max-w-[min(96vw,86rem)]">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            Ticket detail
-            {ticket && <Badge variant={ticket.livemode ? "outline" : "secondary"}>{ticket.livemode ? "Live" : "Sandbox"}</Badge>}
+            Detalle del ticket
+            {ticket && <Badge variant={ticket.livemode ? "outline" : "secondary"}>{ticket.livemode ? "Producción" : "Sandbox"}</Badge>}
           </SheetTitle>
           <SheetDescription className="font-mono">
-            {ticket?.id ?? "Loading..."}
+            {ticket?.id ?? "Cargando..."}
           </SheetDescription>
         </SheetHeader>
 
@@ -102,8 +102,8 @@ export function TicketDetailSheet({
           <div className="flex-1 overflow-y-auto px-4 pb-6">
             <div className="grid gap-3 rounded-xl border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4">
               <Detail label="RFC" value={<span className="font-mono">{ticket.taxId}</span>} />
-              <Detail label="Status" value={<StatusBadge status={ticket.status} />} />
-              <Detail label="Invoice" value={ticket.invoice?.uuid ?? ticket.invoiceId ?? "—"} />
+              <Detail label="Estado" value={<StatusBadge status={ticket.status} />} />
+              <Detail label="Factura" value={ticket.invoice?.uuid ?? ticket.invoiceId ?? "—"} />
             </div>
 
             <Accordion
@@ -112,7 +112,7 @@ export function TicketDetailSheet({
               className="mt-4 rounded-xl border px-4"
             >
               <AccordionItem value="image">
-                <AccordionTrigger>Ticket image</AccordionTrigger>
+                <AccordionTrigger>Imagen del ticket</AccordionTrigger>
                 <AccordionContent>
                   {image ? (
                     <div className="flex min-h-80 items-center justify-center overflow-hidden rounded-lg border bg-muted/20">
@@ -124,20 +124,20 @@ export function TicketDetailSheet({
                       />
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No ticket image found.</p>
+                    <p className="text-sm text-muted-foreground">No encontramos imagen del ticket.</p>
                   )}
                 </AccordionContent>
               </AccordionItem>
 
               {ticket.invoice && (
                 <AccordionItem value="invoice">
-                  <AccordionTrigger>Invoice metadata</AccordionTrigger>
+                  <AccordionTrigger>Datos de la factura</AccordionTrigger>
                   <AccordionContent>
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Field</TableHead>
-                          <TableHead>Value</TableHead>
+                          <TableHead>Campo</TableHead>
+                          <TableHead>Valor</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -156,7 +156,7 @@ export function TicketDetailSheet({
               )}
 
               <AccordionItem value="documents">
-                <AccordionTrigger>Documents</AccordionTrigger>
+                <AccordionTrigger>Documentos</AccordionTrigger>
                 <AccordionContent>
                   <div className="grid gap-2">
                     {ticket.documents.map((doc) => (
@@ -168,7 +168,7 @@ export function TicketDetailSheet({
                         <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
                           <a href={doc.url} download>
                             <Download />
-                            Download file
+                            Descargar archivo
                           </a>
                         </Button>
                       </div>
@@ -178,21 +178,21 @@ export function TicketDetailSheet({
               </AccordionItem>
 
               <AccordionItem value="request">
-                <AccordionTrigger>Request</AccordionTrigger>
+                <AccordionTrigger>Solicitud</AccordionTrigger>
                 <AccordionContent>
                   <JsonBlock value={ticket.submitRequest} />
                 </AccordionContent>
               </AccordionItem>
 
               <AccordionItem value="response">
-                <AccordionTrigger>Response</AccordionTrigger>
+                <AccordionTrigger>Respuesta</AccordionTrigger>
                 <AccordionContent>
                   <JsonBlock value={ticket.lastResponse} />
                 </AccordionContent>
               </AccordionItem>
 
               <AccordionItem value="final-response">
-                <AccordionTrigger>Final response</AccordionTrigger>
+                <AccordionTrigger>Respuesta final</AccordionTrigger>
                 <AccordionContent>
                   <JsonBlock value={ticket.upstreamRaw} />
                 </AccordionContent>

@@ -4,8 +4,8 @@ import { AuthShell } from "@/components/auth-shell"
 import { MagicLinkForm } from "@/components/magic-link-form"
 
 export const metadata = {
-  title: "Sign up · Acme",
-  description: "Create your Acme workspace.",
+  title: "Crear cuenta · Taxo Timbre",
+  description: "Crea tu espacio de trabajo en Taxo Timbre.",
 }
 
 export default function SignupPage() {
@@ -13,19 +13,19 @@ export default function SignupPage() {
     <AuthShell
       footer={
         <>
-          By creating an account you agree to our{" "}
+          Al crear una cuenta aceptas nuestros{" "}
           <a
             href="#"
             className="underline-offset-4 hover:text-foreground hover:underline"
           >
-            Terms
+            Términos
           </a>{" "}
-          and{" "}
+          y nuestra{" "}
           <a
             href="#"
             className="underline-offset-4 hover:text-foreground hover:underline"
           >
-            Privacy Policy
+            Política de privacidad
           </a>
           .
         </>
@@ -34,22 +34,22 @@ export default function SignupPage() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1.5">
           <h1 className="text-xl font-semibold tracking-tight text-balance">
-            Start your free trial
+            Inicia tu prueba gratis
           </h1>
           <p className="text-sm text-muted-foreground text-pretty">
-            Enter your work email and we&apos;ll send a secure link to create your workspace.
+            Ingresa tu correo de trabajo y te enviaremos un enlace seguro para crear tu espacio de trabajo.
           </p>
         </div>
         <MagicLinkForm
-          submitLabel="Create account"
+          submitLabel="Crear cuenta"
           alternateLink={
             <>
-              Already have an account?{" "}
+              ¿Ya tienes cuenta?{" "}
               <Link
                 href="/"
                 className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
               >
-                Sign in
+                Inicia sesión
               </Link>
             </>
           }

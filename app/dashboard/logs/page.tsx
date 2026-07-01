@@ -5,8 +5,8 @@ import { getOrganizationLatencyThresholds } from "@/app/actions/organization"
 import { getCanManageActiveOrg } from "@/app/lib/auth"
 
 export const metadata = {
-  title: "Logs · Dashboard",
-  description: "API request logs",
+  title: "Registros · Taxo Timbre",
+  description: "Registros de solicitudes API",
 }
 
 export const dynamic = "force-dynamic"

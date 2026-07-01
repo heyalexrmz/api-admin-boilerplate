@@ -68,7 +68,7 @@ function CreateForm({ onCreated }: { onCreated: (webhook: NewWebhook) => void })
       )}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor={nameId}>Name</Label>
+        <Label htmlFor={nameId}>Nombre</Label>
         <Input
           id={nameId}
           name="name"
@@ -76,7 +76,7 @@ function CreateForm({ onCreated }: { onCreated: (webhook: NewWebhook) => void })
           autoFocus
           required
           maxLength={40}
-          placeholder="Billing service"
+          placeholder="Servicio de facturación"
           aria-invalid={!!state?.errors?.name}
           aria-describedby={state?.errors?.name ? nameErrorId : undefined}
           className="h-10"
@@ -89,7 +89,7 @@ function CreateForm({ onCreated }: { onCreated: (webhook: NewWebhook) => void })
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor={urlId}>Endpoint URL</Label>
+        <Label htmlFor={urlId}>URL del endpoint</Label>
         <Input
           id={urlId}
           name="url"
@@ -102,7 +102,7 @@ function CreateForm({ onCreated }: { onCreated: (webhook: NewWebhook) => void })
           className="h-10"
         />
         <p className="text-xs text-muted-foreground">
-          We&apos;ll POST event payloads to this URL. Must be HTTPS.
+          Enviaremos los eventos con POST a esta URL. Debe usar HTTPS.
         </p>
         {state?.errors?.url?.[0] && (
           <p id={urlErrorId} className="text-sm text-destructive">
@@ -112,20 +112,20 @@ function CreateForm({ onCreated }: { onCreated: (webhook: NewWebhook) => void })
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor={descriptionId}>Description</Label>
+        <Label htmlFor={descriptionId}>Descripción</Label>
         <Textarea
           id={descriptionId}
           name="description"
           maxLength={160}
-          placeholder="What this webhook is for (optional)"
+          placeholder="Para qué se usa este webhook (opcional)"
           className="min-h-20"
         />
       </div>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">Events</legend>
+        <legend className="mb-1 text-sm font-medium">Eventos</legend>
         <p className="text-xs text-muted-foreground">
-          Choose which events trigger this webhook.
+          Elige qué eventos activan este webhook.
         </p>
         <WebhookEventPicker defaultSelected={["api_key.created"]} />
         {state?.errors?.events?.[0] && (
@@ -152,12 +152,12 @@ function CreateSubmitButton() {
       {pending ? (
         <>
           <LoaderCircle className="animate-spin" />
-          Creating…
+          Creando…
         </>
       ) : (
         <>
           <Sparkles />
-          Create webhook
+          Crear webhook
         </>
       )}
     </Button>
@@ -176,8 +176,8 @@ export function CreateWebhookDialog({
   function handleCreated(webhook: NewWebhook) {
     setCreatedWebhook(webhook)
     onCreated(toWebhook(webhook))
-    toast.success("Webhook created", {
-      description: "Copy the signing secret now — it won't be shown again.",
+    toast.success("Webhook creado", {
+      description: "Copia el secreto de firma ahora; no volverá a mostrarse.",
     })
   }
 
@@ -194,7 +194,7 @@ export function CreateWebhookDialog({
       <DialogTrigger asChild>
         <Button className="h-9 gap-1.5 transition-transform active:scale-[0.96]">
           <WebhookIcon />
-          Create webhook
+          Crear webhook
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -205,14 +205,14 @@ export function CreateWebhookDialog({
                 <span className="inline-flex size-7 items-center justify-center rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                   <Sparkles className="size-4" />
                 </span>
-                Webhook created
+                Webhook creado
               </DialogTitle>
               <DialogDescription>
-                Your webhook for{" "}
+                Tu webhook para{" "}
                 <span className="font-medium text-foreground">
                   {createdWebhook.name}
                 </span>{" "}
-                is ready.
+                está listo.
               </DialogDescription>
             </DialogHeader>
 
@@ -224,9 +224,9 @@ export function CreateWebhookDialog({
         ) : (
           <div className="flex flex-col gap-4">
             <DialogHeader>
-              <DialogTitle>Create webhook</DialogTitle>
+              <DialogTitle>Crear webhook</DialogTitle>
               <DialogDescription>
-                Receive event payloads at an HTTPS endpoint you control.
+                Recibe eventos en un endpoint HTTPS que controles.
               </DialogDescription>
             </DialogHeader>
             <CreateForm key={formKey} onCreated={handleCreated} />

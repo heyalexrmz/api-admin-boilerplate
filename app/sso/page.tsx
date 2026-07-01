@@ -5,8 +5,8 @@ import { AuthShell } from "@/components/auth-shell"
 import { SsoForm } from "@/components/sso-form"
 
 export const metadata: Metadata = {
-  title: "Enterprise SSO · Acme",
-  description: "Sign in with your organization's identity provider.",
+  title: "SSO empresarial · Taxo Timbre",
+  description: "Inicia sesión con el proveedor de identidad de tu organización.",
 }
 
 export default function SsoPage() {
@@ -14,20 +14,20 @@ export default function SsoPage() {
     <AuthShell
       footer={
         <>
-          SSO is managed by your IT admin.{" "}
+          SSO lo administra tu equipo de TI.{" "}
           <a
             href="#"
             className="underline-offset-4 hover:text-foreground hover:underline"
           >
-            Learn more
+            Saber más
           </a>
           .
         </>
       }
     >
       <AuthCard
-        title="Sign in with SSO"
-        description="Use your company email to continue to your identity provider."
+        title="Inicia sesión con SSO"
+        description="Usa tu correo corporativo para continuar con tu proveedor de identidad."
       >
         <SsoForm />
       </AuthCard>

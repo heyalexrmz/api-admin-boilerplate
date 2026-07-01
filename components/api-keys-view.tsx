@@ -37,10 +37,10 @@ const INITIAL_API_KEY_FILTERS: ApiKeyFilters = {
 }
 
 const API_KEY_STATUS_OPTIONS: { value: ApiKeyStatus | "all"; label: string }[] = [
-  { value: "all", label: "All statuses" },
-  { value: "active", label: "Active" },
-  { value: "revoked", label: "Revoked" },
-  { value: "expired", label: "Expired" },
+  { value: "all", label: "Todos los estados" },
+  { value: "active", label: "Activas" },
+  { value: "revoked", label: "Revocadas" },
+  { value: "expired", label: "Expiradas" },
 ]
 
 function parseApiKeyFilters(searchParams: URLSearchParams): ApiKeyFilters {
@@ -129,13 +129,13 @@ export function ApiKeysView({ initialKeys }: { initialKeys: ApiKey[] }) {
               <FilterSearchInput
                 value={filters.query}
                 onChange={(q) => updateFilters({ query: q })}
-                placeholder="Search key name or preview..."
-                ariaLabel="Search API keys"
+                placeholder="Buscar nombre o vista previa..."
+                ariaLabel="Buscar llaves API"
               />
             }
             resultCount={filteredKeys.length}
             totalCount={keys.length}
-            resultLabel="keys"
+            resultLabel="llaves"
             isFiltered={isFiltered}
             onClear={() => updateFilters(INITIAL_API_KEY_FILTERS)}
           >
@@ -146,7 +146,7 @@ export function ApiKeysView({ initialKeys }: { initialKeys: ApiKey[] }) {
                   updateFilters({ status: status as ApiKeyFilters["status"] })
                 }
               >
-                <SelectTrigger className="w-36" aria-label="Filter by status">
+                <SelectTrigger className="w-36" aria-label="Filtrar por estado">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -164,11 +164,11 @@ export function ApiKeysView({ initialKeys }: { initialKeys: ApiKey[] }) {
                   updateFilters({ mode: mode as ApiKeyFilters["mode"] })
                 }
               >
-                <SelectTrigger className="w-36" aria-label="Filter by mode">
+                <SelectTrigger className="w-36" aria-label="Filtrar por modo">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All modes</SelectItem>
+                  <SelectItem value="all">Todos los modos</SelectItem>
                   {API_KEY_MODES.map((mode) => (
                     <SelectItem key={mode} value={mode}>
                       {ApiKeyModeLabels[mode]}
@@ -189,8 +189,8 @@ export function ApiKeysView({ initialKeys }: { initialKeys: ApiKey[] }) {
       ) : (
         <EmptyState
           icon={KeyRound}
-          title="No API keys"
-          description="Create scoped keys for your applications and team members. Rotate keys anytime without downtime."
+          title="Sin llaves API"
+          description="Crea llaves con permisos específicos para tus aplicaciones y equipo. Puedes rotarlas sin interrumpir el servicio."
         />
       )}
     </>

@@ -33,7 +33,7 @@ export function OnboardingForm() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <Label htmlFor={firstNameId}>First name</Label>
+          <Label htmlFor={firstNameId}>Nombre</Label>
           <Input
             id={firstNameId}
             name="firstName"
@@ -52,7 +52,7 @@ export function OnboardingForm() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor={lastNameId}>Last name</Label>
+          <Label htmlFor={lastNameId}>Apellido</Label>
           <Input
             id={lastNameId}
             name="lastName"
@@ -71,7 +71,7 @@ export function OnboardingForm() {
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor={workspaceId}>Workspace name</Label>
+        <Label htmlFor={workspaceId}>Nombre del espacio de trabajo</Label>
         <Input
           id={workspaceId}
           name="name"
@@ -80,7 +80,7 @@ export function OnboardingForm() {
           required
           minLength={2}
           maxLength={60}
-          placeholder="Acme Inc."
+          placeholder="Taxo Timbre"
           value={name}
           onChange={(e) => setName(e.target.value)}
           aria-invalid={!!state?.errors?.name}
@@ -88,8 +88,8 @@ export function OnboardingForm() {
         />
         {slugPreview && (
           <p className="text-xs text-muted-foreground">
-            Workspace URL:{" "}
-            <span className="font-medium text-foreground">acme.com/{slugPreview}</span>
+            URL del espacio:{" "}
+            <span className="font-medium text-foreground">taxotimbre.com/{slugPreview}</span>
           </p>
         )}
         {state?.errors?.name?.[0] && (
@@ -97,7 +97,7 @@ export function OnboardingForm() {
         )}
       </div>
 
-      <SubmitButton label="Create workspace" pendingLabel="Creating…" />
+      <SubmitButton label="Crear espacio" pendingLabel="Creando…" />
     </form>
   );
 }

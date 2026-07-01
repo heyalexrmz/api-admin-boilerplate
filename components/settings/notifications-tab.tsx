@@ -12,9 +12,9 @@ export function NotificationsTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Notifications</CardTitle>
+        <CardTitle>Notificaciones</CardTitle>
         <CardDescription>
-          Choose which updates we send to your inbox and the dashboard.
+          Elige qué actualizaciones enviamos a tu correo y mostramos en el panel.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -22,10 +22,10 @@ export function NotificationsTab() {
           <span className="inline-flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Bell className="size-5" aria-hidden="true" />
           </span>
-          <p className="text-sm font-medium">Not configurable yet</p>
+          <p className="text-sm font-medium">Aún no configurable</p>
           <p className="max-w-sm text-sm text-pretty text-muted-foreground">
-            Notification preferences will appear here once they&apos;re available for your
-            workspace.
+            Las preferencias de notificaciones aparecerán aquí cuando estén disponibles
+            para tu espacio de trabajo.
           </p>
         </div>
       </CardContent>

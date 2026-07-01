@@ -45,8 +45,8 @@ export function RevokeApiKeyDialog({
         toast.error(res.error)
         return
       }
-      toast.success("API key revoked", {
-        description: `${apiKey.name} can no longer authenticate requests.`,
+      toast.success("Llave API revocada", {
+        description: `${apiKey.name} ya no puede autenticar solicitudes.`,
       })
       onRevoked(apiKey.id)
       setConfirmText("")
@@ -67,28 +67,27 @@ export function RevokeApiKeyDialog({
             <span className="inline-flex size-7 items-center justify-center rounded-md bg-destructive/15 text-destructive">
               <ShieldAlert className="size-4" />
             </span>
-            Revoke API key
+            Revocar llave API
           </DialogTitle>
           <DialogDescription>
-            This permanently disables the key. Any service using it will fail
-            immediately.
+            Esto deshabilita la llave permanentemente. Cualquier servicio que la use
+            fallará de inmediato.
           </DialogDescription>
         </DialogHeader>
 
         <Alert variant="destructive">
           <ShieldAlert />
-          <AlertTitle>This action can&apos;t be undone</AlertTitle>
+          <AlertTitle>Esta acción no se puede deshacer</AlertTitle>
           <AlertDescription>
-            You&apos;ll need to create and distribute a new key to restore
-            access.
+            Tendrás que crear y distribuir una nueva llave para restaurar el acceso.
           </AlertDescription>
         </Alert>
 
         <div className="flex flex-col gap-2">
           <Label htmlFor={inputId} className="select-text">
-            Type{" "}
+            Escribe{" "}
             <span className="font-medium text-foreground">{apiKey.name}</span>{" "}
-            to confirm
+            para confirmar
           </Label>
           <Input
             id={inputId}
@@ -105,7 +104,7 @@ export function RevokeApiKeyDialog({
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline" disabled={isPending}>
-              Cancel
+              Cancelar
             </Button>
           </DialogClose>
           <Button
@@ -116,10 +115,10 @@ export function RevokeApiKeyDialog({
             {isPending ? (
               <>
                 <LoaderCircle className="animate-spin" />
-                Revoking…
+                Revocando…
               </>
             ) : (
-              "Revoke key"
+              "Revocar llave"
             )}
           </Button>
         </DialogFooter>

@@ -33,7 +33,7 @@ import {
 
 const navMain = [
   {
-    title: "Overview",
+    title: "Resumen",
     url: "/dashboard",
     icon: BarChart3,
   },
@@ -43,14 +43,14 @@ const navMain = [
     icon: FolderKanban,
   },
   {
-    title: "Webservice",
+    title: "API",
     url: "/dashboard/api-overview",
     icon: KeyRound,
     managerOnly: true,
     children: [
-      { title: "API Overview", url: "/dashboard/api-overview", icon: BarChart3 },
-      { title: "API Keys", url: "/dashboard/keys", icon: KeyRound },
-      { title: "Logs", url: "/dashboard/logs", icon: FileText },
+      { title: "Resumen API", url: "/dashboard/api-overview", icon: BarChart3 },
+      { title: "Llaves API", url: "/dashboard/keys", icon: KeyRound },
+      { title: "Registros", url: "/dashboard/logs", icon: FileText },
       { title: "Webhooks", url: "/dashboard/webhooks", icon: Webhook },
     ],
   },
@@ -61,7 +61,7 @@ const navMain = [
     superadminOnly: true,
   },
   {
-    title: "Settings",
+    title: "Configuración",
     url: "/dashboard/settings",
     icon: Settings,
   },
@@ -98,7 +98,7 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Platform</SidebarGroupLabel>
+          <SidebarGroupLabel>Plataforma</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {

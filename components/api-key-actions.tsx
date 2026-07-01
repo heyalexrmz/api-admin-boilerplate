@@ -43,7 +43,7 @@ export function ApiKeyActions({
           <Button
             variant="outline"
             size="icon-sm"
-            aria-label={`Actions for ${apiKey.name}`}
+            aria-label={`Acciones para ${apiKey.name}`}
           >
             <MoreHorizontal />
           </Button>
@@ -51,11 +51,11 @@ export function ApiKeyActions({
         <DropdownMenuContent align="end" className="w-40">
           <DropdownMenuItem onSelect={() => setRenameOpen(true)}>
             <Pencil />
-            Rename
+            Renombrar
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setRotateOpen(true)}>
             <RefreshCw />
-            Rotate
+            Rotar
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -63,7 +63,7 @@ export function ApiKeyActions({
             onSelect={() => setRevokeOpen(true)}
           >
             <ShieldOff />
-            Revoke
+            Revocar
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

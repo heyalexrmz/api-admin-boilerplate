@@ -19,8 +19,8 @@ import {
 import { cn } from "@/lib/utils"
 
 export const metadata = {
-  title: "API Overview · Dashboard",
-  description: "API telemetry overview",
+  title: "Resumen API · Taxo Timbre",
+  description: "Resumen de telemetría de la API",
 }
 
 export const dynamic = "force-dynamic"
@@ -62,7 +62,7 @@ function StatCard({
               <Arrow className="size-3" />
               {trendLabel}
             </Badge>
-            <span className="ml-2 text-xs text-muted-foreground">vs. last week</span>
+            <span className="ml-2 text-xs text-muted-foreground">vs. semana anterior</span>
           </>
         ) : (
           <span className="text-xs text-muted-foreground">{note ?? "-"}</span>
@@ -90,24 +90,24 @@ export default async function ApiOverviewPage({
     <div className="grid gap-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Requests (24h)"
+          label="Solicitudes (24h)"
           value={String(stats.requests24h)}
-          note="last 24 hours"
+          note="últimas 24 horas"
         />
         <StatCard
-          label="Active keys"
+          label="Llaves activas"
           value={String(activeKeys)}
-          note="current"
+          note="actual"
         />
         <StatCard
-          label="Error rate"
+          label="Tasa de error"
           value={`${stats.errorRate24h}%`}
-          note={`${stats.errorCount24h} of ${stats.requests24h} requests`}
+          note={`${stats.errorCount24h} de ${stats.requests24h} solicitudes`}
         />
         <StatCard
-          label="Avg latency"
+          label="Latencia promedio"
           value={`${stats.avgLatencyMs24h} ms`}
-          note="last 24 hours"
+          note="últimas 24 horas"
         />
       </div>
 

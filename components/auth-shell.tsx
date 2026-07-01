@@ -16,7 +16,7 @@ export function AuthShell({
             <span className="inline-flex size-7 items-center justify-center rounded-md bg-foreground text-background">
               <Building2 className="size-4" />
             </span>
-            Acme
+            Taxo Timbre
           </div>
 
           {children}

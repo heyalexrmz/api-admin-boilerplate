@@ -14,7 +14,7 @@ export async function sendEmail({
   react: React.ReactElement;
 }) {
   const { error } = await resend.emails.send({
-    from: process.env.RESEND_FROM ?? "Acme <onboarding@resend.dev>",
+    from: process.env.RESEND_FROM ?? "Taxo Timbre <onboarding@resend.dev>",
     to,
     subject,
     react,
@@ -43,7 +43,7 @@ export async function sendMagicLinkEmail(email: string, url: string) {
   }
   await sendEmail({
     to: email,
-    subject: "Your Acme sign-in link",
+    subject: "Tu enlace de acceso a Taxo Timbre",
     react: MagicLinkEmail({ url }),
   });
 }
@@ -75,7 +75,7 @@ export async function sendInvitationEmail({
 
   await sendEmail({
     to,
-    subject: `${inviterName} invited you to join ${organizationName} on Acme`,
+    subject: `${inviterName} te invitó a unirte a ${organizationName} en Taxo Timbre`,
     react: InvitationEmail({ inviterName, organizationName, url }),
   });
 }

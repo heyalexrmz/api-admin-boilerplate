@@ -153,14 +153,14 @@ export function DataTable<TData, TValue>({
         <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
             <span>
-              Showing{" "}
+              Mostrando{" "}
               <span className="font-medium text-foreground">
                 {rangeStart + 1}–{rangeEnd}
               </span>{" "}
-              of <span className="font-medium text-foreground">{data.length}</span>
+              de <span className="font-medium text-foreground">{data.length}</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="hidden sm:inline">Rows per page</span>
+              <span className="hidden sm:inline">Filas por página</span>
               <Select
                 value={String(currentPageSize)}
                 onValueChange={(value) => table.setPageSize(Number(value))}
@@ -188,12 +188,12 @@ export function DataTable<TData, TValue>({
               disabled={!table.getCanPreviousPage()}
             >
               <ChevronLeft />
-              Prev
+              Anterior
             </Button>
             <span className="text-muted-foreground">
-              Page{" "}
+              Página{" "}
               <span className="font-medium text-foreground">{pageIndex + 1}</span>{" "}
-              of <span className="font-medium text-foreground">{pageCount}</span>
+              de <span className="font-medium text-foreground">{pageCount}</span>
             </span>
             <Button
               variant="outline"
@@ -202,7 +202,7 @@ export function DataTable<TData, TValue>({
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              Next
+              Siguiente
               <ChevronRight />
             </Button>
           </div>

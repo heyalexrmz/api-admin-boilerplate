@@ -23,7 +23,7 @@ export function SecurityTab({
       const result = await revokeSession(id)
       if ("success" in result) {
         setSessions((prev) => prev.filter((s) => s.id !== id))
-        toast.success("Session revoked")
+        toast.success("Sesión revocada")
       } else {
         toast.error(result.error)
       }
@@ -37,8 +37,8 @@ export function SecurityTab({
         setSessions((prev) => prev.filter((s) => s.current))
         toast.success(
           result.revoked > 0
-            ? `Signed out of ${result.revoked} other session${result.revoked === 1 ? "" : "s"}`
-            : "No other sessions to sign out"
+            ? `Cerramos ${result.revoked} sesión${result.revoked === 1 ? "" : "es"} adicional${result.revoked === 1 ? "" : "es"}`
+            : "No hay otras sesiones por cerrar"
         )
       } else {
         toast.error(result.error)
@@ -51,12 +51,12 @@ export function SecurityTab({
   return (
     <div className="flex flex-col gap-6">
       <SettingsSection
-        title="Active sessions"
-        description="Devices currently signed into your account. Revoke any you don't recognize."
+        title="Sesiones activas"
+        description="Dispositivos con sesión iniciada en tu cuenta. Revoca cualquiera que no reconozcas."
       >
         {sessions.length === 0 ? (
           <p className="py-2 text-sm text-muted-foreground">
-            No active sessions found.
+            No encontramos sesiones activas.
           </p>
         ) : (
           <ul className="flex flex-col divide-y divide-border">
@@ -76,12 +76,12 @@ export function SecurityTab({
                         {session.device}
                         {session.current && (
                           <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-normal text-emerald-600 dark:text-emerald-400">
-                            This device
+                            Este dispositivo
                           </span>
                         )}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {session.location ?? "Unknown location"} · {session.lastActive}
+                        {session.location ?? "Ubicación desconocida"} · {session.lastActive}
                       </p>
                     </div>
                   </div>
@@ -94,7 +94,7 @@ export function SecurityTab({
                       disabled={pendingId}
                       onClick={() => handleRevoke(session.id)}
                     >
-                      Revoke
+                      Revocar
                     </Button>
                   )}
                 </li>
@@ -110,7 +110,7 @@ export function SecurityTab({
             disabled={pendingAll}
             onClick={handleRevokeOthers}
           >
-            Sign out everywhere else
+            Cerrar las demás sesiones
           </Button>
         )}
       </SettingsSection>

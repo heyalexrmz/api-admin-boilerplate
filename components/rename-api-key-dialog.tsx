@@ -25,7 +25,7 @@ function RenameSubmitButton({ disabled }: { disabled: boolean }) {
   return (
     <Button type="submit" disabled={pending || disabled}>
       <Check />
-      Save
+      Guardar
     </Button>
   )
 }
@@ -50,7 +50,7 @@ export function RenameApiKeyDialog({
   useEffect(() => {
     if (state?.name) {
       onRenamed(apiKey.id, state.name)
-      toast.success("Key renamed")
+      toast.success("Llave renombrada")
       onOpenChange(false)
     }
   }, [state?.name])
@@ -64,16 +64,15 @@ export function RenameApiKeyDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Rename API key</DialogTitle>
+          <DialogTitle>Renombrar llave API</DialogTitle>
           <DialogDescription>
-            Choose a clearer name for this key. The key itself isn&apos;t
-            affected.
+            Elige un nombre más claro para esta llave. La llave no se modifica.
           </DialogDescription>
         </DialogHeader>
         <form action={action} className="flex flex-col gap-4">
           <input type="hidden" name="id" value={apiKey.id} />
           <div className="flex flex-col gap-2">
-            <Label htmlFor={inputId}>Key name</Label>
+            <Label htmlFor={inputId}>Nombre de la llave</Label>
             <Input
               id={inputId}
               name="name"
@@ -97,7 +96,7 @@ export function RenameApiKeyDialog({
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline" type="button">
-                Cancel
+                Cancelar
               </Button>
             </DialogClose>
             <RenameSubmitButton disabled={!hasChanges} />

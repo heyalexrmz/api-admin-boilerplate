@@ -4,8 +4,8 @@ import { listWebhooks } from "@/app/actions/webhooks"
 import { getCanManageActiveOrg } from "@/app/lib/auth"
 
 export const metadata = {
-  title: "Webhooks · Dashboard",
-  description: "Manage webhooks",
+  title: "Webhooks · Taxo Timbre",
+  description: "Administra webhooks",
 }
 
 export default async function WebhooksPage() {

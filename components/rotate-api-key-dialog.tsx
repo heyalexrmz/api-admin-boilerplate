@@ -49,8 +49,8 @@ export function RotateApiKeyDialog({
       }
       onRotated(apiKey.id, res.key.preview, res.key.lastRotatedAt)
       setRotated(res.key)
-      toast.success("API key rotated", {
-        description: "The previous secret no longer works.",
+      toast.success("Llave API rotada", {
+        description: "El secreto anterior ya no funciona.",
       })
     })
   }
@@ -73,14 +73,14 @@ export function RotateApiKeyDialog({
                 <span className="inline-flex size-7 items-center justify-center rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                   <RefreshCw className="size-4" />
                 </span>
-                API key rotated
+                Llave API rotada
               </DialogTitle>
               <DialogDescription>
-                The new secret for{" "}
+                El nuevo secreto para{" "}
                 <span className="font-medium text-foreground">
                   {apiKey.name}
                 </span>{" "}
-                is ready. The old one is invalid.
+                está listo. El anterior ya no es válido.
               </DialogDescription>
             </DialogHeader>
 
@@ -96,33 +96,33 @@ export function RotateApiKeyDialog({
                 <span className="inline-flex size-7 items-center justify-center rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400">
                   <RefreshCw className="size-4" />
                 </span>
-                Rotate API key
+                Rotar llave API
               </DialogTitle>
               <DialogDescription>
-                Generate a new secret for{" "}
+                Genera un nuevo secreto para{" "}
                 <span className="font-medium text-foreground">
                   {apiKey.name}
                 </span>
-                . The key keeps its name, scopes, and expiry.
+                . La llave conserva su nombre, permisos y expiración.
               </DialogDescription>
             </DialogHeader>
 
             <Alert>
               <ShieldAlert />
-              <AlertTitle>Any service using the old secret will break</AlertTitle>
+              <AlertTitle>Cualquier servicio que use el secreto anterior fallará</AlertTitle>
               <AlertDescription>
-                Rotation is immediate. Update your integrations with the new
-                secret right after you copy it.
+                La rotación es inmediata. Actualiza tus integraciones con el nuevo
+                secreto después de copiarlo.
               </AlertDescription>
             </Alert>
 
             <div className="flex flex-col gap-2">
               <Label htmlFor={inputId} className="select-text">
-                Type{" "}
+                Escribe{" "}
                 <span className="font-medium text-foreground">
                   {apiKey.name}
                 </span>{" "}
-                to confirm
+                para confirmar
               </Label>
               <Input
                 id={inputId}
@@ -139,7 +139,7 @@ export function RotateApiKeyDialog({
             <DialogFooter>
               <DialogClose asChild>
                 <Button variant="outline" disabled={isPending}>
-                  Cancel
+                  Cancelar
                 </Button>
               </DialogClose>
               <Button
@@ -149,12 +149,12 @@ export function RotateApiKeyDialog({
                 {isPending ? (
                   <>
                     <LoaderCircle className="animate-spin" />
-                    Rotating…
+                    Rotando…
                   </>
                 ) : (
                   <>
                     <RefreshCw />
-                    Rotate key
+                    Rotar llave
                   </>
                 )}
               </Button>

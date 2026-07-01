@@ -3,7 +3,7 @@ import { z } from "zod"
 import { isValidWebhookUrlSyntax } from "@/lib/webhook-url-policy"
 
 export const SsoFormSchema = z.object({
-  email: z.email({ error: "Enter your work email." }).trim(),
+  email: z.email({ error: "Ingresa tu correo de trabajo." }).trim(),
 })
 
 export type AuthFormState = {
@@ -17,18 +17,18 @@ export type SsoState = AuthFormState
 export const OnboardingFormSchema = z.object({
   firstName: z
     .string()
-    .min(1, { error: "Enter your first name." })
-    .max(60, { error: "Keep it under 60 characters." })
+    .min(1, { error: "Ingresa tu nombre." })
+    .max(60, { error: "Usa menos de 60 caracteres." })
     .trim(),
   lastName: z
     .string()
-    .min(1, { error: "Enter your last name." })
-    .max(60, { error: "Keep it under 60 characters." })
+    .min(1, { error: "Ingresa tu apellido." })
+    .max(60, { error: "Usa menos de 60 caracteres." })
     .trim(),
   name: z
     .string()
-    .min(2, { error: "Use at least 2 characters." })
-    .max(60, { error: "Keep the name under 60 characters." })
+    .min(2, { error: "Usa al menos 2 caracteres." })
+    .max(60, { error: "Usa menos de 60 caracteres." })
     .trim(),
 })
 
@@ -89,35 +89,35 @@ export type RotatedApiKey = {
 }
 
 export const ApiKeyScopeLabels: Record<ApiKeyScope, string> = {
-  access: "General access",
-  read: "Read",
-  write: "Write",
+  access: "Acceso general",
+  read: "Lectura",
+  write: "Escritura",
   admin: "Admin",
-  billing: "Billing",
+  billing: "Facturación",
 }
 
 export const ApiKeyExpiryLabels: Record<ApiKeyExpiry, string> = {
-  "7d": "7 days",
-  "30d": "30 days",
-  "90d": "90 days",
-  "365d": "1 year",
-  never: "Never",
+  "7d": "7 días",
+  "30d": "30 días",
+  "90d": "90 días",
+  "365d": "1 año",
+  never: "Nunca",
 }
 
 export const ApiKeyModeLabels: Record<ApiKeyMode, string> = {
-  live: "Live",
-  test: "Test",
+  live: "Producción",
+  test: "Sandbox",
 }
 
 export const CreateApiKeyFormSchema = z.object({
   name: z
     .string()
-    .min(1, { error: "Give your key a name." })
-    .max(40, { error: "Keep the name under 40 characters." })
+    .min(1, { error: "Dale un nombre a la llave." })
+    .max(40, { error: "Usa menos de 40 caracteres." })
     .trim(),
   scopes: z
     .array(z.enum(API_KEY_SCOPES))
-    .min(1, { error: "Select at least one scope." }),
+    .min(1, { error: "Selecciona al menos un permiso." }),
   expiry: z.enum(API_KEY_EXPIRIES),
   mode: z.enum(API_KEY_MODES),
 })
@@ -125,8 +125,8 @@ export const CreateApiKeyFormSchema = z.object({
 export const RenameApiKeyFormSchema = z.object({
   name: z
     .string()
-    .min(1, { error: "Name can't be empty." })
-    .max(40, { error: "Keep the name under 40 characters." })
+    .min(1, { error: "El nombre no puede estar vacío." })
+    .max(40, { error: "Usa menos de 40 caracteres." })
     .trim(),
 })
 
@@ -134,7 +134,7 @@ export const UpdateApiKeyScopesFormSchema = z.object({
   id: z.uuid(),
   scopes: z
     .array(z.enum(API_KEY_SCOPES))
-    .min(1, { error: "Select at least one scope." }),
+    .min(1, { error: "Selecciona al menos un permiso." }),
 })
 
 export type CreateApiKeyState = {
@@ -262,69 +262,69 @@ export type RotatedWebhookSecret = {
 }
 
 export const WebhookEventLabels: Record<WebhookEvent, string> = {
-  "api_key.created": "API key created",
-  "api_key.rotated": "API key rotated",
-  "api_key.revoked": "API key revoked",
-  "member.invited": "Member invited",
-  "member.removed": "Member removed",
-  "taxpayer.created": "Taxpayer created",
-  "taxpayer.updated": "Taxpayer updated",
-  "ticket.created": "Ticket created",
-  "ticket.processing": "Ticket processing",
-  "ticket.finalized": "Ticket finalized",
-  "ticket.failed": "Ticket failed",
-  "invoice.created": "Invoice created",
-  "invoice.finalized": "Invoice finalized",
-  "invoice.failed": "Invoice failed",
-  "document.created": "Document created",
-  "document.attached": "Document attached",
-  "document.failed": "Document failed",
-  "delivery.created": "Delivery created",
-  "delivery.succeeded": "Delivery succeeded",
-  "delivery.failed": "Delivery failed",
-  "delivery.exhausted": "Delivery exhausted",
+  "api_key.created": "Llave API creada",
+  "api_key.rotated": "Llave API rotada",
+  "api_key.revoked": "Llave API revocada",
+  "member.invited": "Miembro invitado",
+  "member.removed": "Miembro eliminado",
+  "taxpayer.created": "Contribuyente creado",
+  "taxpayer.updated": "Contribuyente actualizado",
+  "ticket.created": "Ticket creado",
+  "ticket.processing": "Ticket procesando",
+  "ticket.finalized": "Ticket finalizado",
+  "ticket.failed": "Ticket fallido",
+  "invoice.created": "Factura creada",
+  "invoice.finalized": "Factura finalizada",
+  "invoice.failed": "Factura fallida",
+  "document.created": "Documento creado",
+  "document.attached": "Documento adjunto",
+  "document.failed": "Documento fallido",
+  "delivery.created": "Entrega creada",
+  "delivery.succeeded": "Entrega exitosa",
+  "delivery.failed": "Entrega fallida",
+  "delivery.exhausted": "Entrega agotada",
 }
 
 export const CreateWebhookFormSchema = z.object({
   name: z
     .string()
-    .min(1, { error: "Give your webhook a name." })
-    .max(40, { error: "Keep the name under 40 characters." })
+    .min(1, { error: "Dale un nombre al webhook." })
+    .max(40, { error: "Usa menos de 40 caracteres." })
     .trim(),
   url: z
-    .url({ error: "Enter a valid URL." })
+    .url({ error: "Ingresa una URL válida." })
     .refine(isValidWebhookUrlSyntax, {
-      error: "Webhook URLs must use a public HTTPS endpoint.",
+      error: "La URL del webhook debe usar un endpoint HTTPS público.",
     }),
   description: z
     .string()
-    .max(160, { error: "Keep the description under 160 characters." })
+    .max(160, { error: "Usa menos de 160 caracteres." })
     .trim()
     .optional(),
   events: z
     .array(z.enum(WEBHOOK_EVENTS))
-    .min(1, { error: "Select at least one event to subscribe to." }),
+    .min(1, { error: "Selecciona al menos un evento." }),
 })
 
 export const UpdateWebhookFormSchema = z.object({
   name: z
     .string()
-    .min(1, { error: "Name can't be empty." })
-    .max(40, { error: "Keep the name under 40 characters." })
+    .min(1, { error: "El nombre no puede estar vacío." })
+    .max(40, { error: "Usa menos de 40 caracteres." })
     .trim(),
   url: z
-    .url({ error: "Enter a valid URL." })
+    .url({ error: "Ingresa una URL válida." })
     .refine(isValidWebhookUrlSyntax, {
-      error: "Webhook URLs must use a public HTTPS endpoint.",
+      error: "La URL del webhook debe usar un endpoint HTTPS público.",
     }),
   description: z
     .string()
-    .max(160, { error: "Keep the description under 160 characters." })
+    .max(160, { error: "Usa menos de 160 caracteres." })
     .trim()
     .optional(),
   events: z
     .array(z.enum(WEBHOOK_EVENTS))
-    .min(1, { error: "Select at least one event to subscribe to." }),
+    .min(1, { error: "Selecciona al menos un evento." }),
 })
 
 export type UpdatedWebhook = {

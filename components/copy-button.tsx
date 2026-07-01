@@ -17,7 +17,7 @@ type CopyButtonProps = {
 
 export function CopyButton({
   value,
-  label = "Copy",
+  label = "Copiar",
   onCopied,
   variant = "outline",
   size = "sm",
@@ -63,11 +63,11 @@ export function CopyButton({
       variant={variant}
       size={size}
       onClick={handleCopy}
-      aria-label={`Copy ${label}`}
+      aria-label={`Copiar ${label}`}
       className={className}
     >
       {copied ? <Check /> : <Copy />}
-      {copied ? "Copied" : "Copy"}
+      {copied ? "Copiado" : "Copiar"}
     </Button>
   )
 }

@@ -54,7 +54,7 @@ export function FilterBar({
   search,
   resultCount,
   totalCount,
-  resultLabel = "requests",
+  resultLabel = "solicitudes",
   isFiltered,
   onClear,
   children,
@@ -72,8 +72,8 @@ export function FilterBar({
       <div className="flex flex-wrap items-center gap-3">
         {search}
         <p className="ml-auto text-xs text-muted-foreground tabular-nums shrink-0">
-          Showing <span className="font-medium text-foreground">{resultCount}</span>{" "}
-          of {totalCount} {resultLabel}
+          Mostrando <span className="font-medium text-foreground">{resultCount}</span>{" "}
+          de {totalCount} {resultLabel}
         </p>
       </div>
 
@@ -82,7 +82,7 @@ export function FilterBar({
         {isFiltered && (
           <Button type="button" variant="ghost" onClick={onClear}>
             <X className="size-4" />
-            Clear
+            Limpiar
           </Button>
         )}
       </div>

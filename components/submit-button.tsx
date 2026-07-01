@@ -11,8 +11,8 @@ type SubmitButtonProps = {
 }
 
 export function SubmitButton({
-  label = "Sign in",
-  pendingLabel = "Signing in…",
+  label = "Iniciar sesión",
+  pendingLabel = "Iniciando sesión…",
 }: SubmitButtonProps) {
   const { pending } = useFormStatus()
 

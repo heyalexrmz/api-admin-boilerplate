@@ -114,7 +114,7 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <Sparkles />
-                Upgrade to Pro
+                Actualizar a Pro
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
@@ -122,18 +122,18 @@ export function NavUser({
               <DropdownMenuItem asChild>
                 <Link href="/dashboard/settings">
                   <BadgeCheck />
-                  Account
+                  Cuenta
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Bell />
-                Notifications
+                Notificaciones
               </DropdownMenuItem>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <Sun className="dark:hidden" />
                   <Moon className="hidden dark:block" />
-                  Theme
+                  Tema
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuRadioGroup
@@ -142,15 +142,15 @@ export function NavUser({
                   >
                     <DropdownMenuRadioItem value="light">
                       <Sun />
-                      Light
+                      Claro
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="dark">
                       <Moon />
-                      Dark
+                      Oscuro
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="system">
                       <Monitor />
-                      System
+                      Sistema
                     </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
                 </DropdownMenuSubContent>
@@ -166,7 +166,7 @@ export function NavUser({
               }}
             >
               <LogOut />
-              {signingOut ? "Signing out…" : "Log out"}
+              {signingOut ? "Cerrando sesión…" : "Cerrar sesión"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

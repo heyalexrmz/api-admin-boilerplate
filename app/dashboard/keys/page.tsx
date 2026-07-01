@@ -4,8 +4,8 @@ import { listApiKeys } from "@/app/actions/api-keys"
 import { getCanManageActiveOrg } from "@/app/lib/auth"
 
 export const metadata = {
-  title: "API Keys · Dashboard",
-  description: "Manage API keys",
+  title: "Llaves API · Taxo Timbre",
+  description: "Administra llaves API",
 }
 
 export default async function KeysPage() {

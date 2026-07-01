@@ -79,7 +79,7 @@ function CreateForm({
       )}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor={nameId}>Key name</Label>
+        <Label htmlFor={nameId}>Nombre de la llave</Label>
         <Input
           id={nameId}
           name="name"
@@ -87,13 +87,13 @@ function CreateForm({
           autoFocus
           required
           maxLength={40}
-          placeholder="Production server"
+          placeholder="Servidor de producción"
           aria-invalid={!!state?.errors?.name}
           aria-describedby={state?.errors?.name ? nameErrorId : undefined}
           className="h-10"
         />
         <p className="text-xs text-muted-foreground">
-          Name it after where it&apos;s used, so rogue keys are easy to spot.
+          Nómbrala según dónde se usa para identificar llaves sospechosas fácilmente.
         </p>
         {state?.errors?.name?.[0] && (
           <p id={nameErrorId} className="text-sm text-destructive">
@@ -103,10 +103,10 @@ function CreateForm({
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="api-key-mode">Mode</Label>
+        <Label htmlFor="api-key-mode">Modo</Label>
         <Select name="mode" defaultValue="live" required>
           <SelectTrigger id="api-key-mode" className="h-10 w-full">
-            <SelectValue placeholder="Choose a mode" />
+            <SelectValue placeholder="Elige un modo" />
           </SelectTrigger>
           <SelectContent>
             {API_KEY_MODES.map((mode) => (
@@ -117,15 +117,15 @@ function CreateForm({
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          Test keys use sandbox processing and never call Tocino.
+          Las llaves sandbox procesan pruebas y nunca llaman al proveedor upstream.
         </p>
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="api-key-expiry">Expiry</Label>
+        <Label htmlFor="api-key-expiry">Expiración</Label>
         <Select name="expiry" defaultValue="30d" required>
           <SelectTrigger id="api-key-expiry" className="h-10 w-full">
-            <SelectValue placeholder="Choose an expiry" />
+            <SelectValue placeholder="Elige una expiración" />
           </SelectTrigger>
           <SelectContent>
             {API_KEY_EXPIRIES.map((expiry) => (
@@ -136,7 +136,7 @@ function CreateForm({
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          Short-lived keys are safer. You can rotate anytime.
+          Las llaves de corta duración son más seguras. Puedes rotarlas en cualquier momento.
         </p>
       </div>
 
@@ -157,12 +157,12 @@ function CreateSubmitButton() {
       {pending ? (
         <>
           <LoaderCircle className="animate-spin" />
-          Creating…
+          Creando…
         </>
       ) : (
         <>
           <Sparkles />
-          Create key
+          Crear llave
         </>
       )}
     </Button>
@@ -181,8 +181,8 @@ export function CreateApiKeyDialog({
   function handleCreated(key: NewApiKey) {
     setCreatedKey(key)
     onCreated(toApiKey(key))
-    toast.success("API key created", {
-      description: "Copy it now — it won't be shown again.",
+    toast.success("Llave API creada", {
+      description: "Cópiala ahora; no volverá a mostrarse.",
     })
   }
 
@@ -199,7 +199,7 @@ export function CreateApiKeyDialog({
       <DialogTrigger asChild>
         <Button className="h-9 gap-1.5 transition-transform active:scale-[0.96]">
           <KeyRound />
-          Create API key
+          Crear llave API
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -210,14 +210,14 @@ export function CreateApiKeyDialog({
                 <span className="inline-flex size-7 items-center justify-center rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                   <Sparkles className="size-4" />
                 </span>
-                API key created
+                Llave API creada
               </DialogTitle>
               <DialogDescription>
-                Your key for{" "}
+                Tu llave para{" "}
                 <span className="font-medium text-foreground">
                   {createdKey.name}
                 </span>{" "}
-                is ready.
+                está lista.
               </DialogDescription>
             </DialogHeader>
 
@@ -229,9 +229,9 @@ export function CreateApiKeyDialog({
         ) : (
           <div className="flex flex-col gap-4">
             <DialogHeader>
-              <DialogTitle>Create API key</DialogTitle>
+              <DialogTitle>Crear llave API</DialogTitle>
               <DialogDescription>
-                Generate a scoped key for your application or integration.
+                Genera una llave con permisos específicos para tu aplicación o integración.
               </DialogDescription>
             </DialogHeader>
             <CreateForm key={formKey} onCreated={handleCreated} />

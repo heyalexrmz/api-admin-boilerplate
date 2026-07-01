@@ -9,8 +9,8 @@ import {
 } from "@/components/ui/card"
 
 export function NoAccessCard({
-  title = "Manager access required",
-  description = "You need an Admin or Owner role in this workspace to view this page. Ask a workspace admin to upgrade your role.",
+  title = "Se requiere acceso de administrador",
+  description = "Necesitas rol de Admin o Propietario para ver esta página. Pide a un administrador que actualice tu rol.",
 }: {
   title?: string
   description?: string

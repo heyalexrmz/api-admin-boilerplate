@@ -36,15 +36,15 @@ export function AccountTab({ user }: { user: SettingsUser }) {
   const hasChanges = firstName !== savedFirstName || lastName !== savedLastName
 
   useEffect(() => {
-    if (state?.success) toast.success("Profile updated")
+    if (state?.success) toast.success("Perfil actualizado")
   }, [state])
 
   return (
     <div className="flex flex-col gap-6">
       <form action={action} className="flex flex-col gap-6" noValidate>
         <SettingsSection
-          title="Account details"
-          description="This is how others will see you across the workspace."
+          title="Datos de la cuenta"
+          description="Así te verán otras personas en el espacio de trabajo."
           footer={<SaveButton disabled={!hasChanges} />}
         >
           <div className="flex items-center gap-4">
@@ -54,14 +54,14 @@ export function AccountTab({ user }: { user: SettingsUser }) {
               </AvatarFallback>
             </Avatar>
             <div className="text-sm text-muted-foreground">
-              Your avatar is generated from your initials.
+              Tu avatar se genera con tus iniciales.
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field
               id={firstNameId}
-              label="First name"
+              label="Nombre"
               error={state?.errors?.firstName?.[0]}
             >
               <Input
@@ -78,7 +78,7 @@ export function AccountTab({ user }: { user: SettingsUser }) {
 
             <Field
               id={lastNameId}
-              label="Last name"
+              label="Apellido"
               error={state?.errors?.lastName?.[0]}
             >
               <Input
@@ -96,8 +96,8 @@ export function AccountTab({ user }: { user: SettingsUser }) {
 
           <Field
             id={emailId}
-            label="Work email"
-            description="Your sign-in email. Magic link only — contact support to change it."
+            label="Correo de trabajo"
+            description="Tu correo de acceso. Solo usamos enlaces mágicos; contacta soporte para cambiarlo."
           >
             <Input
               id={emailId}

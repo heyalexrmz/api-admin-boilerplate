@@ -50,7 +50,7 @@ function consumeTestDeliveryCooldown(input: {
 
   if (lastAttempt && now - lastAttempt < TEST_DELIVERY_COOLDOWN_MS) {
     const seconds = Math.ceil((TEST_DELIVERY_COOLDOWN_MS - (now - lastAttempt)) / 1000);
-    return `Wait ${seconds}s before sending another test event.`;
+    return `Espera ${seconds}s antes de enviar otro evento de prueba.`;
   }
 
   testDeliveryAttempts.set(key, now);
@@ -152,7 +152,7 @@ export async function createWebhook(
     .returning();
 
   if (!row) {
-    return { message: "Could not create the webhook. Try again." };
+    return { message: "No pudimos crear el webhook. Intenta de nuevo." };
   }
 
   const created: NewWebhook = {
@@ -177,8 +177,8 @@ export async function updateWebhook(
   const { organization } = await requireOrganizationManager();
 
   const id = String(formData.get("id") ?? "");
-  if (!id) return { message: "Missing webhook id." };
-  if (!isValidUuid(id)) return { message: "Webhook not found." };
+  if (!id) return { message: "Falta el ID del webhook." };
+  if (!isValidUuid(id)) return { message: "No encontramos el webhook." };
 
   const validated = UpdateWebhookFormSchema.safeParse({
     name: formData.get("name"),
@@ -212,7 +212,7 @@ export async function updateWebhook(
       events: webhook.events,
     });
 
-  if (!row) return { message: "Webhook not found." };
+  if (!row) return { message: "No encontramos el webhook." };
 
   const updated: UpdatedWebhook = {
     name: row.name,
@@ -229,8 +229,8 @@ export async function toggleWebhook(
 ): Promise<{ success: true; enabled: boolean } | { error: string }> {
   const { organization } = await requireOrganizationManager();
 
-  if (!id) return { error: "Missing webhook id." };
-  if (!isValidUuid(id)) return { error: "Webhook not found." };
+  if (!id) return { error: "Falta el ID del webhook." };
+  if (!isValidUuid(id)) return { error: "No encontramos el webhook." };
 
   const [updated] = await db
     .update(webhook)
@@ -238,7 +238,7 @@ export async function toggleWebhook(
     .where(and(eq(webhook.id, id), eq(webhook.organizationId, organization.id)))
     .returning({ enabled: webhook.enabled });
 
-  if (!updated) return { error: "Could not update the webhook." };
+  if (!updated) return { error: "No pudimos actualizar el webhook." };
 
   return { success: true, enabled: updated.enabled };
 }
@@ -248,8 +248,8 @@ export async function rotateWebhookSecret(
 ): Promise<{ secret: RotatedWebhookSecret } | { error: string }> {
   const { organization } = await requireOrganizationManager();
 
-  if (!id) return { error: "Missing webhook id." };
-  if (!isValidUuid(id)) return { error: "Webhook not found." };
+  if (!id) return { error: "Falta el ID del webhook." };
+  if (!isValidUuid(id)) return { error: "No encontramos el webhook." };
 
   const secret = generateWebhookSecret();
   const now = new Date();
@@ -265,7 +265,7 @@ export async function rotateWebhookSecret(
     .where(and(eq(webhook.id, id), eq(webhook.organizationId, organization.id)))
     .returning({ id: webhook.id });
 
-  if (!row) return { error: "Webhook not found." };
+  if (!row) return { error: "No encontramos el webhook." };
 
   return {
     secret: {
@@ -282,15 +282,15 @@ export async function deleteWebhook(
 ): Promise<{ success: true } | { error: string }> {
   const { organization } = await requireOrganizationManager();
 
-  if (!id) return { error: "Missing webhook id." };
-  if (!isValidUuid(id)) return { error: "Webhook not found." };
+  if (!id) return { error: "Falta el ID del webhook." };
+  if (!isValidUuid(id)) return { error: "No encontramos el webhook." };
 
   const [row] = await db
     .delete(webhook)
     .where(and(eq(webhook.id, id), eq(webhook.organizationId, organization.id)))
     .returning({ id: webhook.id });
 
-  if (!row) return { error: "Webhook not found." };
+  if (!row) return { error: "No encontramos el webhook." };
 
   return { success: true };
 }
@@ -343,8 +343,8 @@ export async function sendTestEvent(
 ): Promise<TestEventResult> {
   const { user, organization } = await requireOrganizationManager();
 
-  if (!webhookId) return { error: "Missing webhook id." };
-  if (!isValidUuid(webhookId)) return { error: "Webhook not found." };
+  if (!webhookId) return { error: "Falta el ID del webhook." };
+  if (!isValidUuid(webhookId)) return { error: "No encontramos el webhook." };
 
   const cooldownError = consumeTestDeliveryCooldown({
     userId: user.id,
@@ -360,10 +360,10 @@ export async function sendTestEvent(
       and(eq(webhook.id, webhookId), eq(webhook.organizationId, organization.id))
     );
 
-  if (!row) return { error: "Webhook not found." };
+  if (!row) return { error: "No encontramos el webhook." };
   if (!row.secret) {
     return {
-      error: "Rotate the signing secret before sending a test event.",
+      error: "Rota el secreto de firma antes de enviar un evento de prueba.",
     };
   }
 
@@ -373,10 +373,10 @@ export async function sendTestEvent(
   const logRow = await deliverWebhookEvent(row, organization.id, "ticket.finalized", {
     webhookId: row.id,
     webhookName: row.name,
-    message: "This is a test event from Acme.",
+    message: "Este es un evento de prueba de Taxo Timbre.",
   });
 
-  if (!logRow) return { error: "Could not record the delivery." };
+  if (!logRow) return { error: "No pudimos registrar la entrega." };
 
   return {
     eventLog: toEventLog(logRow),

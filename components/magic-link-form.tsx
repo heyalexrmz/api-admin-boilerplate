@@ -16,7 +16,7 @@ function isValidEmail(value: string): boolean {
 }
 
 export function MagicLinkForm({
-  submitLabel = "Continue",
+  submitLabel = "Continuar",
   alternateLink,
 }: {
   submitLabel?: string
@@ -43,7 +43,7 @@ export function MagicLinkForm({
     })
     setLoading(false)
     if (error) {
-      setError(error.message ?? "Could not send the sign-in link. Try again.")
+      setError(error.message ?? "No pudimos enviar el enlace de acceso. Intenta de nuevo.")
       return
     }
     setSentTo(email)
@@ -55,11 +55,11 @@ export function MagicLinkForm({
         <Alert>
           <CheckCircle2 />
           <AlertDescription>
-            We sent a sign-in link to <strong className="font-medium">{sentTo}</strong>. Click the link in the email to continue.
+            Enviamos un enlace de acceso a <strong className="font-medium">{sentTo}</strong>. Haz clic en el enlace del correo para continuar.
           </AlertDescription>
         </Alert>
         <p className="text-center text-sm text-muted-foreground text-pretty">
-          Didn&apos;t get the email? Check spam, or{" "}
+          ¿No recibiste el correo? Revisa spam o{" "}
           <button
             type="button"
             onClick={() => {
@@ -68,7 +68,7 @@ export function MagicLinkForm({
             }}
             className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
           >
-            try a different address
+            intenta con otro correo
           </button>
           .
         </p>
@@ -86,7 +86,7 @@ export function MagicLinkForm({
       )}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor={emailId}>Work email</Label>
+        <Label htmlFor={emailId}>Correo de trabajo</Label>
         <div className="relative">
           <Mail
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
@@ -100,7 +100,7 @@ export function MagicLinkForm({
             autoComplete="email"
             autoFocus
             required
-            placeholder="you@company.com"
+            placeholder="tu@empresa.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={loading}
@@ -125,7 +125,7 @@ export function MagicLinkForm({
         {loading ? (
           <>
             <LoaderCircle className="animate-spin" />
-            Sending…
+            Enviando…
           </>
         ) : (
           <>

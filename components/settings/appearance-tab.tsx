@@ -9,9 +9,9 @@ import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
 
 const OPTIONS = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
-  { value: "system", label: "System", icon: Monitor },
+  { value: "light", label: "Claro", icon: Sun },
+  { value: "dark", label: "Oscuro", icon: Moon },
+  { value: "system", label: "Sistema", icon: Monitor },
 ] as const
 
 export function AppearanceTab() {
@@ -20,14 +20,14 @@ export function AppearanceTab() {
 
   function choose(value: string) {
     setTheme(value)
-    toast.success(`Theme set to ${value}`)
+    toast.success("Tema actualizado")
   }
 
   return (
     <div className="flex flex-col gap-6">
       <SettingsSection
-        title="Theme"
-        description="Choose how the dashboard looks. System follows your OS setting."
+        title="Tema"
+        description="Elige cómo se ve el panel. Sistema sigue la configuración de tu equipo."
       >
         <div className="grid grid-cols-3 gap-3">
           {OPTIONS.map((opt) => {
@@ -57,27 +57,27 @@ export function AppearanceTab() {
           })}
         </div>
         <p className="text-xs text-muted-foreground">
-          Currently rendered in{" "}
+          Actualmente se muestra en modo{" "}
           <span className="font-medium text-foreground">
-            {resolvedTheme ?? "system"}
+            {resolvedTheme === "dark" ? "oscuro" : resolvedTheme === "light" ? "claro" : "sistema"}
           </span>{" "}
-          mode.
+          .
         </p>
       </SettingsSection>
 
       <SettingsSection
-        title="Sync with system"
-        description="When on, the theme automatically follows your operating system and updates as it changes."
+        title="Sincronizar con el sistema"
+        description="Cuando está activo, el tema sigue automáticamente la configuración de tu sistema operativo."
       >
         <div className="flex items-center justify-between gap-4">
           <div className="text-sm">
             <p className="font-medium">
-              {synced ? "Following system preference" : "Using a fixed theme"}
+              {synced ? "Siguiendo la preferencia del sistema" : "Usando un tema fijo"}
             </p>
             <p className="text-xs text-muted-foreground">
               {synced
-                ? "Turn off to pin the current theme."
-                : "Turn on to let your OS decide."}
+                ? "Desactívalo para fijar el tema actual."
+                : "Actívalo para que tu sistema decida."}
             </p>
           </div>
           <Switch
@@ -85,13 +85,13 @@ export function AppearanceTab() {
             onCheckedChange={(checked) => {
               if (checked) {
                 setTheme("system")
-                toast.success("Theme synced with system")
+                toast.success("Tema sincronizado con el sistema")
               } else {
                 setTheme(resolvedTheme ?? "light")
-                toast.success("Pinned current theme")
+                toast.success("Tema actual fijado")
               }
             }}
-            aria-label="Sync theme with system"
+            aria-label="Sincronizar tema con el sistema"
           />
         </div>
       </SettingsSection>

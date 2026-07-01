@@ -25,7 +25,7 @@ export function SsoForm() {
       )}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor={emailId}>Work email</Label>
+        <Label htmlFor={emailId}>Correo de trabajo</Label>
         <div className="relative">
           <Mail
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
@@ -39,7 +39,7 @@ export function SsoForm() {
             autoComplete="email"
             autoFocus
             required
-            placeholder="you@company.com"
+            placeholder="tu@empresa.com"
             aria-invalid={!!state?.errors?.email}
             aria-describedby={state?.errors?.email ? emailErrorId : undefined}
             className="h-10 pl-9"
@@ -53,8 +53,8 @@ export function SsoForm() {
       </div>
 
       <SubmitButton
-        label="Continue with SSO"
-        pendingLabel="Redirecting to IdP…"
+        label="Continuar con SSO"
+        pendingLabel="Redirigiendo al proveedor…"
       />
 
       <Link
@@ -62,7 +62,7 @@ export function SsoForm() {
         className="inline-flex items-center justify-center gap-1.5 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to sign in
+        Volver al inicio de sesión
       </Link>
     </form>
   )

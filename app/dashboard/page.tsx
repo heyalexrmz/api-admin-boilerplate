@@ -2,8 +2,8 @@ import { getDashboardTicketOverview } from "@/app/actions/facturador"
 import { TicketRequestOverview } from "@/components/overview/ticket-request-overview"
 
 export const metadata = {
-  title: "Overview · Dashboard",
-  description: "Ticket request overview",
+  title: "Resumen · Taxo Timbre",
+  description: "Resumen de solicitudes de tickets",
 }
 
 export const dynamic = "force-dynamic"

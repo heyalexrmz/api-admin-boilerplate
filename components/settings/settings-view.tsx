@@ -60,27 +60,27 @@ export function SettingsView({
       <TabsList className="justify-start">
         <TabsTrigger value="account">
           <User />
-          Account
+          Cuenta
         </TabsTrigger>
         <TabsTrigger value="organization">
           <Users />
-          Organization
+          Organización
         </TabsTrigger>
         <TabsTrigger value="billing">
           <CreditCard />
-          Billing
+          Facturación
         </TabsTrigger>
         <TabsTrigger value="security">
           <ShieldCheck />
-          Security
+          Seguridad
         </TabsTrigger>
         <TabsTrigger value="appearance">
           <SunMoon />
-          Appearance
+          Apariencia
         </TabsTrigger>
         <TabsTrigger value="notifications">
           <Bell />
-          Notifications
+          Notificaciones
         </TabsTrigger>
       </TabsList>
 

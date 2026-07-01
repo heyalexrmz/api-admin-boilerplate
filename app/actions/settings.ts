@@ -16,7 +16,7 @@ export async function updateProfile(
 ): Promise<SettingsFormState> {
   const session = await getSession()
   if (!session) {
-    throw new Error("Unauthorized")
+    throw new Error("No autorizado")
   }
 
   const validated = ProfileFormSchema.safeParse({
@@ -41,7 +41,7 @@ export async function updateProfile(
       message:
         error instanceof Error
           ? error.message
-          : "Could not update your profile.",
+          : "No pudimos actualizar tu perfil.",
     }
   }
 
@@ -54,14 +54,14 @@ export async function deleteAccount(
 ): Promise<SettingsFormState> {
   const session = await getSession()
   if (!session) {
-    throw new Error("Unauthorized")
+    throw new Error("No autorizado")
   }
 
   const confirmed = String(formData.get("confirm") ?? "")
   if (
     confirmed.trim().toLowerCase() !== session.user.email.toLowerCase()
   ) {
-    return { message: "Type your email exactly to confirm deletion." }
+    return { message: "Escribe tu correo exactamente para confirmar la eliminación." }
   }
 
   try {
@@ -71,7 +71,7 @@ export async function deleteAccount(
       message:
         error instanceof Error
           ? error.message
-          : "Could not delete your account.",
+          : "No pudimos eliminar tu cuenta.",
     }
   }
 

@@ -61,7 +61,7 @@ function RecentTicketRow({ ticket }: { ticket: DashboardTicket }) {
           <p className="truncate font-mono text-xs">{ticket.id}</p>
           <StatusBadge status={ticket.status} />
           <Badge variant={ticket.livemode ? "outline" : "secondary"}>
-            {ticket.livemode ? "Live" : "Sandbox"}
+            {ticket.livemode ? "Producción" : "Sandbox"}
           </Badge>
         </div>
         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -73,7 +73,7 @@ function RecentTicketRow({ ticket }: { ticket: DashboardTicket }) {
       </div>
       <Button asChild variant="ghost" size="sm" className="justify-self-start sm:justify-self-end">
         <Link href="/dashboard/tickets">
-          View request
+          Ver solicitud
           <ArrowRight />
         </Link>
       </Button>
@@ -90,39 +90,39 @@ export function TicketRequestOverview({
     <div className="grid gap-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="Total tickets"
+          label="Total de tickets"
           value={overview.total}
-          note="all submitted requests"
+          note="todas las solicitudes recibidas"
           icon={Ticket}
         />
         <MetricCard
-          label="New (24h)"
+          label="Nuevos (24h)"
           value={overview.last24h}
-          note="created in the last day"
+          note="creados en el último día"
           icon={Clock}
         />
         <MetricCard
-          label="Active"
+          label="Activos"
           value={overview.active}
-          note="received, queued, pending, or processing"
+          note="recibidos, en cola, pendientes o procesando"
           icon={Activity}
         />
         <MetricCard
-          label="Failed"
+          label="Fallidos"
           value={overview.failed}
-          note="requests that need review"
+          note="solicitudes que requieren revisión"
           icon={FileWarning}
         />
       </div>
 
       <Card>
         <CardHeader>
-          <CardDescription>Recent ticket requests</CardDescription>
-          <CardTitle>Latest submissions</CardTitle>
+          <CardDescription>Solicitudes recientes</CardDescription>
+          <CardTitle>Últimos tickets</CardTitle>
           <CardAction>
             <Badge variant="outline" className="gap-1">
               <CheckCircle2 />
-              {overview.finalized} finalized
+              {overview.finalized} finalizados
             </Badge>
           </CardAction>
         </CardHeader>
@@ -135,7 +135,7 @@ export function TicketRequestOverview({
             </div>
           ) : (
             <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-              Ticket submissions will appear here after clients call the v1 API.
+              Las solicitudes aparecerán aquí cuando tus clientes usen la API v1.
             </div>
           )}
         </CardContent>

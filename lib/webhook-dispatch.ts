@@ -101,7 +101,7 @@ export async function deliverWebhookEvent(
         "X-Webhook-Event": eventType,
         "X-Webhook-Timestamp": Math.floor(createdAt.getTime() / 1000).toString(),
         "X-Webhook-Signature": `sha256=${signature}`,
-        "User-Agent": "Acme-Webhook/1.0",
+        "User-Agent": "TaxoTimbre-Webhook/1.0",
       },
       body,
       redirect: "error",

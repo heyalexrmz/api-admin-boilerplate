@@ -49,7 +49,7 @@ export function InviteForm({
     })
     setLoading(false)
     if (error) {
-      setError(error.message ?? "Could not send the sign-in link. Try again.")
+      setError(error.message ?? "No pudimos enviar el enlace de acceso. Intenta de nuevo.")
       return
     }
     setSentTo(email)
@@ -61,19 +61,19 @@ export function InviteForm({
         <Alert>
           <CheckCircle2 />
           <AlertDescription>
-            We sent a sign-in link to <strong className="font-medium">{sentTo}</strong>.
-            Click the link in the email to accept your invite and join{" "}
+            Enviamos un enlace de acceso a <strong className="font-medium">{sentTo}</strong>.
+            Haz clic en el enlace del correo para aceptar la invitación y unirte a{" "}
             <strong className="font-medium">{workspaceName}</strong>.
           </AlertDescription>
         </Alert>
         <p className="text-center text-sm text-muted-foreground text-pretty">
-          Didn&apos;t get the email? Check spam, or{" "}
+          ¿No recibiste el correo? Revisa spam o{" "}
           <button
             type="button"
             onClick={() => setSentTo(null)}
             className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
           >
-            try again
+            intenta de nuevo
           </button>
           .
         </p>
@@ -91,13 +91,13 @@ export function InviteForm({
       )}
 
       <div className="rounded-lg border bg-muted/40 px-4 py-3 text-sm text-pretty text-muted-foreground">
-        <span className="font-medium text-foreground">{inviterName}</span> invited
-        you to join{" "}
+        <span className="font-medium text-foreground">{inviterName}</span> te invitó
+        a unirte a{" "}
         <span className="font-medium text-foreground">{workspaceName}</span>.
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor={emailId}>Work email</Label>
+        <Label htmlFor={emailId}>Correo de trabajo</Label>
         <div className="relative">
           <Mail
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
@@ -117,7 +117,7 @@ export function InviteForm({
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor={nameId}>Full name</Label>
+        <Label htmlFor={nameId}>Nombre completo</Label>
         <div className="relative">
           <User
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
@@ -130,7 +130,7 @@ export function InviteForm({
             autoComplete="name"
             autoFocus
             required
-            placeholder="Jane Doe"
+            placeholder="María Pérez"
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={loading}
@@ -148,23 +148,23 @@ export function InviteForm({
         {loading ? (
           <>
             <LoaderCircle className="animate-spin" />
-            Sending invite link…
+            Enviando enlace de invitación…
           </>
         ) : (
           <>
-            Accept invite
+            Aceptar invitación
             <ArrowRight />
           </>
         )}
       </Button>
 
       <p className="text-center text-sm text-balance text-muted-foreground">
-        Already have an account?{" "}
+        ¿Ya tienes cuenta?{" "}
         <Link
           href="/"
           className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
         >
-          Sign in
+          Inicia sesión
         </Link>
       </p>
     </form>

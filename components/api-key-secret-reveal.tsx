@@ -20,7 +20,7 @@ function maskSecret(secret: string): string {
 export function ApiKeySecretReveal({
   secret,
   onDone,
-  doneLabel = "I've saved my key",
+  doneLabel = "Ya guardé mi llave",
 }: {
   secret: string
   onDone: () => void
@@ -32,10 +32,10 @@ export function ApiKeySecretReveal({
     <div className="flex flex-col gap-4">
       <Alert>
         <ShieldAlert />
-        <AlertTitle>Copy your key now</AlertTitle>
+        <AlertTitle>Copia tu llave ahora</AlertTitle>
         <AlertDescription>
-          For security, the full key is shown only this once. We store a hashed
-          copy, so it can&apos;t be recovered if you lose it.
+          Por seguridad, la llave completa solo se muestra una vez. Guardamos una
+          copia con hash, así que no podremos recuperarla si la pierdes.
         </AlertDescription>
       </Alert>
 
@@ -47,7 +47,7 @@ export function ApiKeySecretReveal({
           <button
             type="button"
             onClick={() => setShow((s) => !s)}
-            aria-label={show ? "Hide key" : "Reveal key"}
+            aria-label={show ? "Ocultar llave" : "Mostrar llave"}
             aria-pressed={show}
             className="absolute top-1/2 right-1 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
           >
@@ -57,13 +57,13 @@ export function ApiKeySecretReveal({
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs text-muted-foreground">
             {show
-              ? "Visible — hide before sharing your screen."
-              : "Hidden"}
+              ? "Visible — ocúltala antes de compartir pantalla."
+              : "Oculta"}
           </span>
           <CopyButton
             value={secret}
-            label="API key"
-            onCopied={() => toast.success("API key copied to clipboard")}
+            label="llave API"
+            onCopied={() => toast.success("Llave API copiada al portapapeles")}
           />
         </div>
       </div>
