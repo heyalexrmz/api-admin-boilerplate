@@ -336,7 +336,7 @@ function collectSubmitFields(formData: FormData): Record<string, string> {
 function tocinoErrorToTicket(error: TocinoError) {
   return {
     errorCode: error.code,
-    errorType: error.category,
+    errorType: error.category === "unknown" ? "upstream" : error.category,
     errorMessage: error.message,
   };
 }
@@ -856,10 +856,6 @@ export async function submitTicketToTocino(input: {
       : {};
   const body = {
     ...storedFields,
-    country:
-      typeof storedFields.country === "string" && storedFields.country.trim()
-        ? storedFields.country
-        : "México",
     file: imageBase64,
     file_name: row.ticket.originalFileName ?? image.originalFileName,
     ...(csfBase64 ? { csf_pdf: csfBase64 } : {}),
@@ -936,6 +932,11 @@ export async function submitTicketToTocino(input: {
       statusRank: 100,
       ...mapped,
       lastResponse: normalizedResponse,
+      upstreamRaw: {
+        phase: "submit",
+        http_status: result.status ?? null,
+        body: result.raw ?? null,
+      },
       updatedAt: new Date(),
     })
     .where(eq(ticket.id, row.ticket.id));
