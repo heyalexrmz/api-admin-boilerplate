@@ -94,7 +94,23 @@ function firstDetailMessage(detail: unknown): string | null {
   return null;
 }
 
+function parseResponseBody(text: string): unknown {
+  if (!text.trim()) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+}
+
+function recordValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
 export function mapTocinoError(phase: "submit" | "process", raw: unknown): TocinoError {
+  if (typeof raw === "string" && raw.trim()) {
+    return error("UPSTREAM_REJECTED", "upstream", raw.trim());
+  }
   const value = raw as Record<string, unknown> | null;
   if (phase === "submit") {
     if (value?.message === "__timeout__") {
@@ -142,7 +158,7 @@ export async function submitToTocino(input: {
       body: JSON.stringify(input.body),
       signal: AbortSignal.timeout(30_000),
     });
-    const json = await response.json().catch(() => ({}));
+    const json = recordValue(parseResponseBody(await response.text()));
     if (response.ok && json?.nova_request_id) {
       return {
         ok: true,
@@ -150,7 +166,12 @@ export async function submitToTocino(input: {
         raw: json,
       };
     }
-    return { ok: false, error: mapTocinoError("submit", json), raw: json, status: response.status };
+    return {
+      ok: false,
+      error: mapTocinoError("submit", json),
+      raw: json,
+      status: response.status,
+    };
   } catch {
     return { ok: false, error: mapTocinoError("submit", { message: "__timeout__" }) };
   }
