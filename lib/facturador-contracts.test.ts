@@ -177,6 +177,44 @@ describe("submitToTocino", () => {
     });
   });
 
+  it("preserves non-json upstream submit errors", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response("Invalid request body", {
+        status: 400,
+        headers: { "content-type": "text/plain" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await submitToTocino({
+      idempotencyKey: "ticket_123",
+      body: {
+        tax_id: "EKU9003173C9",
+        taxpayer_name: "Empresa Demo SA de CV",
+        file: "base64_ticket_image",
+      },
+      config: {
+        baseUrl: "https://upstream.example",
+        apiKey: "api_key",
+        webhookHeader: "typeform-signature",
+        webhookToken: "webhook_token",
+        webhookSecret: "webhook_secret",
+        assetHosts: [],
+      },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: 400,
+      raw: { message: "Invalid request body" },
+      error: {
+        code: "UPSTREAM_REJECTED",
+        category: "upstream",
+        message: "Invalid request body",
+      },
+    });
+  });
+
   it("forwards taxpayer_name for personas morales", async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ nova_request_id: "nova_123" }), {

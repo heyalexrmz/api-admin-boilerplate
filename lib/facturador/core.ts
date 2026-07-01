@@ -964,7 +964,10 @@ export async function submitTicketToTocino(input: {
   return {
     outcome: "tocino_failed" as const,
     errorCode: mapped.errorCode,
+    errorType: mapped.errorType,
     errorMessage: mapped.errorMessage,
+    upstreamStatus: result.status ?? null,
+    upstreamRaw: result.raw ?? null,
   };
 }
 
