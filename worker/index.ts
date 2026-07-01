@@ -92,7 +92,7 @@ async function processJob(row: JobRow) {
       );
     } else if (result?.outcome === "tocino_failed") {
       console.log(
-        `[worker] tocino rejected ticket=${ticketId} code=${result.errorCode} message=${result.errorMessage}`
+        `[worker] tocino rejected ticket=${ticketId} status=${result.upstreamStatus ?? "unknown"} code=${result.errorCode} type=${result.errorType ?? "unknown"} message=${result.errorMessage} upstream=${JSON.stringify(result.upstreamRaw ?? null)}`
       );
     } else if (result?.outcome === "sandbox_finalized") {
       console.log(`[worker] sandbox finalized ticket=${ticketId}`);
