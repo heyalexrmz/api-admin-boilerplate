@@ -12,6 +12,9 @@ import type { InvitationDetails } from "@/app/lib/definitions";
 
 export type OrganizationRole = "owner" | "admin" | "member";
 export type PlatformRole = "user" | "superadmin";
+type SessionWithActiveOrganization = {
+  activeOrganizationId?: string | null;
+};
 
 export const getSession = cache(async () => {
   return await auth.api.getSession({ headers: await headers() });
@@ -35,7 +38,7 @@ export const getCurrentUserRecord = cache(async () => {
 
 export const requireUser = cache(async () => {
   const user = await getUser();
-  if (!user) redirect("/");
+  if (!user) redirect("/session-expired");
   return user;
 });
 
@@ -54,7 +57,8 @@ export const getActiveOrganization = cache(async () => {
   const orgs = await getUserOrganizations();
   if (orgs.length === 0) return null;
 
-  const activeId = session?.session.activeOrganizationId;
+  const activeId = (session?.session as SessionWithActiveOrganization | undefined)
+    ?.activeOrganizationId;
   if (activeId) {
     const active = orgs.find((o) => o.id === activeId);
     if (active) return active;

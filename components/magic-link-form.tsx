@@ -6,10 +6,17 @@ import { ArrowRight, CheckCircle2, LoaderCircle, Mail, TriangleAlert } from "luc
 import { authClient } from "@/lib/auth-client"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { CloudflareTurnstile } from "@/components/cloudflare-turnstile"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const TURNSTILE_ACTION = "magic_link"
+const TURNSTILE_SITE_KEY =
+  process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY ??
+  "0x4AAAAAADuoNrUfcLUbVYXk"
+const TURNSTILE_ENABLED =
+  process.env.NODE_ENV === "production" && !!TURNSTILE_SITE_KEY
 
 function isValidEmail(value: string): boolean {
   return EMAIL_RE.test(value.trim())
@@ -29,21 +36,38 @@ export function MagicLinkForm({
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [sentTo, setSentTo] = useState<string | null>(null)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0)
 
   const emailValid = isValidEmail(email)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!isValidEmail(email)) return
+    if (TURNSTILE_ENABLED && !turnstileToken) {
+      setError("Completa la verificación de seguridad para continuar.")
+      return
+    }
     setError(null)
     setLoading(true)
     const { error } = await authClient.signIn.magicLink({
       email,
       callbackURL: "/dashboard",
+      ...(TURNSTILE_ENABLED
+        ? {
+            fetchOptions: {
+              headers: {
+                "x-captcha-response": turnstileToken ?? "",
+              },
+            },
+          }
+        : {}),
     })
     setLoading(false)
     if (error) {
       setError(error.message ?? "No pudimos enviar el enlace de acceso. Intenta de nuevo.")
+      setTurnstileToken(null)
+      setTurnstileResetKey((key) => key + 1)
       return
     }
     setSentTo(email)
@@ -116,10 +140,27 @@ export function MagicLinkForm({
         )}
       </div>
 
+      {TURNSTILE_ENABLED && (
+        <CloudflareTurnstile
+          siteKey={TURNSTILE_SITE_KEY}
+          action={TURNSTILE_ACTION}
+          resetSignal={turnstileResetKey}
+          onVerify={(token) => {
+            setError(null)
+            setTurnstileToken(token)
+          }}
+          onExpire={() => setTurnstileToken(null)}
+          onError={() => {
+            setTurnstileToken(null)
+            setError("No pudimos cargar la verificación de seguridad. Intenta de nuevo.")
+          }}
+        />
+      )}
+
       <Button
         type="submit"
         size="lg"
-        disabled={!emailValid || loading}
+        disabled={!emailValid || (TURNSTILE_ENABLED && !turnstileToken) || loading}
         className="h-10 w-full transition-transform active:scale-[0.96]"
       >
         {loading ? (
