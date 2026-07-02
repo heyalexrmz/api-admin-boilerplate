@@ -103,21 +103,7 @@ const createTicketFields = [
     location: "json body",
     requirement: "Requerido",
     type: "base64 string",
-    description: "Imagen del ticket en JPEG o PNG codificada en base64. Tamaño máximo: 10 MB.",
-  },
-  {
-    name: "file_name",
-    location: "json body",
-    requirement: "Opcional",
-    type: "string",
-    description: "Nombre del archivo del ticket, por ejemplo ticket.jpg.",
-  },
-  {
-    name: "file_content_type",
-    location: "json body",
-    requirement: "Opcional",
-    type: "string",
-    description: "Content type de la imagen. Valores esperados: image/jpeg o image/png.",
+    description: "Imagen del ticket en JPG, JPEG o PNG codificada en base64. Tamaño máximo: 10 MB.",
   },
   {
     name: "csf_pdf",
@@ -125,13 +111,6 @@ const createTicketFields = [
     requirement: "Opcional",
     type: "base64 string",
     description: "Constancia de situación fiscal en PDF codificada en base64.",
-  },
-  {
-    name: "csf_pdf_file_name",
-    location: "json body",
-    requirement: "Opcional",
-    type: "string",
-    description: "Nombre del archivo PDF, por ejemplo csf.pdf.",
   },
   {
     name: "Content-Type",
@@ -222,10 +201,7 @@ const createTicketPersonaMoralExample = `curl -X POST https://api.taxotimbre.com
     "invoice_fiscal_regimen": "601",
     "invoice_cfdi_use": "G03",
     "file": "/9j/4AAQSkZJRgABAQAAAQABAAD...",
-    "file_name": "ticket.jpg",
-    "file_content_type": "image/jpeg",
-    "csf_pdf": "JVBERi0xLjQKJcTl8uXr...",
-    "csf_pdf_file_name": "csf.pdf"
+    "csf_pdf": "JVBERi0xLjQKJcTl8uXr..."
   }'`
 
 const createTicketPersonaFisicaExample = `curl -X POST https://api.taxotimbre.com/api/v1/tickets \\
@@ -241,9 +217,7 @@ const createTicketPersonaFisicaExample = `curl -X POST https://api.taxotimbre.co
     "postal_code": "01234",
     "invoice_fiscal_regimen": "612",
     "invoice_cfdi_use": "G03",
-    "file": "/9j/4AAQSkZJRgABAQAAAQABAAD...",
-    "file_name": "ticket.jpg",
-    "file_content_type": "image/jpeg"
+    "file": "/9j/4AAQSkZJRgABAQAAAQABAAD..."
   }'`
 
 const createTicketResponse = `{
