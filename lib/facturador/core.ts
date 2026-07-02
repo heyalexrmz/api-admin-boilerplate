@@ -440,6 +440,7 @@ export async function createTicketFromFormData(input: {
   apiKeyId: string;
   mode: "live" | "test";
   requestId: string;
+  idempotencyKey?: string | null;
   formData: FormData;
   defer?: (task: () => Promise<void>) => void;
 }) {
@@ -464,6 +465,7 @@ export async function createTicketFromJson(input: {
   apiKeyId: string;
   mode: "live" | "test";
   requestId: string;
+  idempotencyKey?: string | null;
   body: unknown;
   defer?: (task: () => Promise<void>) => void;
 }) {
@@ -513,6 +515,7 @@ async function createTicketFromFiles(input: {
   apiKeyId: string;
   mode: "live" | "test";
   requestId: string;
+  idempotencyKey?: string | null;
   taxId: string;
   submitFields: Record<string, string>;
   ticketFile: TicketInputFile;
@@ -526,7 +529,22 @@ async function createTicketFromFiles(input: {
   const ticketContentType = assertTicketImage(input.ticketFile);
   const csfContentType = input.csfFile ? assertPdf(input.csfFile.buffer, "csf_pdf") : null;
   const ticketId = randomUUID();
-  const idempotencyKey = randomUUID();
+  const idempotencyKey = input.idempotencyKey?.trim() || randomUUID();
+
+  const [existingIdempotency] = await db
+    .select()
+    .from(idempotencyRecord)
+    .where(
+      and(
+        eq(idempotencyRecord.organizationId, input.organizationId),
+        eq(idempotencyRecord.idempotencyKey, idempotencyKey)
+      )
+    )
+    .limit(1);
+
+  if (existingIdempotency?.responseBody) {
+    return existingIdempotency.responseBody as ReturnType<typeof ticketReceivedView>;
+  }
 
   if (input.mode === "live") {
     await debitTicketCredit({

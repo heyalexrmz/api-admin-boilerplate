@@ -148,6 +148,13 @@ const createTicketFields = [
     description: "Llave API activa con alcance write, admin o access.",
   },
   {
+    name: "Idempotency-Key",
+    location: "header",
+    requirement: "Requerido",
+    type: "UUID/string",
+    description: "Identificador unico por intento de creacion. Reutilizalo solo para reintentar la misma solicitud.",
+  },
+  {
     name: "x-request-id",
     location: "header",
     requirement: "Opcional",
@@ -207,7 +214,7 @@ const getTicketFields = [
 const createTicketPersonaMoralExample = `curl -X POST https://api.taxotimbre.com/api/v1/tickets \\
   -H "Authorization: Bearer tt_live_xxx" \\
   -H "Content-Type: application/json" \\
-  -H "x-request-id: req_123" \\
+  -H "Idempotency-Key: 2f4f8c76-0a1b-4a2c-9233-ff2b9946d951" \\
   -d '{
     "tax_id": "EKU9003173C9",
     "taxpayer": "Empresa Demo",
@@ -224,7 +231,7 @@ const createTicketPersonaMoralExample = `curl -X POST https://api.taxotimbre.com
 const createTicketPersonaFisicaExample = `curl -X POST https://api.taxotimbre.com/api/v1/tickets \\
   -H "Authorization: Bearer tt_live_xxx" \\
   -H "Content-Type: application/json" \\
-  -H "x-request-id: req_124" \\
+  -H "Idempotency-Key: 7df97eec-1cf4-4a1a-9ea5-83c4612e4030" \\
   -d '{
     "tax_id": "GODE561231GR8",
     "taxpayer": "ALEJANDRO DOMINGUEZ RAMIREZ",

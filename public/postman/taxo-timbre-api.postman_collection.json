@@ -130,8 +130,8 @@
                 "value": "application/json"
               },
               {
-                "key": "x-request-id",
-                "value": "req_postman_create_ticket"
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
               }
             ],
             "body": {
@@ -243,8 +243,8 @@
                 "value": "application/json"
               },
               {
-                "key": "x-request-id",
-                "value": "req_postman_create_ticket_fisica"
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
               }
             ],
             "body": {
