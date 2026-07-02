@@ -151,86 +151,39 @@
             },
             "description": "Submit a ticket image for a persona moral using the same field names Tocino expects."
           },
-          "response": [
-            {
-              "name": "Success - persona moral ticket received",
-              "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer\": \"{{taxpayer}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"601\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\",\n  \"file_name\": \"ticket.jpg\",\n  \"file\": \"{{ticket_image_base64}}\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/api/v1/tickets",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tickets"
-                  ]
-                }
+          "description": "Submit a ticket image for a persona moral using taxpayer as the razon social. Requires a write, admin, or access API key."
+        },
+        {
+          "name": "Create ticket - Persona moral - Missing file",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               },
-              "status": "Created",
-              "code": 201,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                },
-                {
-                  "key": "x-request-id",
-                  "value": "req_postman_create_ticket"
-                }
-              ],
-              "body": "{\n  \"object\": \"ticket\",\n  \"data\": {\n    \"object\": \"ticket\",\n    \"id\": \"4b96e5de-69de-4dc8-aad7-4d5045fa5b31\",\n    \"tax_id\": \"EKU9003173C9\",\n    \"status\": \"received\",\n    \"livemode\": true,\n    \"created_at\": \"2026-07-01T18:20:00.000Z\"\n  },\n  \"request_id\": \"req_postman_create_ticket\"\n}"
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer\": \"{{taxpayer}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"601\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\"\n}"
             },
-            {
-              "name": "Failure - missing file",
-              "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer\": \"{{taxpayer}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"601\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/api/v1/tickets",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tickets"
-                  ]
-                }
-              },
-              "status": "Bad Request",
-              "code": 400,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
+            "url": {
+              "raw": "{{base_url}}/api/v1/tickets",
+              "host": [
+                "{{base_url}}"
               ],
-              "body": "{\n  \"error\": {\n    \"code\": \"missing_field\",\n    \"type\": \"validation_error\",\n    \"message\": \"file is required.\",\n    \"param\": \"file\"\n  },\n  \"request_id\": \"req_postman_create_ticket\"\n}"
-            }
-          ],
+              "path": [
+                "api",
+                "v1",
+                "tickets"
+              ]
+            },
+            "description": "Editable failure request for validating missing ticket image handling."
+          },
           "description": "Submit a ticket image for a persona moral using taxpayer as the razon social. Requires a write, admin, or access API key."
         },
         {
@@ -264,86 +217,39 @@
             },
             "description": "Submit a ticket image for a persona fisica using the same field names Tocino expects."
           },
-          "response": [
-            {
-              "name": "Success - persona fisica ticket received",
-              "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer\": \"{{taxpayer_name}} {{taxpayer_last_name}} {{taxpayer_second_last_name}}\",\n  \"taxpayer_name\": \"{{taxpayer_name}}\",\n  \"taxpayer_last_name\": \"{{taxpayer_last_name}}\",\n  \"taxpayer_second_last_name\": \"{{taxpayer_second_last_name}}\",\n  \"street_address_1\": \"{{street_address_1}}\",\n  \"ext_num\": \"{{ext_num}}\",\n  \"int_num\": \"{{int_num}}\",\n  \"street_address_2\": \"{{street_address_2}}\",\n  \"city\": \"{{city}}\",\n  \"state\": \"{{state}}\",\n  \"country\": \"{{country}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"{{invoice_fiscal_regimen}}\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\",\n  \"csf_pdf\": \"{{csf_pdf_base64}}\",\n  \"file_name\": \"ticket.jpg\",\n  \"file\": \"{{ticket_image_base64}}\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/api/v1/tickets",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tickets"
-                  ]
-                }
+          "description": "Submit a ticket image for a persona fisica using Tocino taxpayer plus taxpayer_name, taxpayer_last_name, and taxpayer_second_last_name. Requires a write, admin, or access API key."
+        },
+        {
+          "name": "Create ticket - Persona fisica - Missing file",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               },
-              "status": "Created",
-              "code": 201,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                },
-                {
-                  "key": "x-request-id",
-                  "value": "req_postman_create_ticket_fisica"
-                }
-              ],
-              "body": "{\n  \"object\": \"ticket\",\n  \"data\": {\n    \"object\": \"ticket\",\n    \"id\": \"4b96e5de-69de-4dc8-aad7-4d5045fa5b31\",\n    \"tax_id\": \"EKU9003173C9\",\n    \"status\": \"received\",\n    \"livemode\": true,\n    \"created_at\": \"2026-07-01T18:20:00.000Z\"\n  },\n  \"request_id\": \"req_postman_create_ticket_fisica\"\n}"
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer\": \"{{taxpayer_name}} {{taxpayer_last_name}} {{taxpayer_second_last_name}}\",\n  \"taxpayer_name\": \"{{taxpayer_name}}\",\n  \"taxpayer_last_name\": \"{{taxpayer_last_name}}\",\n  \"taxpayer_second_last_name\": \"{{taxpayer_second_last_name}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"{{invoice_fiscal_regimen}}\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\"\n}"
             },
-            {
-              "name": "Failure - missing file",
-              "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer\": \"{{taxpayer_name}} {{taxpayer_last_name}} {{taxpayer_second_last_name}}\",\n  \"taxpayer_name\": \"{{taxpayer_name}}\",\n  \"taxpayer_last_name\": \"{{taxpayer_last_name}}\",\n  \"taxpayer_second_last_name\": \"{{taxpayer_second_last_name}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"{{invoice_fiscal_regimen}}\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/api/v1/tickets",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tickets"
-                  ]
-                }
-              },
-              "status": "Bad Request",
-              "code": 400,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
+            "url": {
+              "raw": "{{base_url}}/api/v1/tickets",
+              "host": [
+                "{{base_url}}"
               ],
-              "body": "{\n  \"error\": {\n    \"code\": \"missing_field\",\n    \"type\": \"validation_error\",\n    \"message\": \"file is required.\",\n    \"param\": \"file\"\n  },\n  \"request_id\": \"req_postman_create_ticket_fisica\"\n}"
-            }
-          ],
+              "path": [
+                "api",
+                "v1",
+                "tickets"
+              ]
+            },
+            "description": "Editable failure request for validating missing ticket image handling."
+          },
           "description": "Submit a ticket image for a persona fisica using Tocino taxpayer plus taxpayer_name, taxpayer_last_name, and taxpayer_second_last_name. Requires a write, admin, or access API key."
         },
         {
@@ -374,86 +280,47 @@
               ]
             },
             "description": "List recent tickets. Requires a read, admin, or access API key."
-          },
-          "response": [
-            {
-              "name": "Success - list finalized tickets",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{base_url}}/api/v1/tickets?limit=25&status=finalized",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tickets"
-                  ],
-                  "query": [
-                    {
-                      "key": "limit",
-                      "value": "25"
-                    },
-                    {
-                      "key": "status",
-                      "value": "finalized"
-                    }
-                  ]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
+          }
+        },
+        {
+          "name": "List tickets - Invalid API key",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tickets?limit=25&status=finalized",
+              "host": [
+                "{{base_url}}"
               ],
-              "body": "{\n  \"object\": \"list\",\n  \"data\": [\n    {\n      \"object\": \"ticket\",\n      \"id\": \"4b96e5de-69de-4dc8-aad7-4d5045fa5b31\",\n      \"tax_id\": \"EKU9003173C9\",\n      \"status\": \"finalized\",\n      \"livemode\": true,\n      \"created_at\": \"2026-07-01T18:20:00.000Z\",\n      \"updated_at\": \"2026-07-01T18:22:10.000Z\",\n      \"finalized_at\": \"2026-07-01T18:22:10.000Z\",\n      \"error\": null,\n      \"invoice\": null,\n      \"documents\": []\n    }\n  ],\n  \"has_more\": false,\n  \"next_cursor\": null,\n  \"request_id\": \"req_postman_list_tickets\"\n}"
+              "path": [
+                "api",
+                "v1",
+                "tickets"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "25"
+                },
+                {
+                  "key": "status",
+                  "value": "finalized",
+                  "description": "received, queued, pending, processing, finalized, failed, or cancelled"
+                }
+              ]
             },
-            {
-              "name": "Failure - invalid API key",
-              "originalRequest": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer invalid"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/v1/tickets?limit=25",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tickets"
-                  ],
-                  "query": [
-                    {
-                      "key": "limit",
-                      "value": "25"
-                    }
-                  ]
-                }
-              },
-              "status": "Unauthorized",
-              "code": 401,
-              "_postman_previewlanguage": "json",
-              "header": [
+            "description": "Editable failure request for validating invalid API key handling.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
                 {
-                  "key": "Content-Type",
-                  "value": "application/json"
+                  "key": "token",
+                  "value": "invalid_api_key",
+                  "type": "string"
                 }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"invalid_api_key\",\n    \"type\": \"authentication_error\",\n    \"message\": \"Invalid, revoked, or expired API key.\",\n    \"param\": null\n  },\n  \"request_id\": \"req_postman_list_tickets\"\n}"
+              ]
             }
-          ]
+          }
         },
         {
           "name": "Get ticket",
@@ -473,67 +340,27 @@
               ]
             },
             "description": "Fetch one ticket by id, including invoice and document references when available."
-          },
-          "response": [
-            {
-              "name": "Success - finalized ticket",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{base_url}}/api/v1/tickets/{{ticket_id}}",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tickets",
-                    "{{ticket_id}}"
-                  ]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
+          }
+        },
+        {
+          "name": "Get ticket - Not found",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tickets/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{base_url}}"
               ],
-              "body": "{\n  \"object\": \"ticket\",\n  \"data\": {\n    \"object\": \"ticket\",\n    \"id\": \"4b96e5de-69de-4dc8-aad7-4d5045fa5b31\",\n    \"tax_id\": \"EKU9003173C9\",\n    \"status\": \"finalized\",\n    \"livemode\": true,\n    \"created_at\": \"2026-07-01T18:20:00.000Z\",\n    \"updated_at\": \"2026-07-01T18:22:10.000Z\",\n    \"finalized_at\": \"2026-07-01T18:22:10.000Z\",\n    \"error\": null,\n    \"invoice\": {\n      \"id\": \"inv_123\",\n      \"status\": \"finalized\",\n      \"uuid\": \"SAT-UUID\",\n      \"series\": \"A\",\n      \"folio\": \"1024\",\n      \"total\": \"249.00\",\n      \"invoice_date\": \"2026-07-01T18:22:10.000Z\"\n    },\n    \"documents\": []\n  },\n  \"request_id\": \"req_postman_get_ticket\"\n}"
+              "path": [
+                "api",
+                "v1",
+                "tickets",
+                "00000000-0000-0000-0000-000000000000"
+              ]
             },
-            {
-              "name": "Failure - ticket not found",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{base_url}}/api/v1/tickets/{{ticket_id}}",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tickets",
-                    "{{ticket_id}}"
-                  ]
-                }
-              },
-              "status": "Not Found",
-              "code": 404,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"not_found\",\n    \"type\": \"validation_error\",\n    \"message\": \"Ticket not found.\",\n    \"param\": null\n  },\n  \"request_id\": \"req_postman_get_ticket\"\n}"
-            }
-          ]
+            "description": "Editable failure request for validating ticket not found handling."
+          }
         }
       ]
     }
