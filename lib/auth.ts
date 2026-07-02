@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { magicLink, organization } from "better-auth/plugins";
+import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
@@ -41,8 +42,15 @@ export const auth = betterAuth({
       },
     }),
     organization({
-      allowUserToCreateOrganization: async (user) =>
-        (user as typeof schema.user.$inferSelect).platformRole === "superadmin",
+      allowUserToCreateOrganization: async (authUser) => {
+        const [row] = await db
+          .select({ platformRole: schema.user.platformRole })
+          .from(schema.user)
+          .where(eq(schema.user.id, authUser.id))
+          .limit(1);
+
+        return row?.platformRole === "superadmin";
+      },
       schema: {
         organization: {
           additionalFields: {
