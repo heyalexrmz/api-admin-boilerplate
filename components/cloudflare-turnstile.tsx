@@ -1,7 +1,7 @@
 "use client"
 
 import Script from "next/script"
-import { useEffect, useId, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 type TurnstileWidgetId = string
 
@@ -39,22 +39,33 @@ export function CloudflareTurnstile({
   onError: () => void
   resetSignal?: number
 }) {
-  const fallbackId = useId()
-  const containerId = `turnstile-${fallbackId.replace(/:/g, "")}`
+  const containerRef = useRef<HTMLDivElement | null>(null)
   const widgetIdRef = useRef<TurnstileWidgetId | null>(null)
+  const onVerifyRef = useRef(onVerify)
+  const onExpireRef = useRef(onExpire)
+  const onErrorRef = useRef(onError)
+  const didReceiveResetSignalRef = useRef(false)
   const [scriptReady, setScriptReady] = useState(
     () => typeof window !== "undefined" && !!window.turnstile
   )
 
   useEffect(() => {
-    if (!scriptReady || !window.turnstile || widgetIdRef.current) return
+    onVerifyRef.current = onVerify
+    onExpireRef.current = onExpire
+    onErrorRef.current = onError
+  }, [onError, onExpire, onVerify])
 
-    widgetIdRef.current = window.turnstile.render(`#${containerId}`, {
+  useEffect(() => {
+    if (!scriptReady || !window.turnstile || !containerRef.current || widgetIdRef.current) {
+      return
+    }
+
+    widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: siteKey,
       action,
-      callback: onVerify,
-      "expired-callback": onExpire,
-      "error-callback": onError,
+      callback: (token) => onVerifyRef.current(token),
+      "expired-callback": () => onExpireRef.current(),
+      "error-callback": () => onErrorRef.current(),
     })
 
     return () => {
@@ -63,10 +74,14 @@ export function CloudflareTurnstile({
         widgetIdRef.current = null
       }
     }
-  }, [action, containerId, onError, onExpire, onVerify, scriptReady, siteKey])
+  }, [action, scriptReady, siteKey])
 
   useEffect(() => {
     if (resetSignal === undefined || !widgetIdRef.current || !window.turnstile) {
+      return
+    }
+    if (!didReceiveResetSignalRef.current) {
+      didReceiveResetSignalRef.current = true
       return
     }
 
@@ -80,7 +95,7 @@ export function CloudflareTurnstile({
         strategy="afterInteractive"
         onLoad={() => setScriptReady(true)}
       />
-      <div id={containerId} className="min-h-[65px]" />
+      <div ref={containerRef} className="min-h-[65px]" />
     </>
   )
 }
