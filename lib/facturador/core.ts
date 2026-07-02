@@ -56,6 +56,7 @@ const JSON_INTAKE_ONLY_FIELDS = new Set([
 const MAX_TICKET_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TICKET_IMAGE_TYPES = new Set(["image/jpeg", "image/png"]);
 const ALLOWED_TICKET_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png"]);
+const PROVIDER_TICKET_EXPIRATION_MS = 24 * 60 * 60 * 1000;
 
 function periodFor(date = new Date()): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -381,6 +382,26 @@ async function incrementUsage(
         updatedAt: new Date(),
       },
     });
+}
+
+async function enqueueTicketExpiration(input: {
+  organizationId: string;
+  ticketId: string;
+  runAt?: Date;
+}) {
+  await db
+    .insert(job)
+    .values({
+      organizationId: input.organizationId,
+      type: "expire_ticket",
+      payload: { ticketId: input.ticketId },
+      runAt:
+        input.runAt ??
+        new Date(Date.now() + PROVIDER_TICKET_EXPIRATION_MS),
+      maxAttempts: 1,
+      idempotencyKey: `expire_ticket:${input.ticketId}:${input.runAt?.getTime() ?? "initial"}`,
+    })
+    .onConflictDoNothing();
 }
 
 export function ticketView(input: {
@@ -942,6 +963,10 @@ export async function submitTicketToTocino(input: {
         updatedAt: new Date(),
       })
       .where(eq(ticket.id, row.ticket.id));
+    await enqueueTicketExpiration({
+      organizationId: input.organizationId,
+      ticketId: row.ticket.id,
+    });
     return {
       outcome: "tocino_pending" as const,
       novaRequestId: result.novaRequestId,
@@ -1003,6 +1028,122 @@ export async function submitTicketToTocino(input: {
     upstreamStatus: result.status ?? null,
     upstreamRaw: result.raw ?? null,
   };
+}
+
+export async function expireTicketIfStale(input: {
+  organizationId: string;
+  ticketId: string;
+}) {
+  const [row] = await db
+    .select({ ticket })
+    .from(ticket)
+    .where(and(eq(ticket.organizationId, input.organizationId), eq(ticket.id, input.ticketId)))
+    .limit(1);
+  if (!row) return { outcome: "not_found" as const };
+  if (!["pending", "processing"].includes(row.ticket.status)) {
+    return { outcome: "already_terminal" as const, status: row.ticket.status };
+  }
+
+  const referenceTime =
+    row.ticket.status === "pending"
+      ? row.ticket.updatedAt
+      : row.ticket.processingStartedAt ?? row.ticket.updatedAt;
+  if (
+    referenceTime &&
+    Date.now() - referenceTime.getTime() < PROVIDER_TICKET_EXPIRATION_MS
+  ) {
+    await enqueueTicketExpiration({
+      organizationId: input.organizationId,
+      ticketId: input.ticketId,
+      runAt: new Date(referenceTime.getTime() + PROVIDER_TICKET_EXPIRATION_MS),
+    });
+    return { outcome: "not_expired" as const };
+  }
+
+  const error = {
+    errorCode: "PROVIDER_TIMEOUT",
+    errorType: "upstream",
+    errorMessage:
+      "Provider did not return a success or failure response within 24 hours.",
+  };
+  const normalizedResponse = ticketProviderResponseView({
+    ticketId: row.ticket.id,
+    status: "failed",
+    livemode: row.ticket.mode === "live",
+    error: {
+      code: error.errorCode,
+      type: error.errorType,
+      message: error.errorMessage,
+    },
+  });
+  const now = new Date();
+  const [updatedTicket] = await db
+    .update(ticket)
+    .set({
+      status: "failed",
+      statusRank: 100,
+      ...error,
+      lastResponse: normalizedResponse,
+      upstreamRaw: {
+        phase: "timeout",
+        timeout_hours: 24,
+        provider_request_id: row.ticket.providerRequestId,
+      },
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(ticket.organizationId, input.organizationId),
+        eq(ticket.id, input.ticketId),
+        sql`${ticket.status} in ('pending', 'processing')`
+      )
+    )
+    .returning();
+
+  if (!updatedTicket) {
+    return { outcome: "already_terminal" as const, status: row.ticket.status };
+  }
+
+  const requestMetadata = ticketWebhookRequestMetadata({
+    ticketId: updatedTicket.id,
+    idempotencyKey: updatedTicket.idempotencyKey,
+    livemode: updatedTicket.mode === "live",
+  });
+  const failurePayload = {
+    object: "ticket",
+    id: updatedTicket.id,
+    status: "failed",
+    error: {
+      code: error.errorCode,
+      type: error.errorType,
+      message: error.errorMessage,
+    },
+  };
+
+  await dispatchOrganizationWebhookEvent(
+    updatedTicket.organizationId,
+    "ticket.failed",
+    failurePayload,
+    requestMetadata
+  );
+  await dispatchOrganizationWebhookEvent(
+    updatedTicket.organizationId,
+    "invoice.failed",
+    invoiceFailedWebhookPayload({
+      ticket: {
+        id: updatedTicket.id,
+        livemode: updatedTicket.mode === "live",
+      },
+      error: {
+        code: error.errorCode,
+        type: error.errorType,
+        message: error.errorMessage,
+      },
+    }),
+    requestMetadata
+  );
+
+  return { outcome: "expired" as const };
 }
 
 async function fetchInvoiceDocument(input: {
