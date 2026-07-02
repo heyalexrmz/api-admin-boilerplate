@@ -190,34 +190,21 @@ const getTicketFields = [
   },
 ]
 
-const createTicketPersonaMoralExample = `curl -X POST https://api.taxotimbre.com/api/v1/tickets \\
+const createTicketExample = `curl -X POST https://api.taxotimbre.com/api/v1/tickets \\
   -H "Authorization: Bearer tt_live_xxx" \\
   -H "Content-Type: application/json" \\
   -H "Idempotency-Key: 2f4f8c76-0a1b-4a2c-9233-ff2b9946d951" \\
   -d '{
-    "tax_id": "EKU9003173C9",
-    "taxpayer": "Empresa Demo",
-    "postal_code": "01234",
-    "invoice_fiscal_regimen": "601",
-    "invoice_cfdi_use": "G03",
-    "file": "/9j/4AAQSkZJRgABAQAAAQABAAD...",
-    "csf_pdf": "JVBERi0xLjQKJcTl8uXr..."
-  }'`
-
-const createTicketPersonaFisicaExample = `curl -X POST https://api.taxotimbre.com/api/v1/tickets \\
-  -H "Authorization: Bearer tt_live_xxx" \\
-  -H "Content-Type: application/json" \\
-  -H "Idempotency-Key: 7df97eec-1cf4-4a1a-9ea5-83c4612e4030" \\
-  -d '{
-    "tax_id": "GODE561231GR8",
+    "tax_id": "DORA990310A30",
     "taxpayer": "ALEJANDRO DOMINGUEZ RAMIREZ",
     "taxpayer_name": "ALEJANDRO",
     "taxpayer_last_name": "DOMINGUEZ",
     "taxpayer_second_last_name": "RAMIREZ",
-    "postal_code": "01234",
-    "invoice_fiscal_regimen": "612",
+    "postal_code": "03310",
+    "invoice_fiscal_regimen": "626",
     "invoice_cfdi_use": "G03",
-    "file": "/9j/4AAQSkZJRgABAQAAAQABAAD..."
+    "file": "/9j/4AAQSkZJRgABAQAAAQABAAD...",
+    "csf_pdf": "JVBERi0xLjQKJcTl8uXr..."
   }'`
 
 const createTicketResponse = `{
@@ -537,12 +524,8 @@ function ApiReferenceContent() {
         <CardContent className="flex flex-col gap-5">
           <FieldsTable fields={createTicketFields} />
           <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Ejemplo persona moral</h3>
-            <CodeBlock code={createTicketPersonaMoralExample} />
-          </div>
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Ejemplo persona física</h3>
-            <CodeBlock code={createTicketPersonaFisicaExample} />
+            <h3 className="text-sm font-medium">Ejemplo</h3>
+            <CodeBlock code={createTicketExample} />
           </div>
           <div className="flex flex-col gap-3">
             <h3 className="text-sm font-medium">Respuesta 201</h3>
