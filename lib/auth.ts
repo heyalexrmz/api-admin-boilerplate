@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { magicLink, organization } from "better-auth/plugins";
+import { captcha, magicLink, organization } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
@@ -8,6 +8,10 @@ import * as schema from "@/lib/db/schema";
 import { sendMagicLinkEmail } from "@/lib/email/resend";
 import { randomOrgColor } from "@/lib/org-branding";
 import { ensureCreditAccount } from "@/lib/credits";
+
+const turnstileEnabled =
+  process.env.NODE_ENV === "production" &&
+  !!process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
@@ -36,6 +40,16 @@ export const auth = betterAuth({
     deleteUser: { enabled: true },
   },
   plugins: [
+    ...(turnstileEnabled
+      ? [
+          captcha({
+            provider: "cloudflare-turnstile" as const,
+            secretKey: process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY!,
+            endpoints: ["/sign-in/magic-link"],
+            expectedAction: "magic_link",
+          }),
+        ]
+      : []),
     magicLink({
       sendMagicLink: async ({ email, url }) => {
         await sendMagicLinkEmail(email, url);

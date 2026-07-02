@@ -1,10 +1,9 @@
-import Link from "next/link"
 import type { Metadata } from "next"
 import { Clock3 } from "lucide-react"
 
 import { AuthCard } from "@/components/auth-card"
 import { AuthShell } from "@/components/auth-shell"
-import { Button } from "@/components/ui/button"
+import { SessionExpiredActions } from "@/components/session-expired-actions"
 
 export const metadata: Metadata = {
   title: "Sesión expirada · Taxo Timbre",
@@ -35,13 +34,7 @@ export default function SessionExpiredPage() {
             </p>
           </div>
 
-          <Button asChild size="lg" className="h-10 w-full">
-            <Link href="/">Iniciar sesión de nuevo</Link>
-          </Button>
-
-          <Button asChild variant="outline" className="h-10 w-full">
-            <Link href="/sso">Continuar con SSO</Link>
-          </Button>
+          <SessionExpiredActions />
         </div>
       </AuthCard>
     </AuthShell>
