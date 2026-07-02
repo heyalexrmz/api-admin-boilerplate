@@ -71,36 +71,6 @@
       "type": "string"
     },
     {
-      "key": "street_address_1",
-      "value": "Av. Reforma",
-      "type": "string"
-    },
-    {
-      "key": "ext_num",
-      "value": "123",
-      "type": "string"
-    },
-    {
-      "key": "int_num",
-      "value": "4B",
-      "type": "string"
-    },
-    {
-      "key": "street_address_2",
-      "value": "Centro",
-      "type": "string"
-    },
-    {
-      "key": "city",
-      "value": "Ciudad de Mexico",
-      "type": "string"
-    },
-    {
-      "key": "state",
-      "value": "Ciudad de Mexico",
-      "type": "string"
-    },
-    {
       "key": "country",
       "value": "México",
       "type": "string"
@@ -136,7 +106,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer\": \"{{taxpayer}}\",\n  \"street_address_1\": \"{{street_address_1}}\",\n  \"ext_num\": \"{{ext_num}}\",\n  \"int_num\": \"{{int_num}}\",\n  \"street_address_2\": \"{{street_address_2}}\",\n  \"city\": \"{{city}}\",\n  \"state\": \"{{state}}\",\n  \"country\": \"{{country}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"601\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\",\n  \"csf_pdf\": \"{{csf_pdf_base64}}\",\n  \"file_name\": \"ticket.jpg\",\n  \"file\": \"{{ticket_image_base64}}\"\n}"
+              "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer\": \"{{taxpayer}}\",\n  \"country\": \"{{country}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"601\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\",\n  \"csf_pdf\": \"{{csf_pdf_base64}}\",\n  \"file_name\": \"ticket.jpg\",\n  \"file\": \"{{ticket_image_base64}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/tickets",
@@ -202,7 +172,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer\": \"{{taxpayer_name}} {{taxpayer_last_name}} {{taxpayer_second_last_name}}\",\n  \"taxpayer_name\": \"{{taxpayer_name}}\",\n  \"taxpayer_last_name\": \"{{taxpayer_last_name}}\",\n  \"taxpayer_second_last_name\": \"{{taxpayer_second_last_name}}\",\n  \"street_address_1\": \"{{street_address_1}}\",\n  \"ext_num\": \"{{ext_num}}\",\n  \"int_num\": \"{{int_num}}\",\n  \"street_address_2\": \"{{street_address_2}}\",\n  \"city\": \"{{city}}\",\n  \"state\": \"{{state}}\",\n  \"country\": \"{{country}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"{{invoice_fiscal_regimen}}\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\",\n  \"csf_pdf\": \"{{csf_pdf_base64}}\",\n  \"file_name\": \"ticket.jpg\",\n  \"file\": \"{{ticket_image_base64}}\"\n}"
+              "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer\": \"{{taxpayer_name}} {{taxpayer_last_name}} {{taxpayer_second_last_name}}\",\n  \"taxpayer_name\": \"{{taxpayer_name}}\",\n  \"taxpayer_last_name\": \"{{taxpayer_last_name}}\",\n  \"taxpayer_second_last_name\": \"{{taxpayer_second_last_name}}\",\n  \"country\": \"{{country}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"{{invoice_fiscal_regimen}}\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\",\n  \"csf_pdf\": \"{{csf_pdf_base64}}\",\n  \"file_name\": \"ticket.jpg\",\n  \"file\": \"{{ticket_image_base64}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/tickets",
