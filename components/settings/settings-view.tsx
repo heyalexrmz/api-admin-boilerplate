@@ -17,7 +17,6 @@ import { SecurityTab } from "@/components/settings/security-tab"
 import type { BillingOverview } from "@/app/actions/billing"
 import type {
   OrganizationDetails,
-  LatencyThresholds,
   SessionView,
   SettingsUser,
   TeamInvitation,
@@ -32,10 +31,8 @@ export function SettingsView({
   organization,
   members,
   invitations,
-  latencyThresholds,
   billing,
   canManage,
-  canEditLatencyThresholds,
   initialTab,
 }: {
   user: SettingsUser
@@ -43,10 +40,8 @@ export function SettingsView({
   organization: OrganizationDetails
   members: TeamMember[]
   invitations: TeamInvitation[]
-  latencyThresholds: LatencyThresholds
   billing: BillingOverview | null
   canManage: boolean
-  canEditLatencyThresholds: boolean
   initialTab: SettingsTab
 }) {
   const { setQueryParams } = useQueryParams()
@@ -92,9 +87,7 @@ export function SettingsView({
           organization={organization}
           members={members}
           invitations={invitations}
-          latencyThresholds={latencyThresholds}
           canManage={canManage}
-          canEditLatencyThresholds={canEditLatencyThresholds}
         />
       </TabsContent>
       <TabsContent value="billing" className="mt-0">

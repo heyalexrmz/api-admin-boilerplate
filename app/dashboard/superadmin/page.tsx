@@ -100,6 +100,38 @@ export default async function SuperadminPage() {
                     </p>
                   </div>
                 </div>
+                <form
+                  action={assignOrganizationPlan}
+                  className="flex w-full flex-col gap-2 sm:w-72"
+                >
+                  <input type="hidden" name="organizationId" value={org.id} />
+                  <select
+                    name="planId"
+                    defaultValue={org.plan.id}
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    aria-label={`Assign plan for ${org.name}`}
+                  >
+                    {plans.map((plan) => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.name} ({plan.ticketCreditAllowance})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Checkbox id={`reset-${org.id}`} name="resetBalance" />
+                      <Label
+                        htmlFor={`reset-${org.id}`}
+                        className="text-xs font-normal text-muted-foreground"
+                      >
+                        Reset credits
+                      </Label>
+                    </div>
+                    <Button type="submit" size="sm">
+                      Update
+                    </Button>
+                  </div>
+                </form>
               </div>
             ))}
           </CardContent>

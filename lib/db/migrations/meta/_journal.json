@@ -50,6 +50,13 @@
       "when": 1783039200000,
       "tag": "0006_ticket_expiration_and_webhook_retries",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783125600000,
+      "tag": "0007_base_pro_partner_custom_plans",
+      "breakpoints": true
     }
   ]
 }
