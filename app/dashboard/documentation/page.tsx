@@ -357,6 +357,31 @@ const ticketFailedWebhook = `{
   }
 }`
 
+const ticketProviderTimeoutWebhook = `{
+  "id": "evt_ticket_failed_f7a51617-8a89-4c89-a3ed-f10a311b0235",
+  "object": "event",
+  "api_version": "2026-06-28",
+  "type": "ticket.failed",
+  "created": "2026-07-03T14:55:17.851Z",
+  "livemode": true,
+  "data": {
+    "object": {
+      "object": "ticket",
+      "id": "ed6b3769-51b4-4b79-95d0-5f87adc06c2b",
+      "status": "failed",
+      "error": {
+        "code": "PROVIDER_TIMEOUT",
+        "type": "upstream",
+        "message": "Provider did not return a success or failure response within 24 hours."
+      }
+    }
+  },
+  "request": {
+    "id": "ed6b3769-51b4-4b79-95d0-5f87adc06c2b",
+    "idempotency_key": "ticket-idempotency-key"
+  }
+}`
+
 const invoiceFinalizedWebhook = `{
   "id": "evt_invoice_finalized_2b4b3d3e-4452-4f36-b8ed-5cfd7dc81f11",
   "object": "event",
@@ -637,6 +662,19 @@ function WebhookExamplesContent() {
         </CardHeader>
         <CardContent>
           <CodeBlock code={ticketFailedWebhook} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>ticket.failed por timeout</CardTitle>
+          <CardDescription>
+            Si el proveedor no confirma éxito o fallo en 24 horas, el ticket falla
+            automáticamente con PROVIDER_TIMEOUT.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CodeBlock code={ticketProviderTimeoutWebhook} />
         </CardContent>
       </Card>
 

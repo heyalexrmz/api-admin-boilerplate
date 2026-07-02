@@ -51,6 +51,7 @@ export const webhookEventLog = pgTable("webhook_event_log", {
   responseHeaders: jsonb("response_headers"),
   responseBody: text("response_body"),
   attemptCount: integer("attempt_count").notNull().default(1),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
   latencyMs: integer("latency_ms"),
   payload: jsonb("payload").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

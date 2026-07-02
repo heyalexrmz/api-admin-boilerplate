@@ -43,6 +43,13 @@
       "when": 1782773400000,
       "tag": "0005_process_upstream_webhook_job",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783039200000,
+      "tag": "0006_ticket_expiration_and_webhook_retries",
+      "breakpoints": true
     }
   ]
 }

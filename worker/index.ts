@@ -2,7 +2,12 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { applyTocinoWebhookEvent, submitTicketToTocino } from "@/lib/facturador/core";
+import {
+  applyTocinoWebhookEvent,
+  expireTicketIfStale,
+  submitTicketToTocino,
+} from "@/lib/facturador/core";
+import { retryWebhookDelivery } from "@/lib/webhook-dispatch";
 
 const WORKER_ID = `worker_${randomUUID()}`;
 const POLL_INTERVAL_MS = Number(process.env.WORKER_POLL_INTERVAL_MS ?? 2_000);
@@ -13,6 +18,7 @@ type JobRow = {
   type:
     | "submit_ticket"
     | "process_upstream_webhook"
+    | "expire_ticket"
     | "refresh_ticket"
     | "redeliver_ticket"
     | "dispatch_webhook";
@@ -108,6 +114,30 @@ async function processJob(row: JobRow) {
     }
     console.log(`[worker] processing upstream webhook job=${row.id}`);
     await applyTocinoWebhookEvent(row.payload.raw);
+    return;
+  }
+
+  if (row.type === "expire_ticket") {
+    const ticketId = String(row.payload.ticketId ?? "");
+    if (!ticketId) throw new Error("expire_ticket job missing ticketId");
+    console.log(`[worker] expiring stale ticket=${ticketId} job=${row.id}`);
+    const result = await expireTicketIfStale({
+      organizationId: row.organization_id,
+      ticketId,
+    });
+    console.log(
+      `[worker] expire_ticket ticket=${ticketId} outcome=${result.outcome}`
+    );
+    return;
+  }
+
+  if (row.type === "dispatch_webhook") {
+    const webhookEventLogId = String(row.payload.webhookEventLogId ?? "");
+    if (!webhookEventLogId) {
+      throw new Error("dispatch_webhook job missing webhookEventLogId");
+    }
+    console.log(`[worker] retrying webhook delivery=${webhookEventLogId} job=${row.id}`);
+    await retryWebhookDelivery(webhookEventLogId);
     return;
   }
 
