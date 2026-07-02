@@ -44,12 +44,16 @@ export const auth = betterAuth({
     organization({
       allowUserToCreateOrganization: async (authUser) => {
         const [row] = await db
-          .select({ platformRole: schema.user.platformRole })
+          .select({
+            platformRole: schema.user.platformRole,
+            membershipId: schema.member.id,
+          })
           .from(schema.user)
+          .leftJoin(schema.member, eq(schema.member.userId, schema.user.id))
           .where(eq(schema.user.id, authUser.id))
           .limit(1);
 
-        return row?.platformRole === "superadmin";
+        return row?.platformRole === "superadmin" || !row?.membershipId;
       },
       schema: {
         organization: {
