@@ -89,43 +89,41 @@ describe("ticketWebhookRequestMetadata", () => {
 });
 
 describe("normalizeTicketSubmitFields", () => {
-  it("accepts taxpayer_name for personas morales", () => {
+  it("accepts taxpayer for personas morales", () => {
     expect(
       normalizeTicketSubmitFields({
         tax_id: "EKU9003173C9",
-        taxpayer_name: " Empresa Demo SA de CV ",
+        taxpayer: " Empresa Demo ",
       })
     ).toMatchObject({
       tax_id: "EKU9003173C9",
-      taxpayer_name: "Empresa Demo SA de CV",
+      taxpayer: "Empresa Demo",
     });
   });
 
-  it("accepts taxpayer_name with parsed name fields for personas fisicas", () => {
+  it("accepts Tocino persona fisica name fields", () => {
     expect(
       normalizeTicketSubmitFields({
         tax_id: "GODE561231GR8",
-        taxpayer_name: " ALEJANDRO DOMINGUEZ RAMIREZ ",
-        firstname: " ALEJANDRO ",
-        lastname: " DOMINGUEZ ",
-        second_lastname: " RAMIREZ ",
+        taxpayer_name: " ALEJANDRO ",
+        taxpayer_last_name: " DOMINGUEZ ",
+        taxpayer_second_last_name: " RAMIREZ ",
       })
     ).toMatchObject({
       tax_id: "GODE561231GR8",
-      taxpayer_name: "ALEJANDRO DOMINGUEZ RAMIREZ",
-      firstname: "ALEJANDRO",
-      lastname: "DOMINGUEZ",
-      second_lastname: "RAMIREZ",
+      taxpayer_name: "ALEJANDRO",
+      taxpayer_last_name: "DOMINGUEZ",
+      taxpayer_second_last_name: "RAMIREZ",
     });
   });
 
-  it("requires a complete persona fisica identity when taxpayer_name is absent", () => {
+  it("requires taxpayer or a complete persona fisica identity", () => {
     expect(() =>
       normalizeTicketSubmitFields({
         tax_id: "GODE561231GR8",
-        firstname: "Maria Fernanda",
+        taxpayer_name: "ALEJANDRO",
       })
-    ).toThrow("lastname is required for persona fisica");
+    ).toThrow("taxpayer_last_name is required for persona fisica");
   });
 });
 
@@ -216,7 +214,7 @@ describe("submitToTocino", () => {
     });
   });
 
-  it("forwards taxpayer_name for personas morales", async () => {
+  it("forwards taxpayer for personas morales", async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ nova_request_id: "nova_123" }), {
         status: 200,
@@ -229,7 +227,7 @@ describe("submitToTocino", () => {
       idempotencyKey: "ticket_123",
       body: {
         tax_id: "EKU9003173C9",
-        taxpayer_name: "Empresa Demo SA de CV",
+        taxpayer: "Empresa Demo",
         file: "base64_ticket_image",
         file_name: "ticket.jpg",
       },
@@ -246,13 +244,13 @@ describe("submitToTocino", () => {
     const [, requestInit] = fetchMock.mock.calls[0];
     expect(JSON.parse(String(requestInit?.body))).toMatchObject({
       tax_id: "EKU9003173C9",
-      taxpayer_name: "Empresa Demo SA de CV",
+      taxpayer: "Empresa Demo",
       file: "base64_ticket_image",
       file_name: "ticket.jpg",
     });
   });
 
-  it("forwards persona fisica name fields", async () => {
+  it("forwards Tocino persona fisica name fields", async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ nova_request_id: "nova_123" }), {
         status: 200,
@@ -265,10 +263,9 @@ describe("submitToTocino", () => {
       idempotencyKey: "ticket_123",
       body: {
         tax_id: "GODE561231GR8",
-        taxpayer_name: "ALEJANDRO DOMINGUEZ RAMIREZ",
-        firstname: "ALEJANDRO",
-        lastname: "DOMINGUEZ",
-        second_lastname: "RAMIREZ",
+        taxpayer_name: "ALEJANDRO",
+        taxpayer_last_name: "DOMINGUEZ",
+        taxpayer_second_last_name: "RAMIREZ",
         file: "base64_ticket_image",
         file_name: "ticket.jpg",
       },
@@ -285,10 +282,9 @@ describe("submitToTocino", () => {
     const [, requestInit] = fetchMock.mock.calls[0];
     expect(JSON.parse(String(requestInit?.body))).toMatchObject({
       tax_id: "GODE561231GR8",
-      taxpayer_name: "ALEJANDRO DOMINGUEZ RAMIREZ",
-      firstname: "ALEJANDRO",
-      lastname: "DOMINGUEZ",
-      second_lastname: "RAMIREZ",
+      taxpayer_name: "ALEJANDRO",
+      taxpayer_last_name: "DOMINGUEZ",
+      taxpayer_second_last_name: "RAMIREZ",
       file: "base64_ticket_image",
       file_name: "ticket.jpg",
     });
@@ -331,11 +327,15 @@ describe("tocinoSubmitBody", () => {
       tocinoSubmitBody({
         storedFields: {
           tax_id: "EKU9003173C9",
-          taxpayer_name: "Empresa Demo SA de CV",
-          firstname: "",
+          taxpayer: "Empresa Demo",
+          taxpayer_name: "ALEJANDRO",
+          taxpayer_last_name: "DOMINGUEZ",
+          taxpayer_second_last_name: "RAMIREZ",
           file_content_type: "image/jpeg",
           csf_pdf_file_name: "csf.pdf",
           csf_pdf_content_type: "application/pdf",
+          invoice_fiscal_regimen: "612",
+          invoice_cfdi_use: "G03",
         },
         imageBase64: "base64_ticket_image",
         fileName: "ticket.jpg",
@@ -343,7 +343,12 @@ describe("tocinoSubmitBody", () => {
       })
     ).toEqual({
       tax_id: "EKU9003173C9",
-      taxpayer_name: "Empresa Demo SA de CV",
+      taxpayer: "Empresa Demo",
+      taxpayer_name: "ALEJANDRO",
+      taxpayer_last_name: "DOMINGUEZ",
+      taxpayer_second_last_name: "RAMIREZ",
+      invoice_fiscal_regimen: "612",
+      invoice_cfdi_use: "G03",
       country: "México",
       file: "base64_ticket_image",
       file_name: "ticket.jpg",

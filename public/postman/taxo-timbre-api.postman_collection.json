@@ -36,28 +36,73 @@
       "type": "string"
     },
     {
-      "key": "taxpayer_name_moral",
-      "value": "Empresa Demo SA de CV",
+      "key": "taxpayer",
+      "value": "Empresa Demo",
       "type": "string"
     },
     {
-      "key": "taxpayer_name_fisica",
-      "value": "ALEJANDRO DOMINGUEZ RAMIREZ",
-      "type": "string"
-    },
-    {
-      "key": "firstname",
+      "key": "taxpayer_name",
       "value": "ALEJANDRO",
       "type": "string"
     },
     {
-      "key": "lastname",
+      "key": "taxpayer_last_name",
       "value": "DOMINGUEZ",
       "type": "string"
     },
     {
-      "key": "second_lastname",
+      "key": "taxpayer_second_last_name",
       "value": "RAMIREZ",
+      "type": "string"
+    },
+    {
+      "key": "postal_code",
+      "value": "01234",
+      "type": "string"
+    },
+    {
+      "key": "invoice_fiscal_regimen",
+      "value": "612",
+      "type": "string"
+    },
+    {
+      "key": "invoice_cfdi_use",
+      "value": "G03",
+      "type": "string"
+    },
+    {
+      "key": "street_address_1",
+      "value": "Av. Reforma",
+      "type": "string"
+    },
+    {
+      "key": "ext_num",
+      "value": "123",
+      "type": "string"
+    },
+    {
+      "key": "int_num",
+      "value": "4B",
+      "type": "string"
+    },
+    {
+      "key": "street_address_2",
+      "value": "Centro",
+      "type": "string"
+    },
+    {
+      "key": "city",
+      "value": "Ciudad de Mexico",
+      "type": "string"
+    },
+    {
+      "key": "state",
+      "value": "Ciudad de Mexico",
+      "type": "string"
+    },
+    {
+      "key": "country",
+      "value": "México",
       "type": "string"
     }
   ],
@@ -91,7 +136,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer_name\": \"{{taxpayer_name_moral}}\",\n  \"firstname\": null,\n  \"lastname\": null,\n  \"second_lastname\": null,\n  \"file\": \"{{ticket_image_base64}}\",\n  \"file_name\": \"ticket.jpg\",\n  \"file_content_type\": \"image/jpeg\",\n  \"csf_pdf\": \"{{csf_pdf_base64}}\",\n  \"csf_pdf_file_name\": \"csf.pdf\"\n}"
+              "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer\": \"{{taxpayer}}\",\n  \"street_address_1\": \"{{street_address_1}}\",\n  \"ext_num\": \"{{ext_num}}\",\n  \"int_num\": \"{{int_num}}\",\n  \"street_address_2\": \"{{street_address_2}}\",\n  \"city\": \"{{city}}\",\n  \"state\": \"{{state}}\",\n  \"country\": \"{{country}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"601\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\",\n  \"csf_pdf\": \"{{csf_pdf_base64}}\",\n  \"file_name\": \"ticket.jpg\",\n  \"file\": \"{{ticket_image_base64}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/tickets",
@@ -104,7 +149,7 @@
                 "tickets"
               ]
             },
-            "description": "Submit a ticket image for a persona moral using taxpayer_name. Send firstname, lastname, and second_lastname as null or omit them. Requires a write, admin, or access API key."
+            "description": "Submit a ticket image for a persona moral using the same field names Tocino expects."
           },
           "response": [
             {
@@ -119,7 +164,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer_name\": \"{{taxpayer_name_moral}}\",\n  \"firstname\": null,\n  \"lastname\": null,\n  \"second_lastname\": null,\n  \"file\": \"{{ticket_image_base64}}\",\n  \"file_name\": \"ticket.jpg\",\n  \"file_content_type\": \"image/jpeg\"\n}"
+                  "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer\": \"{{taxpayer}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"601\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\",\n  \"file_name\": \"ticket.jpg\",\n  \"file\": \"{{ticket_image_base64}}\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/v1/tickets",
@@ -160,7 +205,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer_name\": \"{{taxpayer_name_moral}}\",\n  \"firstname\": null,\n  \"lastname\": null,\n  \"second_lastname\": null\n}"
+                  "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer\": \"{{taxpayer}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"601\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/v1/tickets",
@@ -185,7 +230,8 @@
               ],
               "body": "{\n  \"error\": {\n    \"code\": \"missing_field\",\n    \"type\": \"validation_error\",\n    \"message\": \"file is required.\",\n    \"param\": \"file\"\n  },\n  \"request_id\": \"req_postman_create_ticket\"\n}"
             }
-          ]
+          ],
+          "description": "Submit a ticket image for a persona moral using taxpayer as the razon social. Requires a write, admin, or access API key."
         },
         {
           "name": "Create ticket - Persona fisica",
@@ -203,7 +249,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer_name\": \"{{taxpayer_name_fisica}}\",\n  \"firstname\": \"{{firstname}}\",\n  \"lastname\": \"{{lastname}}\",\n  \"second_lastname\": \"{{second_lastname}}\",\n  \"file\": \"{{ticket_image_base64}}\",\n  \"file_name\": \"ticket.jpg\",\n  \"file_content_type\": \"image/jpeg\"\n}"
+              "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer_name\": \"{{taxpayer_name}}\",\n  \"taxpayer_last_name\": \"{{taxpayer_last_name}}\",\n  \"taxpayer_second_last_name\": \"{{taxpayer_second_last_name}}\",\n  \"street_address_1\": \"{{street_address_1}}\",\n  \"ext_num\": \"{{ext_num}}\",\n  \"int_num\": \"{{int_num}}\",\n  \"street_address_2\": \"{{street_address_2}}\",\n  \"city\": \"{{city}}\",\n  \"state\": \"{{state}}\",\n  \"country\": \"{{country}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"{{invoice_fiscal_regimen}}\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\",\n  \"csf_pdf\": \"{{csf_pdf_base64}}\",\n  \"file_name\": \"ticket.jpg\",\n  \"file\": \"{{ticket_image_base64}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/tickets",
@@ -216,7 +262,7 @@
                 "tickets"
               ]
             },
-            "description": "Submit a ticket image for a persona fisica using taxpayer_name as the full fiscal name plus firstname, lastname, and second_lastname. Requires a write, admin, or access API key."
+            "description": "Submit a ticket image for a persona fisica using the same field names Tocino expects."
           },
           "response": [
             {
@@ -231,7 +277,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer_name\": \"{{taxpayer_name_fisica}}\",\n  \"firstname\": \"{{firstname}}\",\n  \"lastname\": \"{{lastname}}\",\n  \"second_lastname\": \"{{second_lastname}}\",\n  \"file\": \"{{ticket_image_base64}}\",\n  \"file_name\": \"ticket.jpg\",\n  \"file_content_type\": \"image/jpeg\"\n}"
+                  "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer_name\": \"{{taxpayer_name}}\",\n  \"taxpayer_last_name\": \"{{taxpayer_last_name}}\",\n  \"taxpayer_second_last_name\": \"{{taxpayer_second_last_name}}\",\n  \"street_address_1\": \"{{street_address_1}}\",\n  \"ext_num\": \"{{ext_num}}\",\n  \"int_num\": \"{{int_num}}\",\n  \"street_address_2\": \"{{street_address_2}}\",\n  \"city\": \"{{city}}\",\n  \"state\": \"{{state}}\",\n  \"country\": \"{{country}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"{{invoice_fiscal_regimen}}\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\",\n  \"csf_pdf\": \"{{csf_pdf_base64}}\",\n  \"file_name\": \"ticket.jpg\",\n  \"file\": \"{{ticket_image_base64}}\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/v1/tickets",
@@ -272,7 +318,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer_name\": \"{{taxpayer_name_fisica}}\",\n  \"firstname\": \"{{firstname}}\",\n  \"lastname\": \"{{lastname}}\",\n  \"second_lastname\": \"{{second_lastname}}\"\n}"
+                  "raw": "{\n  \"tax_id\": \"{{tax_id}}\",\n  \"taxpayer_name\": \"{{taxpayer_name}}\",\n  \"taxpayer_last_name\": \"{{taxpayer_last_name}}\",\n  \"taxpayer_second_last_name\": \"{{taxpayer_second_last_name}}\",\n  \"postal_code\": \"{{postal_code}}\",\n  \"invoice_fiscal_regimen\": \"{{invoice_fiscal_regimen}}\",\n  \"invoice_cfdi_use\": \"{{invoice_cfdi_use}}\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/v1/tickets",
@@ -297,7 +343,8 @@
               ],
               "body": "{\n  \"error\": {\n    \"code\": \"missing_field\",\n    \"type\": \"validation_error\",\n    \"message\": \"file is required.\",\n    \"param\": \"file\"\n  },\n  \"request_id\": \"req_postman_create_ticket_fisica\"\n}"
             }
-          ]
+          ],
+          "description": "Submit a ticket image for a persona fisica using Tocino taxpayer_name, taxpayer_last_name, and taxpayer_second_last_name. Requires a write, admin, or access API key."
         },
         {
           "name": "List tickets",
