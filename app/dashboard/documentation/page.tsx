@@ -54,7 +54,7 @@ const createTicketFields = [
     location: "json body",
     requirement: "Condicional",
     type: "string",
-    description: "Nombre o razón social para persona moral.",
+    description: "Nombre completo o razón social. Para persona física se puede enviar o se infiere con nombre y apellidos.",
   },
   {
     name: "taxpayer_name",
@@ -227,6 +227,7 @@ const createTicketPersonaFisicaExample = `curl -X POST https://api.taxotimbre.co
   -H "x-request-id: req_124" \\
   -d '{
     "tax_id": "GODE561231GR8",
+    "taxpayer": "ALEJANDRO DOMINGUEZ RAMIREZ",
     "taxpayer_name": "ALEJANDRO",
     "taxpayer_last_name": "DOMINGUEZ",
     "taxpayer_second_last_name": "RAMIREZ",
