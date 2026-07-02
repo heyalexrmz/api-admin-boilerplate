@@ -207,7 +207,7 @@ function stringField(
 function fileFromBase64(input: {
   value: string | null;
   param: string;
-  fileName: string;
+  fileName: string | null;
   contentType: string | null;
 }): TicketInputFile {
   if (!input.value) {
@@ -233,11 +233,19 @@ function fileFromBase64(input: {
       param: input.param,
     });
   }
+  const buffer = Buffer.from(compact, "base64");
+  const detectedContentType = detectContentType(buffer, contentType);
+  const defaultFileName =
+    input.param === "csf_pdf"
+      ? "csf.pdf"
+      : detectedContentType === "image/png"
+        ? "ticket.png"
+        : "ticket.jpg";
 
   return {
-    buffer: Buffer.from(compact, "base64"),
-    fileName: input.fileName,
-    contentType,
+    buffer,
+    fileName: input.fileName ?? defaultFileName,
+    contentType: detectedContentType,
   };
 }
 
@@ -474,7 +482,7 @@ export async function createTicketFromJson(input: {
   const ticketFile = fileFromBase64({
     value: stringField(body, "file", true),
     param: "file",
-    fileName: stringField(body, "file_name") ?? "ticket.jpg",
+    fileName: stringField(body, "file_name"),
     contentType: stringField(body, "file_content_type"),
   });
   const csfValue = stringField(body, "csf_pdf");
@@ -482,7 +490,7 @@ export async function createTicketFromJson(input: {
     ? fileFromBase64({
         value: csfValue,
         param: "csf_pdf",
-        fileName: stringField(body, "csf_pdf_file_name") ?? "csf.pdf",
+        fileName: stringField(body, "csf_pdf_file_name"),
         contentType: stringField(body, "csf_pdf_content_type"),
       })
     : null;

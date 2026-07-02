@@ -117,7 +117,6 @@
                   "  invoice_fiscal_regimen: pm.collectionVariables.get('invoice_fiscal_regimen'),",
                   "  invoice_cfdi_use: pm.collectionVariables.get('invoice_cfdi_use'),",
                   "  csf_pdf: pm.collectionVariables.get('csf_pdf_base64'),",
-                  "  file_name: 'ticket.jpg',",
                   "  file: pm.collectionVariables.get('ticket_image_base64'),",
                   "};",
                   "",
