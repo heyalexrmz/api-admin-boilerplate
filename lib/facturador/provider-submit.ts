@@ -29,6 +29,17 @@ export function tocinoSubmitBody(input: {
     if (typeof value === "string" && value.trim()) fields[name] = value.trim();
   }
 
+  if (!fields.taxpayer) {
+    const fullName = [
+      fields.taxpayer_name,
+      fields.taxpayer_last_name,
+      fields.taxpayer_second_last_name,
+    ]
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      .join(" ");
+    if (fullName) fields.taxpayer = fullName;
+  }
+
   return {
     ...fields,
     country: typeof fields.country === "string" ? fields.country : "México",

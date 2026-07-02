@@ -355,6 +355,34 @@ describe("tocinoSubmitBody", () => {
       csf_pdf: "base64_csf_pdf",
     });
   });
+
+  it("adds Tocino taxpayer from persona fisica name fields when missing", () => {
+    expect(
+      tocinoSubmitBody({
+        storedFields: {
+          tax_id: "DORA990310A30",
+          taxpayer_name: "ALEJANDRO",
+          taxpayer_last_name: "DOMINGUEZ",
+          taxpayer_second_last_name: "RAMIREZ",
+          invoice_fiscal_regimen: "626",
+          invoice_cfdi_use: "G03",
+        },
+        imageBase64: "base64_ticket_image",
+        fileName: "ticket.jpg",
+      })
+    ).toEqual({
+      tax_id: "DORA990310A30",
+      taxpayer: "ALEJANDRO DOMINGUEZ RAMIREZ",
+      taxpayer_name: "ALEJANDRO",
+      taxpayer_last_name: "DOMINGUEZ",
+      taxpayer_second_last_name: "RAMIREZ",
+      invoice_fiscal_regimen: "626",
+      invoice_cfdi_use: "G03",
+      country: "México",
+      file: "base64_ticket_image",
+      file_name: "ticket.jpg",
+    });
+  });
 });
 
 describe("mapTocinoError", () => {

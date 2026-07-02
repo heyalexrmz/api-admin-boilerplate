@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
         apiKeyId: ctx.key.id,
         mode: ctx.mode,
         requestId: ctx.requestId,
+        idempotencyKey: req.headers.get("Idempotency-Key"),
         defer: after,
       } as const;
       const ticket = isJson
