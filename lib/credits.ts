@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, eq, gte, lte, sql } from "drizzle-orm";
 
 import { ApiError } from "./api-contracts";
 import { db } from "./db";
@@ -15,6 +15,13 @@ export type CreditLedgerReason = (typeof creditLedgerReason.enumValues)[number];
 export const CREDIT_COSTS = {
   ticketSubmission: 1,
 } as const;
+
+export const PLAN_TIERS = [
+  { name: "Base", ticketCreditAllowance: 20, isDefault: true },
+  { name: "Pro", ticketCreditAllowance: 50, isDefault: false },
+  { name: "Partner", ticketCreditAllowance: 100, isDefault: false },
+  { name: "Custom", ticketCreditAllowance: 0, isDefault: false },
+] as const;
 
 type DbClient = typeof db;
 
@@ -100,31 +107,43 @@ async function selectCreditAccount(
   return row ?? null;
 }
 
-async function defaultPlan(client: DbClient = db) {
-  const [defaultRow] = await client
+export async function ensurePlanCatalog(client: DbClient = db) {
+  for (const tier of PLAN_TIERS) {
+    await client
+      .insert(plan)
+      .values({
+        name: tier.name,
+        ticketCreditAllowance: tier.ticketCreditAllowance,
+        refillFrequency: "monthly",
+        isDefault: tier.isDefault,
+      })
+      .onConflictDoUpdate({
+        target: plan.name,
+        set: {
+          ticketCreditAllowance: tier.ticketCreditAllowance,
+          refillFrequency: "monthly",
+          isDefault: tier.isDefault,
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  await client
+    .update(plan)
+    .set({ isDefault: false, updatedAt: new Date() })
+    .where(and(eq(plan.isDefault, true), sql`${plan.name} <> 'Base'`));
+
+  const [basePlan] = await client
     .select()
     .from(plan)
-    .where(eq(plan.isDefault, true))
-    .orderBy(desc(plan.createdAt))
+    .where(eq(plan.name, "Base"))
     .limit(1);
 
-  if (defaultRow) return defaultRow;
-
-  const [created] = await client
-    .insert(plan)
-    .values({
-      name: "Starter",
-      ticketCreditAllowance: 100,
-      refillFrequency: "monthly",
-      isDefault: true,
-    })
-    .returning();
-
-  if (!created) throw new Error("Could not create default credit plan.");
-  return created;
+  if (!basePlan) throw new Error("Could not create Base credit plan.");
+  return basePlan;
 }
 
-async function ensureCreditAccount(
+export async function ensureCreditAccount(
   organizationId: string,
   client: DbClient = db,
   now = new Date()
@@ -132,7 +151,7 @@ async function ensureCreditAccount(
   const existing = await selectCreditAccount(organizationId, client);
   if (existing) return existing;
 
-  const selectedPlan = await defaultPlan(client);
+  const selectedPlan = await ensurePlanCatalog(client);
   const nextRefillAt = computeNextRefillAt(
     now,
     selectedPlan.refillFrequency as RefillFrequency

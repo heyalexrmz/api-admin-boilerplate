@@ -1,8 +1,8 @@
 import { LogsView } from "@/components/logs/logs-view"
 import { NoAccessCard } from "@/components/no-access-card"
 import { listRequestLogs } from "@/app/actions/logs"
-import { getOrganizationLatencyThresholds } from "@/app/actions/organization"
 import { getCanManageActiveOrg } from "@/app/lib/auth"
+import { DEFAULT_LATENCY_THRESHOLDS } from "@/lib/latency-thresholds"
 
 export const metadata = {
   title: "Registros · Taxo Timbre",
@@ -14,9 +14,6 @@ export const dynamic = "force-dynamic"
 export default async function LogsPage() {
   const canManage = await getCanManageActiveOrg()
   if (!canManage) return <NoAccessCard />
-  const [logs, latencyThresholds] = await Promise.all([
-    listRequestLogs(),
-    getOrganizationLatencyThresholds(),
-  ])
-  return <LogsView initialLogs={logs} latencyThresholds={latencyThresholds} />
+  const logs = await listRequestLogs()
+  return <LogsView initialLogs={logs} latencyThresholds={DEFAULT_LATENCY_THRESHOLDS} />
 }

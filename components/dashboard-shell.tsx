@@ -13,11 +13,11 @@ import {
 const navItems = [
   { name: "Resumen", href: "/dashboard" },
   { name: "Tickets", href: "/dashboard/tickets" },
-  { name: "Documentación", href: "/dashboard/documentation" },
   { name: "Resumen API", href: "/dashboard/api-overview" },
   { name: "Llaves API", href: "/dashboard/keys" },
   { name: "Registros", href: "/dashboard/logs" },
   { name: "Webhooks", href: "/dashboard/webhooks" },
+  { name: "Documentación", href: "/dashboard/documentation" },
   { name: "Superadmin", href: "/dashboard/superadmin" },
   { name: "Configuración", href: "/dashboard/settings" },
 ]
@@ -65,7 +65,7 @@ export function DashboardShell({
               key={organization.id}
               className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8"
             >
-              <div className="mx-auto max-w-6xl">
+              <div className="mx-auto max-w-7xl">
                 <div className="mb-6 flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-2xl font-semibold tracking-tight">

@@ -13,6 +13,7 @@ import { organization, plan } from "@/lib/db/schema"
 import {
   adjustCredits,
   assignPlan,
+  ensurePlanCatalog,
   getCreditBalance,
   type RefillFrequency,
 } from "@/lib/credits"
@@ -30,6 +31,7 @@ export async function getBillingOverview() {
 
 export async function listBillingPlans() {
   await requireSuperadmin()
+  await ensurePlanCatalog()
   const rows = await db.select().from(plan).orderBy(desc(plan.isDefault), plan.name)
   return rows.map((row) => ({
     id: row.id,

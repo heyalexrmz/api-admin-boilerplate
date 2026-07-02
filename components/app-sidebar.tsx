@@ -44,11 +44,6 @@ const navMain = [
     icon: FolderKanban,
   },
   {
-    title: "Documentación",
-    url: "/dashboard/documentation",
-    icon: BookOpen,
-  },
-  {
     title: "API",
     url: "/dashboard/api-overview",
     icon: KeyRound,
@@ -58,6 +53,7 @@ const navMain = [
       { title: "Llaves API", url: "/dashboard/keys", icon: KeyRound },
       { title: "Registros", url: "/dashboard/logs", icon: FileText },
       { title: "Webhooks", url: "/dashboard/webhooks", icon: Webhook },
+      { title: "Documentación", url: "/dashboard/documentation", icon: BookOpen },
     ],
   },
   {
@@ -100,6 +96,7 @@ export function AppSidebar({
         <OrgSwitcher
           organizations={organizations}
           activeOrganization={organization}
+          canCreateOrganization={isSuperadmin}
         />
       </SidebarHeader>
       <SidebarContent>

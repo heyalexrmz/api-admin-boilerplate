@@ -140,6 +140,13 @@ const createTicketFields = [
     type: "string",
     description: "Identificador propio para rastrear la solicitud en logs.",
   },
+  {
+    name: "test_scenario",
+    location: "body",
+    requirement: "Opcional",
+    type: "success | failure",
+    description: "Solo para llaves de prueba. Fuerza webhooks de éxito o falla sin consumir créditos.",
+  },
 ]
 
 const listTicketFields = [
@@ -530,7 +537,9 @@ function ApiReferenceContent() {
           <CodeBlock code={`Authorization: Bearer tt_live_xxx`} />
           <p className="text-sm text-muted-foreground">
             Las llaves de prueba crean tickets en modo sandbox. Las llaves live crean
-            tickets reales y consumen créditos.
+            tickets reales y consumen créditos. Las solicitudes con llaves de prueba
+            no descuentan créditos y pueden usar test_scenario para disparar flujos
+            de éxito o falla.
           </p>
         </CardContent>
       </Card>

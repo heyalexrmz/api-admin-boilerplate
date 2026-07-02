@@ -54,9 +54,11 @@ function OrgAvatar({
 export function OrgSwitcher({
   organizations,
   activeOrganization,
+  canCreateOrganization,
 }: {
   organizations: Org[]
   activeOrganization: Org | null
+  canCreateOrganization: boolean
 }) {
   const { isMobile } = useSidebar()
   const [pending, startSwitch] = React.useTransition()
@@ -135,23 +137,29 @@ export function OrgSwitcher({
                 </DropdownMenuItem>
               )
             })}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={() => setCreateOpen(true)}
-              className="gap-2 p-2"
-            >
-              <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                <Plus className="size-4" />
-              </div>
-              <div className="font-medium text-muted-foreground">
-                New workspace
-              </div>
-            </DropdownMenuItem>
+            {canCreateOrganization && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={() => setCreateOpen(true)}
+                  className="gap-2 p-2"
+                >
+                  <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                    <Plus className="size-4" />
+                  </div>
+                  <div className="font-medium text-muted-foreground">
+                    New workspace
+                  </div>
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
 
-      <CreateOrganizationDialog open={createOpen} onOpenChange={setCreateOpen} />
+      {canCreateOrganization && (
+        <CreateOrganizationDialog open={createOpen} onOpenChange={setCreateOpen} />
+      )}
 
       {showOverlay &&
         createPortal(

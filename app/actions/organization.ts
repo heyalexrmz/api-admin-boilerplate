@@ -6,18 +6,13 @@ import { headers } from "next/headers"
 
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { invitation, member, organization as organizationTable, user } from "@/lib/db/schema"
+import { invitation, member, user } from "@/lib/db/schema"
 import { sendInvitationEmail } from "@/lib/email/resend"
 import { dispatchOrganizationWebhookEvent } from "@/lib/webhook-dispatch"
 import { getOrgColor } from "@/lib/org-branding"
 import {
-  getLatencyThresholds,
-  parseOrganizationMetadata,
-} from "@/lib/latency-thresholds"
-import {
   getActiveMembership,
   requireActiveOrganization,
-  requireActiveOrganizationRole,
   requireOrganizationManager,
 } from "@/app/lib/auth"
 import {
@@ -32,7 +27,6 @@ import {
   type TeamMember,
   type UpdateMemberRoleResponse,
   type UpdateOrganizationState,
-  type LatencyThresholds,
 } from "@/app/lib/definitions"
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000
@@ -92,39 +86,6 @@ export async function getOrganizationDetails(): Promise<OrganizationDetails | nu
     logo: organization.logo ?? null,
     color: getOrgColor(organization),
   }
-}
-
-export async function getOrganizationLatencyThresholds(): Promise<LatencyThresholds> {
-  const { organization } = await requireActiveOrganization()
-  return getLatencyThresholds(organization.metadata ?? null)
-}
-
-export async function updateLatencyThresholds(
-  _prevState: { message?: string; success?: boolean } | undefined,
-  formData: FormData
-): Promise<{ message?: string; success?: boolean }> {
-  const { organization } = await requireActiveOrganizationRole(["owner"])
-  const warningMs = Number(formData.get("warningMs"))
-  const criticalMs = Number(formData.get("criticalMs"))
-
-  if (
-    !Number.isFinite(warningMs) ||
-    !Number.isFinite(criticalMs) ||
-    warningMs < 1 ||
-    criticalMs <= warningMs
-  ) {
-    return { message: "Use positive thresholds with critical greater than warning." }
-  }
-
-  const metadata = parseOrganizationMetadata(organization.metadata ?? null)
-  metadata.latencyThresholds = { warningMs, criticalMs }
-
-  await db
-    .update(organizationTable)
-    .set({ metadata: JSON.stringify(metadata), updatedAt: new Date() })
-    .where(eq(organizationTable.id, organization.id))
-
-  return { success: true }
 }
 
 export async function listTeamMembers(): Promise<TeamMember[]> {

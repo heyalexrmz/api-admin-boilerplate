@@ -2,7 +2,6 @@ import { getBillingOverview } from "@/app/actions/billing"
 import { listSessions } from "@/app/actions/sessions"
 import {
   getOrganizationDetails,
-  getOrganizationLatencyThresholds,
   listTeamInvitations,
   listTeamMembers,
 } from "@/app/actions/organization"
@@ -25,16 +24,13 @@ export default async function SettingsPage({
   const user = await requireUser()
   const sessions = await listSessions()
 
-  const [organization, members, invitations, capabilities, latencyThresholds] = await Promise.all([
+  const [organization, members, invitations, capabilities] = await Promise.all([
     getOrganizationDetails(),
     listTeamMembers(),
     listTeamInvitations(),
     getDashboardCapabilities(),
-    getOrganizationLatencyThresholds(),
   ])
   const canManage = capabilities.canManage
-  const canEditLatencyThresholds =
-    capabilities.isSuperadmin || capabilities.role === "owner"
   const billing = canManage ? await getBillingOverview() : null
 
   return (
@@ -58,10 +54,8 @@ export default async function SettingsPage({
       }
       members={members}
       invitations={invitations}
-      latencyThresholds={latencyThresholds}
       billing={billing}
       canManage={canManage}
-      canEditLatencyThresholds={canEditLatencyThresholds}
       initialTab={parseSettingsTab(params.tab)}
     />
   )

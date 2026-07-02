@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { sendMagicLinkEmail } from "@/lib/email/resend";
 import { randomOrgColor } from "@/lib/org-branding";
+import { ensureCreditAccount } from "@/lib/credits";
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
@@ -40,6 +41,8 @@ export const auth = betterAuth({
       },
     }),
     organization({
+      allowUserToCreateOrganization: async (user) =>
+        (user as typeof schema.user.$inferSelect).platformRole === "superadmin",
       schema: {
         organization: {
           additionalFields: {
@@ -54,6 +57,9 @@ export const auth = betterAuth({
             color: randomOrgColor(),
           },
         }),
+        afterCreateOrganization: async ({ organization: org }) => {
+          await ensureCreditAccount(org.id);
+        },
       },
     }),
   ],

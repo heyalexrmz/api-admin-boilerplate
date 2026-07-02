@@ -52,7 +52,10 @@ const JSON_INTAKE_ONLY_FIELDS = new Set([
   "file_content_type",
   "csf_pdf_file_name",
   "csf_pdf_content_type",
+  "test_scenario",
+  "scenario",
 ]);
+type TestTicketScenario = "success" | "failure";
 const MAX_TICKET_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TICKET_IMAGE_TYPES = new Set(["image/jpeg", "image/png"]);
 const ALLOWED_TICKET_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png"]);
@@ -344,6 +347,7 @@ function collectSubmitFields(formData: FormData): Record<string, string> {
   const fields: Record<string, string> = {};
   for (const [key, value] of formData.entries()) {
     if (value instanceof File) continue;
+    if (JSON_INTAKE_ONLY_FIELDS.has(key)) continue;
     fields[key] = String(value);
   }
   return fields;
@@ -360,6 +364,20 @@ function tocinoErrorToTicket(error: TocinoError) {
 function nullableString(value: unknown): string | null {
   if (value === null || value === undefined) return null;
   return String(value);
+}
+
+function parseTestTicketScenario(value: unknown): TestTicketScenario {
+  if (value === null || value === undefined || value === "") return "success";
+  const normalized = String(value).trim().toLowerCase();
+  if (["success", "succeeded", "finalized"].includes(normalized)) return "success";
+  if (["failure", "failed", "error"].includes(normalized)) return "failure";
+  throw new ApiError({
+    status: 400,
+    code: "invalid_test_scenario",
+    type: "validation_error",
+    message: "test_scenario must be success or failure.",
+    param: "test_scenario",
+  });
 }
 
 async function incrementUsage(
@@ -475,6 +493,12 @@ export async function createTicketFromFormData(input: {
 }) {
   const taxId = String(input.formData.get("tax_id") ?? "");
   const submitFields = normalizeTicketSubmitFields(collectSubmitFields(input.formData));
+  const testScenario =
+    input.mode === "test"
+      ? parseTestTicketScenario(
+          input.formData.get("test_scenario") ?? input.formData.get("scenario")
+        )
+      : "success";
   const ticketFile = await fileBuffer(input.formData.get("file"), "file");
   const csfFile = input.formData.get("csf_pdf")
     ? await fileBuffer(input.formData.get("csf_pdf"), "csf_pdf")
@@ -484,6 +508,7 @@ export async function createTicketFromFormData(input: {
     ...input,
     taxId,
     submitFields,
+    testScenario,
     ticketFile,
     csfFile,
   });
@@ -500,6 +525,10 @@ export async function createTicketFromJson(input: {
 }) {
   const body = recordValue(input.body);
   const taxId = stringField(body, "tax_id", true) ?? "";
+  const testScenario =
+    input.mode === "test"
+      ? parseTestTicketScenario(body.test_scenario ?? body.scenario)
+      : "success";
   const ticketFile = fileFromBase64({
     value: stringField(body, "file", true),
     param: "file",
@@ -534,6 +563,7 @@ export async function createTicketFromJson(input: {
     ...input,
     taxId,
     submitFields,
+    testScenario,
     ticketFile,
     csfFile,
   });
@@ -547,6 +577,7 @@ async function createTicketFromFiles(input: {
   idempotencyKey?: string | null;
   taxId: string;
   submitFields: Record<string, string>;
+  testScenario: TestTicketScenario;
   ticketFile: TicketInputFile;
   csfFile: TicketInputFile | null;
   defer?: (task: () => Promise<void>) => void;
@@ -678,6 +709,7 @@ async function createTicketFromFiles(input: {
         await finalizeTicketWithMockProvider({
           organizationId: input.organizationId,
           ticketId,
+          scenario: input.testScenario,
         });
       }
     } catch (error) {
@@ -876,7 +908,7 @@ export async function submitTicketToTocino(input: {
   if (!row) throw new Error(`Ticket not found: ${input.ticketId}`);
   if (row.ticket.status !== "received") return;
   if (row.ticket.mode === "test") {
-    await finalizeTicketWithMockProvider(input);
+    await finalizeTicketWithMockProvider({ ...input, scenario: "success" });
     return { outcome: "sandbox_finalized" as const };
   }
 
@@ -1388,6 +1420,7 @@ export async function applyTocinoWebhookEvent(raw: unknown) {
 export async function finalizeTicketWithMockProvider(input: {
   organizationId: string;
   ticketId: string;
+  scenario?: TestTicketScenario;
 }) {
   const [row] = await db
     .select({ ticket, taxpayer })
@@ -1418,6 +1451,81 @@ export async function finalizeTicketWithMockProvider(input: {
       livemode: row.ticket.mode === "live",
     })
   );
+
+  if (input.scenario === "failure") {
+    const error = {
+      errorCode: "TEST_SCENARIO_FAILED",
+      errorType: "test",
+      errorMessage: "Test API key forced a failure scenario.",
+    };
+    const normalizedResponse = ticketProviderResponseView({
+      ticketId: row.ticket.id,
+      status: "failed",
+      livemode: false,
+      error: {
+        code: error.errorCode,
+        type: error.errorType,
+        message: error.errorMessage,
+      },
+    });
+    const failedAt = new Date();
+    const [updatedTicket] = await db
+      .update(ticket)
+      .set({
+        status: "failed",
+        statusRank: 100,
+        ...error,
+        lastResponse: normalizedResponse,
+        upstreamRaw: {
+          provider: "mock",
+          scenario: "failure",
+        },
+        updatedAt: failedAt,
+      })
+      .where(eq(ticket.id, row.ticket.id))
+      .returning();
+    if (!updatedTicket) throw new Error("Could not fail ticket.");
+
+    const requestMetadata = ticketWebhookRequestMetadata({
+      ticketId: updatedTicket.id,
+      idempotencyKey: updatedTicket.idempotencyKey,
+      livemode: false,
+    });
+    const failurePayload = {
+      object: "ticket",
+      id: updatedTicket.id,
+      status: "failed",
+      error: {
+        code: error.errorCode,
+        type: error.errorType,
+        message: error.errorMessage,
+      },
+    };
+
+    await dispatchOrganizationWebhookEvent(
+      input.organizationId,
+      "ticket.failed",
+      failurePayload,
+      requestMetadata
+    );
+    await dispatchOrganizationWebhookEvent(
+      input.organizationId,
+      "invoice.failed",
+      invoiceFailedWebhookPayload({
+        ticket: {
+          id: updatedTicket.id,
+          livemode: false,
+        },
+        error: {
+          code: error.errorCode,
+          type: error.errorType,
+          message: error.errorMessage,
+        },
+      }),
+      requestMetadata
+    );
+    return;
+  }
 
   const now = new Date();
   const [invoiceRow] = await db

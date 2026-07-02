@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CREDIT_COSTS,
+  PLAN_TIERS,
   computeNextRefillAt,
   resetBalanceDelta,
 } from "./credits";
@@ -42,5 +43,16 @@ describe("resetBalanceDelta", () => {
 describe("CREDIT_COSTS", () => {
   it("charges one credit for a live ticket submission", () => {
     expect(CREDIT_COSTS.ticketSubmission).toBe(1);
+  });
+});
+
+describe("PLAN_TIERS", () => {
+  it("defines Base, Pro, Partner, and Custom ticket allowances", () => {
+    expect(PLAN_TIERS).toEqual([
+      { name: "Base", ticketCreditAllowance: 20, isDefault: true },
+      { name: "Pro", ticketCreditAllowance: 50, isDefault: false },
+      { name: "Partner", ticketCreditAllowance: 100, isDefault: false },
+      { name: "Custom", ticketCreditAllowance: 0, isDefault: false },
+    ]);
   });
 });
