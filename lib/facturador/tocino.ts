@@ -129,14 +129,21 @@ export function mapTocinoError(phase: "submit" | "process", raw: unknown): Tocin
   }
 
   const invoice = value?.invoice as Record<string, unknown> | undefined;
-  if (invoice?.not_invoiceable_cause) {
-    return error("NOT_INVOICEABLE", "site", "This ticket cannot be invoiced.");
+  const notInvoiceableCause = invoice?.not_invoiceable_cause;
+  if (notInvoiceableCause) {
+    return error("NOT_INVOICEABLE", "site", String(notInvoiceableCause));
   }
   if (value?.error_code) {
-    return error(String(value.error_code), "site", "The merchant site could not process this ticket.");
+    return error(
+      String(value.error_code),
+      "site",
+      value.error_msg
+        ? String(value.error_msg)
+        : "The merchant site could not process this ticket."
+    );
   }
   if (value?.error_msg !== undefined) {
-    return error("MERCHANT_ERROR", "site", "The merchant could not process this ticket.");
+    return error("MERCHANT_ERROR", "site", String(value.error_msg));
   }
   return error("UNKNOWN_UPSTREAM", "unknown", "Unrecognized upstream failure.");
 }

@@ -393,6 +393,34 @@ describe("mapTocinoError", () => {
       message: "Invalid taxpayer payload.",
     });
   });
+
+  it("preserves the provider's not-invoiceable reason", () => {
+    expect(
+      mapTocinoError("process", {
+        status: "not_invoiceable",
+        invoice: {
+          not_invoiceable_cause: "El ticket ya había sido facturado.",
+        },
+      })
+    ).toEqual({
+      code: "NOT_INVOICEABLE",
+      category: "site",
+      message: "El ticket ya había sido facturado.",
+    });
+  });
+
+  it("preserves the merchant error message when an error code is present", () => {
+    expect(
+      mapTocinoError("process", {
+        error_code: "MERCHANT_REJECTED",
+        error_msg: "El portal rechazó la solicitud.",
+      })
+    ).toEqual({
+      code: "MERCHANT_REJECTED",
+      category: "site",
+      message: "El portal rechazó la solicitud.",
+    });
+  });
 });
 
 describe("createTocinoWebhookJobValues", () => {

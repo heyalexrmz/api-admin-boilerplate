@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 const DEFAULT_TTL_SECONDS = 15 * 60;
+export const WEBHOOK_DOCUMENT_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 function optionalEnv(name: string): string | undefined {
   const value = process.env[name]?.trim();

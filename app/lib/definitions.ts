@@ -456,6 +456,7 @@ export type DashboardTicket = {
   originalFileName: string | null
   providerRequestId: string | null
   errorCode: string | null
+  errorType: string | null
   errorMessage: string | null
   invoiceId: string | null
   invoiceUuid: string | null

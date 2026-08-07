@@ -29,6 +29,7 @@ import { tocinoSubmitBody } from "@/lib/facturador/provider-submit";
 import { normalizeTicketSubmitFields } from "@/lib/facturador/submit-fields";
 import {
   createSignedDocumentUrl,
+  WEBHOOK_DOCUMENT_TTL_SECONDS,
 } from "@/lib/storage/document-links";
 import {
   invoiceFailedWebhookPayload,
@@ -285,13 +286,16 @@ async function ensureTaxpayer(input: {
   return row;
 }
 
-export function documentView(row: typeof document.$inferSelect) {
+export function documentView(
+  row: typeof document.$inferSelect,
+  ttlSeconds?: number
+) {
   return {
     id: row.id,
     kind: row.kind,
     content_type: row.contentType,
     bytes: row.bytes,
-    url: createSignedDocumentUrl(row.id),
+    url: createSignedDocumentUrl(row.id, ttlSeconds),
     created_at: row.createdAt.toISOString(),
   };
 }
@@ -427,6 +431,7 @@ export function ticketView(input: {
   taxpayerRfc?: string | null;
   documents?: (typeof document.$inferSelect)[];
   invoice?: typeof invoice.$inferSelect | null;
+  documentUrlTtlSeconds?: number;
 }) {
   return {
     object: "ticket",
@@ -455,7 +460,9 @@ export function ticketView(input: {
           invoice_date: input.invoice.invoiceDate?.toISOString() ?? null,
         }
       : null,
-    documents: (input.documents ?? []).map(documentView),
+    documents: (input.documents ?? []).map((row) =>
+      documentView(row, input.documentUrlTtlSeconds)
+    ),
   };
 }
 
@@ -1373,6 +1380,7 @@ export async function applyTocinoWebhookEvent(raw: unknown) {
     taxpayerRfc: row.taxpayer.rfc,
     invoice: invoiceRow,
     documents: allDocuments,
+    documentUrlTtlSeconds: WEBHOOK_DOCUMENT_TTL_SECONDS,
   });
   const invoicePayload = invoiceFinalizedWebhookPayload({
     ticket: {
@@ -1390,7 +1398,9 @@ export async function applyTocinoWebhookEvent(raw: unknown) {
       total: invoiceRow.total,
       invoiceDate: invoiceRow.invoiceDate?.toISOString() ?? null,
     },
-    documents: allDocuments.map(documentView),
+    documents: allDocuments.map((row) =>
+      documentView(row, WEBHOOK_DOCUMENT_TTL_SECONDS)
+    ),
   });
 
   await dispatchOrganizationWebhookEvent(
@@ -1599,6 +1609,7 @@ export async function finalizeTicketWithMockProvider(input: {
     taxpayerRfc: row.taxpayer.rfc,
     invoice: invoiceRow,
     documents: allDocuments,
+    documentUrlTtlSeconds: WEBHOOK_DOCUMENT_TTL_SECONDS,
   });
   const invoicePayload = invoiceFinalizedWebhookPayload({
     ticket: {
@@ -1616,7 +1627,9 @@ export async function finalizeTicketWithMockProvider(input: {
       total: invoiceRow.total,
       invoiceDate: invoiceRow.invoiceDate?.toISOString() ?? null,
     },
-    documents: allDocuments.map(documentView),
+    documents: allDocuments.map((row) =>
+      documentView(row, WEBHOOK_DOCUMENT_TTL_SECONDS)
+    ),
   });
 
   await dispatchOrganizationWebhookEvent(

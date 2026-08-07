@@ -40,6 +40,7 @@ function toTicket(row: {
   originalFileName: string | null
   providerRequestId: string | null
   errorCode: string | null
+  errorType: string | null
   errorMessage: string | null
   invoiceId: string | null
   invoiceUuid: string | null
@@ -56,6 +57,7 @@ function toTicket(row: {
     originalFileName: row.originalFileName,
     providerRequestId: row.providerRequestId,
     errorCode: row.errorCode,
+    errorType: row.errorType,
     errorMessage: row.errorMessage,
     invoiceId: row.invoiceId,
     invoiceUuid: row.invoiceUuid,
@@ -110,6 +112,7 @@ async function listDashboardTicketsForOrganization(
       originalFileName: ticket.originalFileName,
       providerRequestId: ticket.providerRequestId,
       errorCode: ticket.errorCode,
+      errorType: ticket.errorType,
       errorMessage: ticket.errorMessage,
       invoiceId: invoice.id,
       invoiceUuid: invoice.satUuid,
@@ -219,6 +222,7 @@ export async function getDashboardTicketDetail(
       originalFileName: ticket.originalFileName,
       providerRequestId: ticket.providerRequestId,
       errorCode: ticket.errorCode,
+      errorType: ticket.errorType,
       errorMessage: ticket.errorMessage,
       invoiceId: invoice.id,
       invoiceUuid: invoice.satUuid,
