@@ -1,13 +1,23 @@
-import Link from "next/link"
 import { redirect } from "next/navigation"
+import { CheckCircle2 } from "lucide-react"
 
 import { AuthShell } from "@/components/auth-shell"
-import { MagicLinkForm } from "@/components/magic-link-form"
+import { PasswordAuthForm } from "@/components/password-auth-form"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { getUser } from "@/app/lib/auth"
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string; reset?: string }>
+}) {
   const user = await getUser()
   if (user) redirect("/dashboard")
+  const params = await searchParams
+  const callbackURL =
+    params.next?.startsWith("/") && !params.next.startsWith("//")
+      ? params.next
+      : "/dashboard"
 
   return (
     <AuthShell
@@ -37,21 +47,18 @@ export default async function LoginPage() {
             Bienvenido de nuevo
           </h1>
           <p className="text-sm text-muted-foreground text-pretty">
-            Ingresa tu correo de trabajo y te enviaremos un enlace seguro de acceso.
+            Ingresa tu correo de trabajo y tu contraseña.
           </p>
         </div>
-        <MagicLinkForm
-          alternateLink={
-            <>
-              ¿No tienes cuenta?{" "}
-              <Link
-                href="/signup"
-                className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
-              >
-                Inicia una prueba
-              </Link>
-            </>
-          }
+        {params.reset === "success" && (
+          <Alert>
+            <CheckCircle2 />
+            <AlertDescription>Tu contraseña quedó guardada. Ya puedes iniciar sesión.</AlertDescription>
+          </Alert>
+        )}
+        <PasswordAuthForm
+          mode="sign-in"
+          callbackURL={callbackURL}
         />
       </div>
     </AuthShell>
