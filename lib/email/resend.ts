@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import MagicLinkEmail from "@/emails/magic-link";
+import PasswordResetEmail from "@/emails/password-reset";
 import InvitationEmail from "@/emails/invitation";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -25,26 +25,26 @@ export async function sendEmail({
   }
 }
 
-export async function sendMagicLinkEmail(email: string, url: string) {
+export async function sendPasswordResetEmail(email: string, url: string) {
   const key = process.env.RESEND_API_KEY;
   if (!key || key.startsWith("re_xxxx")) {
     if (process.env.NODE_ENV === "development") {
       console.warn(
-        `[dev] No RESEND_API_KEY set; magic link generated for ${email}. Configure Resend to receive it.`
+        `[dev] No RESEND_API_KEY set; password reset link generated for ${email}.\n  ${url}`
       );
       return;
     }
-    throw new Error("RESEND_API_KEY is required to send magic-link emails.");
+    throw new Error("RESEND_API_KEY is required to send password reset emails.");
   }
 
   if (process.env.NODE_ENV === "development" && !url.startsWith("http")) {
-    console.warn(`[dev] Magic link URL for ${email} was not sent because it is invalid.`);
+    console.warn(`[dev] Password reset URL for ${email} was not sent because it is invalid.`);
     return;
   }
   await sendEmail({
     to: email,
-    subject: "Tu enlace de acceso a Taxo Timbre",
-    react: MagicLinkEmail({ url }),
+    subject: "Restablece tu contraseña de Taxo Timbre",
+    react: PasswordResetEmail({ url }),
   });
 }
 

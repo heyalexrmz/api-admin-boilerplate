@@ -21,6 +21,6 @@ export async function ssoLogin(
   await simulateNetworkDelay()
   return {
     message:
-      "SSO aún no está configurado para este espacio. Usa un enlace mágico o contacta a tu administrador.",
+      "SSO aún no está configurado para este espacio. Usa tu correo y contraseña o contacta a tu administrador.",
   }
 }

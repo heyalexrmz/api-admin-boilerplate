@@ -7,7 +7,7 @@ import { and, eq, gt, isNull, or } from "drizzle-orm";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { invitation, member, organization, session, user } from "@/lib/db/schema";
+import { account, invitation, member, organization, session, user } from "@/lib/db/schema";
 import type { InvitationDetails } from "@/app/lib/definitions";
 
 export type OrganizationRole = "owner" | "admin" | "member";
@@ -164,11 +164,35 @@ export const getInvitationDetails = cache(
       .limit(1);
 
     if (!row[0]) return null;
+    const [existingUser] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, row[0].email.toLowerCase()))
+      .limit(1);
+
+    const [credentialAccount] = existingUser
+      ? await db
+          .select({ id: account.id })
+          .from(account)
+          .where(
+            and(
+              eq(account.userId, existingUser.id),
+              eq(account.providerId, "credential")
+            )
+          )
+          .limit(1)
+      : [];
+
     return {
       id: row[0].id,
       email: row[0].email,
       inviterName: row[0].inviterName,
       workspaceName: row[0].workspaceName,
+      authMode: credentialAccount
+        ? "sign-in"
+        : existingUser
+          ? "set-password"
+          : "sign-up",
     };
   }
 );

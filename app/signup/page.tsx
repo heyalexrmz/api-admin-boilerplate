@@ -1,7 +1,7 @@
 import Link from "next/link"
 
 import { AuthShell } from "@/components/auth-shell"
-import { MagicLinkForm } from "@/components/magic-link-form"
+import { PasswordAuthForm } from "@/components/password-auth-form"
 
 export const metadata = {
   title: "Crear cuenta · Taxo Timbre",
@@ -37,11 +37,11 @@ export default function SignupPage() {
             Inicia tu prueba gratis
           </h1>
           <p className="text-sm text-muted-foreground text-pretty">
-            Ingresa tu correo de trabajo y te enviaremos un enlace seguro para crear tu espacio de trabajo.
+            Crea tu cuenta con tu correo de trabajo y una contraseña segura.
           </p>
         </div>
-        <MagicLinkForm
-          submitLabel="Crear cuenta"
+        <PasswordAuthForm
+          mode="sign-up"
           alternateLink={
             <>
               ¿Ya tienes cuenta?{" "}

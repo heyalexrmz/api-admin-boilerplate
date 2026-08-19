@@ -598,4 +598,5 @@ export type InvitationDetails = {
   email: string
   inviterName: string
   workspaceName: string
+  authMode: "sign-in" | "sign-up" | "set-password"
 }

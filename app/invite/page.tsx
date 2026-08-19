@@ -56,6 +56,7 @@ export default async function InvitePage({ searchParams }: PageProps) {
             email={invitation.email}
             inviterName={invitation.inviterName}
             workspaceName={invitation.workspaceName}
+            authMode={invitation.authMode}
           />
         </AuthCard>
       ) : (

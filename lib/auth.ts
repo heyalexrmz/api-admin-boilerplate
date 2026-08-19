@@ -1,11 +1,11 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { captcha, magicLink, organization } from "better-auth/plugins";
+import { captcha, organization } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
-import { sendMagicLinkEmail } from "@/lib/email/resend";
+import { sendPasswordResetEmail } from "@/lib/email/resend";
 import { randomOrgColor } from "@/lib/org-branding";
 import { ensureCreditAccount } from "@/lib/credits";
 
@@ -29,7 +29,14 @@ export const auth = betterAuth({
       invitation: schema.invitation,
     },
   }),
-  emailAndPassword: { enabled: false },
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 8,
+    revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url }) => {
+      await sendPasswordResetEmail(user.email, url);
+    },
+  },
   user: {
     additionalFields: {
       firstName: { type: "string", required: false },
@@ -45,16 +52,15 @@ export const auth = betterAuth({
           captcha({
             provider: "cloudflare-turnstile" as const,
             secretKey: process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY!,
-            endpoints: ["/sign-in/magic-link"],
-            expectedAction: "magic_link",
+            endpoints: [
+              "/sign-in/email",
+              "/sign-up/email",
+              "/request-password-reset",
+            ],
+            expectedAction: "password_auth",
           }),
         ]
       : []),
-    magicLink({
-      sendMagicLink: async ({ email, url }) => {
-        await sendMagicLinkEmail(email, url);
-      },
-    }),
     organization({
       allowUserToCreateOrganization: async (authUser) => {
         const [row] = await db
