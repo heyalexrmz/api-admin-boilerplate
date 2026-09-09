@@ -2,7 +2,6 @@ import type { NextRequest } from "next/server";
 
 import { objectResponse, ApiError, errorResponse } from "@/lib/api-contracts";
 import { enqueueTocinoWebhookEvent } from "@/lib/facturador/core";
-import { verifyTocinoWebhook } from "@/lib/facturador/tocino";
 import {
   clientIp,
   persistRequestLog,
@@ -23,15 +22,6 @@ export async function POST(req: NextRequest) {
   let response: Response;
 
   try {
-    if (!verifyTocinoWebhook({ headers: req.headers, rawBody })) {
-      throw new ApiError({
-        status: 401,
-        code: "invalid_signature",
-        type: "authentication_error",
-        message: "Invalid upstream webhook signature.",
-      });
-    }
-
     let payload: unknown;
     try {
       payload = JSON.parse(rawBody);
