@@ -72,7 +72,9 @@ export async function acceptRouterWebhook(request: Request): Promise<Response> {
   }
   try {
     const created = await persistRouterDeliveries({ eventId, rawBody, destinations: ["local", ...config.forwardUrls] });
-    return Response.json({ ok: true, event_id: eventId, queued: true, duplicate: created === 0 }, { status: 202 });
+    // The sender requires an exact 200 acknowledgment, including duplicate retries.
+    // This confirms durable receipt; ticket processing and forwarding remain asynchronous.
+    return Response.json({ ok: true, event_id: eventId, queued: true, duplicate: created === 0 }, { status: 200 });
   } catch {
     // No ACK until every destination has been durably recorded in one statement.
     console.error("[webhook-router] callback could not be persisted");
