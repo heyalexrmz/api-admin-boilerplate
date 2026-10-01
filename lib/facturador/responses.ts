@@ -1,3 +1,5 @@
+import { publicTicketError } from "./public-errors";
+
 type TicketStatus = "received" | "queued" | "pending" | "processing" | "finalized" | "failed" | "cancelled";
 type InvoiceStatus = "pending" | "finalized" | "failed";
 
@@ -37,7 +39,7 @@ export function ticketProviderResponseView(input: {
       input.status === "failed"
         ? "Ticket submission failed."
         : "Ticket submitted for processing.",
-    error: input.error ?? null,
+    error: publicTicketError(input.error ?? null),
   };
 }
 
@@ -60,7 +62,7 @@ export function ticketFinalResponseView(input: {
           uuid: input.invoiceUuid,
         }
       : null,
-    error: input.error,
+    error: publicTicketError(input.error),
   };
 }
 
@@ -111,6 +113,6 @@ export function invoiceFailedWebhookPayload(input: {
     status: "failed",
     ticket_id: input.ticket.id,
     livemode: input.ticket.livemode,
-    error: input.error,
+    error: publicTicketError(input.error),
   };
 }

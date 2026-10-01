@@ -1,174 +1,35 @@
-import { randomUUID } from "node:crypto";
-import { sql } from "drizzle-orm";
+import { tick } from "./jobs";
+import { tickRouterDelivery } from "@/lib/webhook-router/consumer";
+import { getRouterConfig } from "@/lib/webhook-router/config";
 
-import { db } from "@/lib/db";
-import {
-  applyTocinoWebhookEvent,
-  expireTicketIfStale,
-  submitTicketToTocino,
-} from "@/lib/facturador/core";
-import { retryWebhookDelivery } from "@/lib/webhook-dispatch";
-
-const WORKER_ID = `worker_${randomUUID()}`;
 const POLL_INTERVAL_MS = Number(process.env.WORKER_POLL_INTERVAL_MS ?? 2_000);
-
-type JobRow = {
-  id: string;
-  organization_id: string;
-  type:
-    | "submit_ticket"
-    | "process_upstream_webhook"
-    | "expire_ticket"
-    | "refresh_ticket"
-    | "redeliver_ticket"
-    | "dispatch_webhook";
-  payload: Record<string, unknown>;
-  attempts: number;
-  max_attempts: number;
-};
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function claimJob(): Promise<JobRow | null> {
-  const result = await db.execute<JobRow>(sql`
-    update job
-    set status = 'running',
-        locked_at = now(),
-        locked_by = ${WORKER_ID},
-        attempts = attempts + 1,
-        updated_at = now()
-    where id = (
-      select id
-      from job
-      where status = 'pending'
-        and run_at <= now()
-      order by run_at asc, created_at asc
-      for update skip locked
-      limit 1
-    )
-    returning id, organization_id, type, payload, attempts, max_attempts
-  `);
-  return result.rows[0] ?? null;
-}
+let stopping = false;
+process.once("SIGTERM", () => { stopping = true; });
+process.once("SIGINT", () => { stopping = true; });
 
-async function completeJob(id: string) {
-  await db.execute(sql`
-    update job
-    set status = 'completed',
-        completed_at = now(),
-        locked_at = null,
-        locked_by = null,
-        updated_at = now()
-    where id = ${id}
-  `);
-}
-
-async function failJob(row: JobRow, error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  const retry = row.attempts < row.max_attempts;
-  console.error(
-    `[worker] failed job=${row.id} type=${row.type} attempt=${row.attempts}/${row.max_attempts} retry=${retry} error=${message}`
-  );
-  await db.execute(sql`
-    update job
-    set status = ${retry ? "pending" : "failed"},
-        run_at = now() + interval '30 seconds',
-        locked_at = null,
-        locked_by = null,
-        last_error = ${message},
-        updated_at = now()
-    where id = ${row.id}
-  `);
-}
-
-async function processJob(row: JobRow) {
-  if (row.type === "submit_ticket") {
-    const ticketId = String(row.payload.ticketId ?? "");
-    if (!ticketId) throw new Error("submit_ticket job missing ticketId");
-    console.log(`[worker] submitting ticket=${ticketId} job=${row.id}`);
-    const result = await submitTicketToTocino({
-      organizationId: row.organization_id,
-      ticketId,
-    });
-    if (result?.outcome === "tocino_pending") {
-      console.log(
-        `[worker] tocino accepted ticket=${ticketId} status=pending nova_request_id=${result.novaRequestId}`
-      );
-    } else if (result?.outcome === "tocino_failed") {
-      console.log(
-        `[worker] tocino rejected ticket=${ticketId} status=${result.upstreamStatus ?? "unknown"} code=${result.errorCode} type=${result.errorType ?? "unknown"} message=${result.errorMessage} upstream=${JSON.stringify(result.upstreamRaw ?? null)}`
-      );
-    } else if (result?.outcome === "sandbox_finalized") {
-      console.log(`[worker] sandbox finalized ticket=${ticketId}`);
-    } else {
-      console.log(`[worker] submit_ticket no-op ticket=${ticketId}`);
-    }
-    return;
-  }
-
-  if (row.type === "process_upstream_webhook") {
-    if (!("raw" in row.payload)) {
-      throw new Error("process_upstream_webhook job missing raw payload");
-    }
-    console.log(`[worker] processing upstream webhook job=${row.id}`);
-    await applyTocinoWebhookEvent(row.payload.raw);
-    return;
-  }
-
-  if (row.type === "expire_ticket") {
-    const ticketId = String(row.payload.ticketId ?? "");
-    if (!ticketId) throw new Error("expire_ticket job missing ticketId");
-    console.log(`[worker] expiring stale ticket=${ticketId} job=${row.id}`);
-    const result = await expireTicketIfStale({
-      organizationId: row.organization_id,
-      ticketId,
-    });
-    console.log(
-      `[worker] expire_ticket ticket=${ticketId} outcome=${result.outcome}`
-    );
-    return;
-  }
-
-  if (row.type === "dispatch_webhook") {
-    const webhookEventLogId = String(row.payload.webhookEventLogId ?? "");
-    if (!webhookEventLogId) {
-      throw new Error("dispatch_webhook job missing webhookEventLogId");
-    }
-    console.log(`[worker] retrying webhook delivery=${webhookEventLogId} job=${row.id}`);
-    await retryWebhookDelivery(webhookEventLogId);
-    return;
-  }
-
-  // Refresh/redelivery real provider work is intentionally deferred until the
-  // provider callback exists. Mark no-op jobs complete so the queue drains.
-  console.log(`[worker] no-op job=${row.id} type=${row.type}`);
-}
-
-async function tick() {
-  const row = await claimJob();
-  if (!row) return;
-  console.log(
-    `[worker] claimed job=${row.id} type=${row.type} attempt=${row.attempts + 1}/${row.max_attempts}`
-  );
-
-  try {
-    await processJob(row);
-    await completeJob(row.id);
-    console.log(`[worker] completed job=${row.id} type=${row.type}`);
-  } catch (error) {
-    console.error(`[worker] job ${row.id} failed`, error);
-    await failJob(row, error);
+async function runLoop(name: string, work: () => Promise<unknown>) {
+  while (!stopping) {
+    try { await work(); }
+    catch { console.error(`[worker] ${name} poll failed; retrying next poll`); }
+    await sleep(POLL_INTERVAL_MS);
   }
 }
 
 async function main() {
-  console.log(`[worker] started ${WORKER_ID}`);
-  while (true) {
-    await tick();
-    await sleep(POLL_INTERVAL_MS);
-  }
+  getRouterConfig();
+  console.log("[worker] started");
+  // Independent loops keep forwarding latency out of the ticket processing path.
+  await Promise.all([
+    runLoop("jobs", tick),
+    runLoop("router-local", () => tickRouterDelivery("local")),
+    runLoop("router-forward", () => tickRouterDelivery("forward")),
+  ]);
+  process.exit(0);
 }
 
 main().catch((error) => {

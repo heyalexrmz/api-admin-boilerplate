@@ -14,6 +14,7 @@
     "db:migrate": "dotenv -e .env -- drizzle-kit migrate",
     "email:dev": "email dev --port 3030",
     "worker": "dotenv -e .env -- tsx worker/index.ts",
+    "webhook-router": "dotenv -e .env -- tsx worker/webhook-router.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

@@ -1,18 +1,19 @@
 services:
   - type: web
-    name: demo-glm-web
+    name: taxo-timbre-web
     runtime: node
     plan: starter
     region: oregon
     buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm build
-    preDeployCommand: pnpm db:migrate
+    # Existing production schema is managed with db:push; the migration journal is empty.
+    preDeployCommand: pnpm db:push
     startCommand: NODE_ENV=production pnpm start
     envVars:
       - key: NODE_VERSION
         value: "22"
       - key: DATABASE_URL
         fromDatabase:
-          name: demo-glm-db
+          name: taxo-timbre-db
           property: internalConnectionString
       - key: BETTER_AUTH_SECRET
         generateValue: true
@@ -46,6 +47,8 @@ services:
         value: typeform-signature
       - key: UPSTREAM_WEBHOOK_TOKEN
         sync: false
+      - key: WEBHOOK_ROUTER_FORWARD_URLS
+        value: '["https://timbre-nine.vercel.app/api/tocino/webhook-router"]'
       - key: UPSTREAM_WEBHOOK_SECRET
         sync: false
       - key: UPSTREAM_WEBHOOK_SECRET_PREVIOUS
@@ -54,7 +57,7 @@ services:
         sync: false
 
   - type: worker
-    name: demo-glm-worker
+    name: taxo-timbre-worker
     runtime: node
     plan: starter
     region: oregon
@@ -65,11 +68,11 @@ services:
         value: "22"
       - key: DATABASE_URL
         fromDatabase:
-          name: demo-glm-db
+          name: taxo-timbre-db
           property: internalConnectionString
       - key: DOCUMENT_SIGNING_SECRET
         fromService:
-          name: demo-glm-web
+          name: taxo-timbre-web
           type: web
           envVarKey: DOCUMENT_SIGNING_SECRET
       - key: NEXT_PUBLIC_APP_URL
@@ -95,7 +98,15 @@ services:
       - key: UPSTREAM_WEBHOOK_HEADER
         value: typeform-signature
       - key: UPSTREAM_WEBHOOK_TOKEN
-        sync: false
+        fromService:
+          name: taxo-timbre-web
+          type: web
+          envVarKey: UPSTREAM_WEBHOOK_TOKEN
+      - key: WEBHOOK_ROUTER_FORWARD_URLS
+        fromService:
+          name: taxo-timbre-web
+          type: web
+          envVarKey: WEBHOOK_ROUTER_FORWARD_URLS
       - key: UPSTREAM_WEBHOOK_SECRET
         sync: false
       - key: UPSTREAM_WEBHOOK_SECRET_PREVIOUS
@@ -103,7 +114,36 @@ services:
       - key: UPSTREAM_ASSET_HOSTS
         sync: false
 
+  # Public HTTP ingress; durable delivery processing runs in taxo-timbre-worker.
+  - type: web
+    name: taxo-timbre-webhook-router
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false
+    startCommand: NODE_ENV=production pnpm exec tsx worker/webhook-router.ts
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: taxo-timbre-db
+          property: internalConnectionString
+      - key: UPSTREAM_WEBHOOK_HEADER
+        value: typeform-signature
+      - key: UPSTREAM_WEBHOOK_TOKEN
+        fromService:
+          name: taxo-timbre-web
+          type: web
+          envVarKey: UPSTREAM_WEBHOOK_TOKEN
+      - key: WEBHOOK_ROUTER_FORWARD_URLS
+        fromService:
+          name: taxo-timbre-web
+          type: web
+          envVarKey: WEBHOOK_ROUTER_FORWARD_URLS
+
 databases:
-  - name: demo-glm-db
+  - name: taxo-timbre-db
     plan: basic-256mb
     region: oregon

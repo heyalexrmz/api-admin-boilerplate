@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 
 import { ApiError } from "@/lib/api-contracts";
 import { debitTicketCredit, getCreditBalance } from "@/lib/credits";
@@ -38,6 +38,7 @@ import {
   ticketWebhookRequestMetadata,
 } from "@/lib/facturador/responses";
 import { createTocinoWebhookJobValues } from "@/lib/facturador/upstream-webhooks";
+import { publicTicketError } from "@/lib/facturador/public-errors";
 import {
   documentObjectKey,
   getS3StorageConfig,
@@ -442,13 +443,11 @@ export function ticketView(input: {
     created_at: input.ticket.createdAt.toISOString(),
     updated_at: input.ticket.updatedAt.toISOString(),
     finalized_at: input.ticket.finalizedAt?.toISOString() ?? null,
-    error: input.ticket.errorCode
-      ? {
-          code: input.ticket.errorCode,
-          type: input.ticket.errorType,
-          message: input.ticket.errorMessage,
-        }
-      : null,
+    error: publicTicketError({
+      code: input.ticket.errorCode,
+      type: input.ticket.errorType,
+      message: input.ticket.errorMessage,
+    }),
     invoice: input.invoice
       ? {
           id: input.invoice.id,
@@ -799,36 +798,37 @@ export async function enqueueTicketJob(input: {
   }).onConflictDoNothing();
 }
 
+function webhookTicketCondition(raw: unknown) {
+  const payload = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+  const idempotencyKey = typeof payload.idempotency_key === "string" ? payload.idempotency_key.trim() : "";
+  const providerRequestId = typeof payload.nova_request_id === "string" ? payload.nova_request_id.trim() : "";
+  // Client idempotency keys are scoped to an organization. Prefer the service's
+  // request ID; an early callback is retried until that ID has been saved.
+  if (providerRequestId) return eq(ticket.providerRequestId, providerRequestId);
+  if (idempotencyKey) return or(eq(ticket.idempotencyKey, idempotencyKey), sql`${ticket.id}::text = ${idempotencyKey}`)!;
+  throw new ApiError({
+    status: 400,
+    code: "invalid_payload",
+    type: "validation_error",
+    message: "Missing a request identifier.",
+  });
+}
+
 export async function enqueueTocinoWebhookEvent(raw: unknown) {
-  const payload = raw as Record<string, unknown>;
-  const idempotencyKey = payload.idempotency_key ? String(payload.idempotency_key) : null;
-  const providerRequestId = payload.nova_request_id ? String(payload.nova_request_id) : null;
-
-  const conditions = [];
-  if (idempotencyKey) conditions.push(eq(ticket.idempotencyKey, idempotencyKey));
-  if (providerRequestId) conditions.push(eq(ticket.providerRequestId, providerRequestId));
-  if (conditions.length === 0) {
-    throw new ApiError({
-      status: 400,
-      code: "invalid_payload",
-      type: "validation_error",
-      message: "Missing idempotency_key or nova_request_id.",
-    });
-  }
-
-  const [row] = await db
+  const rows = await db
     .select({
       organizationId: ticket.organizationId,
     })
     .from(ticket)
-    .where(conditions.length === 1 ? conditions[0]! : or(...conditions))
-    .limit(1);
+    .where(webhookTicketCondition(raw))
+    .limit(2);
 
-  if (!row) return { ok: true, parked: true, queued: false };
+  if (rows.length !== 1) return { ok: true, parked: true, queued: false };
+  const row = rows[0]!;
 
   await db
     .insert(job)
-    .values(createTocinoWebhookJobValues({ organizationId: row.organizationId, raw: payload }))
+    .values(createTocinoWebhookJobValues({ organizationId: row.organizationId, raw }))
     .onConflictDoNothing();
 
   return { ok: true, parked: false, queued: true };
@@ -913,7 +913,7 @@ export async function submitTicketToTocino(input: {
     .innerJoin(taxpayer, eq(taxpayer.id, ticket.taxpayerId))
     .where(and(eq(ticket.organizationId, input.organizationId), eq(ticket.id, input.ticketId)));
   if (!row) throw new Error(`Ticket not found: ${input.ticketId}`);
-  if (row.ticket.status !== "received") return;
+  if (row.ticket.status !== "received" || row.ticket.providerRequestId) return;
   if (row.ticket.mode === "test") {
     await finalizeTicketWithMockProvider({ ...input, scenario: "success" });
     return { outcome: "sandbox_finalized" as const };
@@ -960,16 +960,22 @@ export async function submitTicketToTocino(input: {
     ...(csfBase64 ? { csf_pdf: `<base64 omitted: ${csfBase64.length} chars>` } : {}),
   };
 
-  await db
+  const [claimed] = await db
     .update(ticket)
     .set({
       status: "processing",
       statusRank: 50,
       processingStartedAt: new Date(),
       submitRequest: redactedSubmitRequest,
+      errorCode: null,
+      errorType: null,
+      errorMessage: null,
+      lastResponse: null,
       updatedAt: new Date(),
     })
-    .where(eq(ticket.id, row.ticket.id));
+    .where(and(eq(ticket.id, row.ticket.id), eq(ticket.status, row.ticket.status), isNull(ticket.providerRequestId)))
+    .returning({ id: ticket.id });
+  if (!claimed) return;
 
   await dispatchOrganizationWebhookEvent(
     input.organizationId,
@@ -993,15 +999,21 @@ export async function submitTicketToTocino(input: {
       status: "pending",
       livemode: true,
     });
-    await db
+    const [accepted] = await db
       .update(ticket)
       .set({
         status: "pending",
         providerRequestId: result.novaRequestId,
         lastResponse: normalizedResponse,
+        errorCode: null,
+        errorType: null,
+        errorMessage: null,
+        upstreamRaw: null,
         updatedAt: new Date(),
       })
-      .where(eq(ticket.id, row.ticket.id));
+      .where(and(eq(ticket.id, row.ticket.id), eq(ticket.status, "processing"), isNull(ticket.providerRequestId)))
+      .returning({ id: ticket.id });
+    if (!accepted) return;
     await enqueueTicketExpiration({
       organizationId: input.organizationId,
       ticketId: row.ticket.id,
@@ -1013,6 +1025,13 @@ export async function submitTicketToTocino(input: {
   }
 
   const mapped = tocinoErrorToTicket(result.error);
+  const upstreamRaw = {
+    phase: "submit",
+    http_status: result.status ?? null,
+    body: result.raw ?? null,
+    retry_after_seconds: result.retryAfterSeconds ?? null,
+  };
+
   const normalizedResponse = ticketProviderResponseView({
     ticketId: row.ticket.id,
     status: "failed",
@@ -1023,21 +1042,19 @@ export async function submitTicketToTocino(input: {
       message: mapped.errorMessage,
     },
   });
-  await db
+  const [failed] = await db
     .update(ticket)
     .set({
       status: "failed",
       statusRank: 100,
       ...mapped,
       lastResponse: normalizedResponse,
-      upstreamRaw: {
-        phase: "submit",
-        http_status: result.status ?? null,
-        body: result.raw ?? null,
-      },
+      upstreamRaw,
       updatedAt: new Date(),
     })
-    .where(eq(ticket.id, row.ticket.id));
+    .where(and(eq(ticket.id, row.ticket.id), eq(ticket.status, "processing"), isNull(ticket.providerRequestId)))
+    .returning({ id: ticket.id });
+  if (!failed) return;
 
   await dispatchOrganizationWebhookEvent(
     input.organizationId,
@@ -1200,32 +1217,18 @@ async function fetchInvoiceDocument(input: {
 }
 
 export async function applyTocinoWebhookEvent(raw: unknown) {
-  const payload = raw as Record<string, unknown>;
-  const idempotencyKey = payload.idempotency_key ? String(payload.idempotency_key) : null;
-  const providerRequestId = payload.nova_request_id ? String(payload.nova_request_id) : null;
-
-  const conditions = [];
-  if (idempotencyKey) conditions.push(eq(ticket.idempotencyKey, idempotencyKey));
-  if (providerRequestId) conditions.push(eq(ticket.providerRequestId, providerRequestId));
-  if (conditions.length === 0) {
-    throw new ApiError({
-      status: 400,
-      code: "invalid_payload",
-      type: "validation_error",
-      message: "Missing idempotency_key or nova_request_id.",
-    });
-  }
-
-  const [row] = await db
+  const rows = await db
     .select({ ticket, taxpayer })
     .from(ticket)
     .innerJoin(taxpayer, eq(taxpayer.id, ticket.taxpayerId))
-    .where(conditions.length === 1 ? conditions[0]! : or(...conditions))
-    .limit(1);
+    .where(webhookTicketCondition(raw))
+    .limit(2);
 
-  if (!row) return { ok: true, parked: true };
+  if (rows.length !== 1) return { ok: true, parked: true };
+  const row = rows[0]!;
 
   const eventType = classifyTocinoEvent(raw);
+  if (!eventType) return { ok: true, parked: false, ignored: true };
   if (eventType === "ticket.failed") {
     const mapped = tocinoErrorToTicket(mapTocinoError("process", raw));
     await db

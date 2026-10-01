@@ -3,3 +3,4 @@ export * from "./api-keys";
 export * from "./request-logs";
 export * from "./webhooks";
 export * from "./facturador";
+export * from "./webhook-router";

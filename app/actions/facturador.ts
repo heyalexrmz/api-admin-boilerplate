@@ -29,6 +29,7 @@ import {
   ticketProviderResponseView,
 } from "@/lib/facturador/responses"
 import { createSignedDocumentUrl } from "@/lib/storage/document-links"
+import { publicTicketError } from "@/lib/facturador/public-errors"
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -49,16 +50,16 @@ function toTicket(row: {
   updatedAt: Date
   finalizedAt: Date | null
 }): DashboardTicket {
+  const error = ticketErrorView(row)
   return {
     id: row.id,
     taxId: row.taxId,
     status: row.status,
     livemode: row.mode === "live",
     originalFileName: row.originalFileName,
-    providerRequestId: row.providerRequestId,
-    errorCode: row.errorCode,
-    errorType: row.errorType,
-    errorMessage: row.errorMessage,
+    errorCode: error?.code ?? null,
+    errorType: error?.type ?? null,
+    errorMessage: error?.message ?? null,
     invoiceId: row.invoiceId,
     invoiceUuid: row.invoiceUuid,
     documentCount: Number(row.documentCount),
@@ -85,13 +86,11 @@ function ticketErrorView(row: {
   errorType?: string | null
   errorMessage: string | null
 }) {
-  return row.errorCode || row.errorMessage
-    ? {
-        code: row.errorCode,
-        type: row.errorType ?? null,
-        message: row.errorMessage,
-      }
-    : null
+  return publicTicketError({
+    code: row.errorCode,
+    type: row.errorType ?? null,
+    message: row.errorMessage,
+  })
 }
 
 export async function listDashboardTickets(): Promise<DashboardTicket[]> {
@@ -355,7 +354,19 @@ export async function getDashboardInvoiceDetail(
     issuerRfc: row.issuerRfc,
     total: row.total,
     invoiceDate: row.invoiceDate?.toISOString() ?? null,
-    metadata: row.metadata,
+    metadata: {
+      object: "invoice",
+      id: row.id,
+      ticket_id: row.ticketId,
+      status: row.status,
+      uuid: row.uuid,
+      series: row.series,
+      folio: row.folio,
+      issuer_taxpayer: row.issuerTaxpayer,
+      issuer_rfc: row.issuerRfc,
+      total: row.total,
+      invoice_date: row.invoiceDate?.toISOString() ?? null,
+    },
     documentCount: docs.length,
     documents: docs.map((doc) => toDocument(doc.document)),
     createdAt: row.createdAt.toISOString(),

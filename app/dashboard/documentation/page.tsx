@@ -608,6 +608,26 @@ function ApiReferenceContent() {
             <h3 className="text-sm font-medium">Respuesta</h3>
             <CodeBlock code={ticketResponseShape} />
           </div>
+          <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+            <h3 className="font-medium text-foreground">Rechazos y errores de facturación</h3>
+            <p>
+              Cualquier rechazo del servicio de facturación marca el ticket como
+              failed y emite ticket.failed con error.code, error.type y error.message
+              en cuanto se recibe la respuesta. No se reenvía automáticamente el ticket.
+            </p>
+            <p>
+              HTTP 429 se clasifica como UPSTREAM_RATE_LIMITED de tipo quota.
+              Aunque el rechazo indique un tiempo de espera, el ticket queda fallido
+              y el motivo se informa de inmediato. Los errores de datos, acceso,
+              conexión y servidor se clasifican por separado.
+            </p>
+            <p>
+              La respuesta inicial HTTP 201 confirma la recepción del ticket.
+              El resultado de la facturación se consulta en este endpoint o se recibe
+              por webhook. Las respuestas públicas usan nombres neutrales y no
+              exponen la identidad del servicio externo ni su respuesta cruda.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
