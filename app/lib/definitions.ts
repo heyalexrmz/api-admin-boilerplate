@@ -454,7 +454,6 @@ export type DashboardTicket = {
   status: string
   livemode: boolean
   originalFileName: string | null
-  providerRequestId: string | null
   errorCode: string | null
   errorType: string | null
   errorMessage: string | null

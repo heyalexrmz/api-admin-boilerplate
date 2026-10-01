@@ -215,7 +215,7 @@ describe("submitToTocino", () => {
   });
 
   it("forwards taxpayer for personas morales", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn<typeof fetch>(async () =>
       new Response(JSON.stringify({ nova_request_id: "nova_123" }), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -251,7 +251,7 @@ describe("submitToTocino", () => {
   });
 
   it("forwards Tocino persona fisica name fields", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn<typeof fetch>(async () =>
       new Response(JSON.stringify({ nova_request_id: "nova_123" }), {
         status: 200,
         headers: { "content-type": "application/json" },

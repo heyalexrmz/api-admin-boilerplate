@@ -1,6 +1,6 @@
 "use client"
 
-import { CircleAlert, Download } from "lucide-react"
+import { Download } from "lucide-react"
 
 import type { DashboardTicketDetail } from "@/app/lib/definitions"
 import {
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { TicketErrorAlert } from "@/components/tickets/ticket-error-alert"
 import { StatusBadge } from "@/components/status-badge"
 import {
   Sheet,
@@ -107,21 +107,7 @@ export function TicketDetailSheet({
               <Detail label="Factura" value={ticket.invoice?.uuid ?? ticket.invoiceId ?? "—"} />
             </div>
 
-            {ticket.status === "failed" && ticket.errorMessage && (
-              <Alert variant="destructive" className="mt-4">
-                <CircleAlert />
-                <AlertTitle>No se pudo facturar el ticket</AlertTitle>
-                <AlertDescription>
-                  <p>{ticket.errorMessage}</p>
-                  {ticket.errorCode && (
-                    <p className="mt-1 font-mono text-xs">
-                      {ticket.errorCode}
-                      {ticket.errorType ? ` · ${ticket.errorType}` : ""}
-                    </p>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
+            <TicketErrorAlert ticket={ticket} />
 
             <Accordion
               type="multiple"
