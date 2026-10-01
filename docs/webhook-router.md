@@ -16,7 +16,7 @@ flowchart LR
 ```
 
 1. `POST /api/v1/webhooks/upstream` valida el header configurado y acepta un objeto JSON de hasta 1 MiB.
-2. Una única escritura guarda el cuerpo original y todas sus entregas. La respuesta `202` confirma almacenamiento, no que el ticket ya terminó ni que los destinos ya recibieron el evento.
+2. Una única escritura guarda el cuerpo original y todas sus entregas. La respuesta `200 OK` confirma almacenamiento, no que el ticket ya terminó ni que los destinos ya recibieron el evento. El emisor exige exactamente `200`; también se devuelve para reintentos duplicados ya persistidos.
 3. El worker ejecuta por separado el procesamiento de tickets, los callbacks locales y los reenvíos. El polling es de 2 segundos por defecto; la carga pendiente puede aumentar la demora.
 4. El procesamiento local reutiliza el finalizador existente: éxito → `finalized`; rechazo → `failed`, motivo normalizado y eventos de la organización. Un destino externo lento o caído no bloquea este recorrido.
 5. Los eventos de progreso se reenvían, pero no finalizan tickets. Un callback terminal cuyo ticket aún no aparece se conserva para reintento. Los eventos que pertenecen a otra aplicación se reenvían aunque no exista un ticket local.
@@ -68,7 +68,7 @@ La entrega es **al menos una vez**: si un destino procesa el evento y la conexi�
 
 | Respuesta del ingreso | Significado |
 | --- | --- |
-| `202` | Evento persistido; `duplicate: true` significa que todas las entregas ya existían |
+| `200` | Evento persistido; `duplicate: true` significa que todas las entregas ya existían y el reintento queda confirmado |
 | `400` | JSON inválido, cuerpo ilegible o valor que no es un objeto |
 | `401` | Header de autenticación ausente o incorrecto |
 | `405` | Método distinto de POST |
@@ -110,7 +110,7 @@ La retención de cuerpos y la alerta operativa de entregas agotadas no están au
 3. Despliega el web principal, el worker y el nuevo servicio HTTP con `render.yaml`. Si el web principal se aloja fuera de ese Blueprint, configura manualmente las mismas variables y sustituye las referencias `fromService` según corresponda.
 4. Verifica `GET /health` en el nuevo servicio y confirma que `taxo-timbre-worker` está activo. El health check del ingreso no certifica que el consumidor esté corriendo.
 5. Configura el callback emisor como `https://<host-del-router>/api/v1/webhooks/upstream`, con el header `typeform-signature`. La URL de Vercel proporcionada es un **destino de reenvío**, no la dirección del nuevo ingreso.
-6. Comprueba un evento de prueba: `202`, una entrega local y una por destino; después, ticket en estado final y entregas completadas o errores identificables. No basta con revisar el `202`.
+6. Comprueba un evento de prueba: `200`, una entrega local y una por destino; después, ticket en estado final y entregas completadas o errores identificables. No basta con revisar el `200`.
 
 En local: `pnpm webhook-router` y `pnpm worker`, en terminales separadas, con una base de desarrollo. No se han enviado callbacks de prueba al destino de producción ni se ha desplegado este cambio.
 

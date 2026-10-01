@@ -63,7 +63,7 @@ describe.skipIf(!testDatabase)("webhook router with PostgreSQL", () => {
   it("finalizes a ticket while an independent destination is failing", async () => {
     await seedTicket();
     const response = await acceptRouterWebhook(request({ nova_request_id: "request-1", status: "finalized", invoice: { id: "invoice-1", invoice_total: "123.45" } }));
-    expect(response.status).toBe(202);
+    expect(response.status).toBe(200);
     fetchMock.mockResolvedValue(new Response(null, { status: 500 }));
     await Promise.all([tickRouterDelivery("local"), tickRouterDelivery("forward")]);
     const result = await db.execute(sql`select status from ticket`);
@@ -159,7 +159,7 @@ describe.skipIf(!testDatabase)("webhook router with PostgreSQL", () => {
       expect((await nativeFetch(`${base}/health`)).status).toBe(200);
       expect((await nativeFetch(`${base}${ROUTER_PATH}`, { method: "POST", body: "{}" })).status).toBe(401);
       const response = await nativeFetch(`${base}${ROUTER_PATH}`, { method: "POST", headers: { "content-type": "application/json", "typeform-signature": token }, body: '{"status":"processing"}' });
-      expect(response.status).toBe(202);
+      expect(response.status).toBe(200);
       expect((await db.execute(sql`select count(*)::int as count from upstream_webhook_delivery`)).rows[0]!.count).toBe(2);
     } finally {
       server.closeAllConnections();

@@ -31,7 +31,7 @@ describe("authenticated durable webhook routing", () => {
   it("persists exact raw JSON for local processing and forwarding before acknowledging", async () => {
     const body = '{ "nova_request_id": "request-1", "status": "finalized" }';
     const response = await POST(request(body));
-    expect(response.status).toBe(202);
+    expect(response.status).toBe(200);
     expect(persistRouterDeliveries).toHaveBeenCalledWith({ eventId: expect.stringMatching(/^evt_/), rawBody: body, destinations: ["local", target] });
     expect(await response.json()).toMatchObject({ ok: true, queued: true, duplicate: false });
   });
@@ -53,7 +53,7 @@ describe("authenticated durable webhook routing", () => {
     expect(persistRouterDeliveries).not.toHaveBeenCalled();
   });
   it("accepts events belonging to other applications for forwarding", async () => {
-    expect((await POST(request('{"foreign_id":"external-1"}'))).status).toBe(202);
+    expect((await POST(request('{"foreign_id":"external-1"}'))).status).toBe(200);
   });
   it("does not acknowledge a failed durable write", async () => {
     vi.mocked(persistRouterDeliveries).mockRejectedValueOnce(new Error("db unavailable"));
@@ -62,9 +62,11 @@ describe("authenticated durable webhook routing", () => {
     expect(response.headers.get("retry-after")).toBe("30");
     expect(await response.text()).not.toContain("db unavailable");
   });
-  it("acknowledges duplicate callbacks", async () => {
+  it("acknowledges duplicate retries with HTTP 200", async () => {
     vi.mocked(persistRouterDeliveries).mockResolvedValueOnce(0);
-    expect(await (await POST(request("{}"))).json()).toMatchObject({ duplicate: true });
+    const response = await POST(request("{}"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, duplicate: true });
   });
   it("blocks forwarding loops", async () => {
     expect((await POST(request("{}", { "x-webhook-router-hop": "1" }))).status).toBe(409);
