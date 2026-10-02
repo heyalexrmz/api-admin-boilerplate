@@ -43,14 +43,14 @@ describe.skipIf(!process.env.TICKET_RETRY_TEST_DATABASE_URL)("manual retries wit
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ nova_request_id: "provider-receipt" }), { status: 200 })));
     await db.execute(sql`truncate table organization, plan cascade`);
     await db.insert(organization).values({ id: input.organizationId, name: "Retry tests", slug: "retry-tests" });
-    const [owner] = await db.insert(taxpayer).values({ organizationId: input.organizationId, rfc: "TEST010101AAA" }).returning();
+    const [owner] = await db.insert(taxpayer).values({ organizationId: input.organizationId, rfc: "LOTJ900101AB1" }).returning();
     taxpayerId = owner.id;
     await db.insert(ticket).values({
       id: ticketId, organizationId: input.organizationId, taxpayerId,
       status: "failed", mode: "live", statusRank: 100, idempotencyKey: "original-key",
       errorCode: "UPSTREAM_UNAVAILABLE", errorType: "upstream", errorMessage: "Unavailable",
       upstreamRaw: originalFailure, processingStartedAt: new Date(),
-      originalFileName: "receipt.png", submitRequest: { tax_id: "TEST010101AAA", taxpayer: "Test Name", file: "<omitted>" },
+      originalFileName: "receipt.png", submitRequest: { tax_id: "LOTJ900101AB1", taxpayer: "JULIETA SOFIA LOPEZ TORRES", file: "<omitted>" },
     });
     const [image] = await db.insert(document).values({
       organizationId: input.organizationId, kind: "ticket_image", status: "stored",
@@ -84,7 +84,11 @@ describe.skipIf(!process.env.TICKET_RETRY_TEST_DATABASE_URL)("manual retries wit
     expect(await currentTicket()).toMatchObject({ status: "pending", providerRequestId: "provider-receipt", idempotencyKey: "original-key" });
     expect(fetch).toHaveBeenCalledExactlyOnceWith(expect.any(String), expect.objectContaining({
       headers: expect.objectContaining({ "Idempotency-Key": "original-key" }),
-      body: JSON.stringify({ tax_id: "TEST010101AAA", taxpayer: "Test Name", country: "México", file: Buffer.from("original-image").toString("base64"), file_name: "receipt.png" }),
+      body: JSON.stringify({
+        tax_id: "LOTJ900101AB1", taxpayer: "JULIETA SOFIA LOPEZ TORRES",
+        taxpayer_name: "JULIETA SOFIA", taxpayer_last_name: "LOPEZ", taxpayer_second_last_name: "TORRES",
+        country: "México", file: Buffer.from("original-image").toString("base64"), file_name: "receipt.png",
+      }),
     }));
     expect(await db.select().from(creditLedgerEntry)).toHaveLength(1);
     expect((await db.select().from(creditAccount))[0].balance).toBe(19);

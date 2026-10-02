@@ -55,7 +55,7 @@ const createTicketFields = [
     location: "json body",
     requirement: "Condicional",
     type: "string",
-    description: "Nombre completo o razón social. Para persona física se puede enviar o se infiere con nombre y apellidos.",
+    description: "Nombre completo o razón social. Para persona física, los nombres sencillos se separan automáticamente; los nombres ambiguos requieren los tres campos separados. Si se omite, se construye con nombre y apellidos.",
   },
   {
     name: "taxpayer_name",
@@ -558,6 +558,16 @@ function ApiReferenceContent() {
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
           <FieldsTable fields={createTicketFields} />
+          <p className="text-sm text-muted-foreground">
+            Para RFC de persona física, si solo envías taxpayer, se intenta separar
+            el nombre completo tomando las dos últimas palabras como apellidos y
+            comprobando sus iniciales contra el RFC. Los RFC genéricos se excluyen.
+            Es una inferencia, no una validación de identidad ante el SAT. Los
+            apellidos compuestos, nombres con un solo apellido o iniciales que no
+            coinciden requieren datos explícitos. Envía los tres campos juntos:
+            taxpayer_name, taxpayer_last_name y taxpayer_second_last_name.
+            Si ya están completos, se conservan sin inferir otros valores.
+          </p>
           <div className="flex flex-col gap-3">
             <h3 className="text-sm font-medium">Ejemplo</h3>
             <CodeBlock code={createTicketExample} />

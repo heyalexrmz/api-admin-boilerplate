@@ -24,6 +24,7 @@ import {
   mapTocinoError,
   submitToTocino,
   type TocinoError,
+  type TocinoSubmitResult,
 } from "@/lib/facturador/tocino";
 import { tocinoSubmitBody } from "@/lib/facturador/provider-submit";
 import { normalizeTicketSubmitFields } from "@/lib/facturador/submit-fields";
@@ -954,12 +955,20 @@ export async function submitTicketToTocino(input: {
     row.ticket.submitRequest && typeof row.ticket.submitRequest === "object"
       ? (row.ticket.submitRequest as Record<string, unknown>)
       : {};
-  const body = tocinoSubmitBody({
-    storedFields,
-    imageBase64,
-    fileName: row.ticket.originalFileName ?? image.originalFileName,
-    csfBase64,
-  });
+  let body: Record<string, unknown> = {};
+  let validationError: ApiError | null = null;
+  try {
+    // Also normalize historical payloads when a manual retry reaches the worker.
+    body = tocinoSubmitBody({
+      storedFields,
+      imageBase64,
+      fileName: row.ticket.originalFileName ?? image.originalFileName,
+      csfBase64,
+    });
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.type !== "validation_error") throw error;
+    validationError = error;
+  }
   const redactedSubmitRequest = {
     ...body,
     file: `<base64 omitted: ${imageBase64.length} chars>`,
@@ -972,7 +981,7 @@ export async function submitTicketToTocino(input: {
       status: "processing",
       statusRank: 50,
       processingStartedAt: new Date(),
-      submitRequest: redactedSubmitRequest,
+      submitRequest: validationError ? row.ticket.submitRequest : redactedSubmitRequest,
       errorCode: null,
       errorType: null,
       errorMessage: null,
@@ -994,10 +1003,18 @@ export async function submitTicketToTocino(input: {
     })
   );
 
-  const result = await submitToTocino({
-    idempotencyKey: row.ticket.idempotencyKey ?? row.ticket.id,
-    body,
-  });
+  // A historical payload that needs explicit names must fail once and notify;
+  // throwing here would retry the queue job and leave the ticket in processing.
+  const result: TocinoSubmitResult = validationError
+    ? {
+        ok: false,
+        error: { code: validationError.code, category: "validation", message: validationError.message },
+        raw: { param: validationError.param },
+      }
+    : await submitToTocino({
+        idempotencyKey: row.ticket.idempotencyKey ?? row.ticket.id,
+        body,
+      });
 
   if (result.ok) {
     const normalizedResponse = ticketProviderResponseView({
@@ -1032,7 +1049,7 @@ export async function submitTicketToTocino(input: {
 
   const mapped = tocinoErrorToTicket(result.error);
   const upstreamRaw = {
-    phase: "submit",
+    phase: validationError ? "validation" : "submit",
     http_status: result.status ?? null,
     body: result.raw ?? null,
     retry_after_seconds: result.retryAfterSeconds ?? null,

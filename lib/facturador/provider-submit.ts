@@ -1,3 +1,5 @@
+import { normalizeTicketSubmitFields } from "./submit-fields";
+
 const PROVIDER_FIELD_NAMES = [
   "tax_id",
   "taxpayer",
@@ -22,12 +24,13 @@ export function tocinoSubmitBody(input: {
   fileName: string;
   csfBase64?: string;
 }): Record<string, unknown> {
-  const fields: Record<string, unknown> = {};
+  const storedFields: Record<string, string> = {};
 
   for (const name of PROVIDER_FIELD_NAMES) {
     const value = input.storedFields[name];
-    if (typeof value === "string" && value.trim()) fields[name] = value.trim();
+    if (typeof value === "string" && value.trim()) storedFields[name] = value.trim();
   }
+  const fields = normalizeTicketSubmitFields(storedFields);
 
   if (!fields.taxpayer) {
     const fullName = [

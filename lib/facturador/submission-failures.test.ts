@@ -18,6 +18,7 @@ vi.mock("@/lib/storage/s3", () => ({
 
 import { ticket } from "@/lib/db/schema";
 import { tick } from "@/worker/jobs";
+import { createTicketFromFormData, createTicketFromJson } from "./core";
 
 // Drive the real worker, submission adapter, and state transitions. Only storage,
 // persistence, and outbound webhook delivery are replaced with in-memory boundaries.
@@ -37,7 +38,7 @@ beforeEach(() => {
   ticketState = {
     id: "ticket-1", organizationId: "org-1", status: "received", mode: "live",
     idempotencyKey: "original-key", providerRequestId: null,
-    submitRequest: { tax_id: "TEST010101AAA", taxpayer: "Test" },
+    submitRequest: { tax_id: "EKU9003173C9", taxpayer: "Test Company" },
     errorCode: null, errorType: null, errorMessage: null, lastResponse: null,
   };
   jobState = {
@@ -96,6 +97,59 @@ afterEach(() => {
 function throttled(seconds = 35115) {
   return new Response(JSON.stringify({ detail: `Request was throttled. Expected available in ${seconds} seconds.` }), { status: 429 });
 }
+
+describe("name normalization at submission boundaries", () => {
+  it("sends and stores the separate names for a historical full-name-only payload", async () => {
+    ticketState.submitRequest = { tax_id: "LOTJ900101AB1", taxpayer: "JULIETA SOFIA LOPEZ TORRES" };
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ nova_request_id: "accepted" }), { status: 200 }));
+    await tick();
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body).toMatchObject({
+      taxpayer: "JULIETA SOFIA LOPEZ TORRES", taxpayer_name: "JULIETA SOFIA",
+      taxpayer_last_name: "LOPEZ", taxpayer_second_last_name: "TORRES",
+      file: Buffer.from("image").toString("base64"),
+    });
+    expect(ticketState).toMatchObject({
+      status: "pending", providerRequestId: "accepted", idempotencyKey: "original-key",
+      submitRequest: { ...body, file: "<base64 omitted: 8 chars>" },
+    });
+    expect(fetchMock.mock.calls[0][1].headers["Idempotency-Key"]).toBe("original-key");
+    expect(jobState.status).toBe("completed");
+    expect(mocks.debit).not.toHaveBeenCalled();
+  });
+
+  it("fails an ambiguous historical payload once, notifies, and never contacts the provider", async () => {
+    const original = { tax_id: "CUPA900101AB1", taxpayer: "ANA DE LA CRUZ PEREZ" };
+    ticketState.submitRequest = original;
+    await tick();
+    expect(ticketState).toMatchObject({
+      status: "failed", errorCode: "ambiguous_taxpayer_name", errorType: "validation",
+      upstreamRaw: { phase: "validation", http_status: null, body: { param: "taxpayer" } },
+      submitRequest: original,
+      lastResponse: { status: "failed", error: { code: "ambiguous_taxpayer_name" } },
+    });
+    expect(jobState).toMatchObject({ status: "completed", attempts: 1 });
+    expect(mocks.dispatch.mock.calls.filter((call) => call[1] === "ticket.failed")).toHaveLength(1);
+    await tick();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.debit).not.toHaveBeenCalled();
+  });
+
+  it.each(["json", "multipart"])("rejects an ambiguous new %s request before persistence or charging", async (format) => {
+    const input = { organizationId: "org-1", apiKeyId: "key-1", mode: "live" as const, requestId: "request-1" };
+    const fields = { tax_id: "CUPA900101AB1", taxpayer: "ANA DE LA CRUZ PEREZ" };
+    const formData = new FormData();
+    Object.entries(fields).forEach(([key, value]) => formData.set(key, value));
+    formData.set("file", new File([new Uint8Array([0xff, 0xd8, 0xff])], "ticket.jpg", { type: "image/jpeg" }));
+    const request = format === "json"
+      ? createTicketFromJson({ ...input, body: { ...fields, file: "/9j/", file_name: "ticket.jpg" } })
+      : createTicketFromFormData({ ...input, formData });
+    await expect(request).rejects.toMatchObject({ status: 400, code: "ambiguous_taxpayer_name" });
+    expect(mocks.db.insert).not.toHaveBeenCalled();
+    expect(mocks.debit).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
 
 describe("immediate submission failures", () => {
   it.each([35115, 1793])("fails and notifies immediately even when throttling suggests waiting %i seconds", async (seconds) => {
