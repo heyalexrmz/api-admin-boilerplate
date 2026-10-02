@@ -59,6 +59,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "jsdom": "26.1.0",
     "react-grab": "^0.1.47",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",

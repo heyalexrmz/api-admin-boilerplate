@@ -10,7 +10,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 
 import {
   Table,
@@ -43,6 +43,10 @@ type DataTableProps<TData, TValue> = {
   pageSize?: number
   /** Page-size choices offered in the pagination footer. */
   pageSizeOptions?: number[]
+  /** Preserve the page on data refresh; reset it only when this filter key changes. */
+  paginationResetKey?: string
+  /** Stable row identity for tables whose records update or move. */
+  getRowId?: (row: TData) => string
 }
 
 export function DataTable<TData, TValue>({
@@ -53,23 +57,41 @@ export function DataTable<TData, TValue>({
   onRowClick,
   pageSize = 10,
   pageSizeOptions = [10, 20, 50],
+  paginationResetKey,
+  getRowId,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
     pageSize,
   })
+  const [previousResetKey, setPreviousResetKey] = React.useState(paginationResetKey)
+  const lastPageIndex = Math.max(0, Math.ceil(data.length / pagination.pageSize) - 1)
+  const nextPageIndex = previousResetKey !== paginationResetKey
+    ? 0
+    : Math.min(pagination.pageIndex, lastPageIndex)
+
+  // Adjust before rendering rows so a shrinking result set never flashes an
+  // empty/out-of-range page. Background refreshes otherwise preserve the page.
+  if (previousResetKey !== paginationResetKey) setPreviousResetKey(paginationResetKey)
+  if (pagination.pageIndex !== nextPageIndex) {
+    setPagination({ ...pagination, pageIndex: nextPageIndex })
+  }
 
   const table = useReactTable({
     data,
     columns,
     state: { sorting, pagination },
-    onSortingChange: setSorting,
+    onSortingChange: (updater) => {
+      setSorting(updater)
+      setPagination((previous) => ({ ...previous, pageIndex: 0 }))
+    },
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    autoResetPageIndex: true,
+    autoResetPageIndex: paginationResetKey === undefined,
+    getRowId,
   })
 
   // Keep page size in sync when the prop changes (e.g. per-table overrides).
@@ -80,6 +102,7 @@ export function DataTable<TData, TValue>({
   }, [pageSize])
 
   function handleRowKeyDown(event: React.KeyboardEvent, row: TData) {
+    if (event.target !== event.currentTarget) return
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault()
       onRowClick?.(row)
@@ -99,7 +122,11 @@ export function DataTable<TData, TValue>({
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id} className="hover:bg-transparent">
               {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} style={{ width: header.getSize() }}>
+                <TableHead
+                  key={header.id}
+                  style={{ width: header.getSize() }}
+                  aria-sort={header.column.getIsSorted() === "asc" ? "ascending" : header.column.getIsSorted() === "desc" ? "descending" : undefined}
+                >
                   {header.isPlaceholder
                     ? null
                     : flexRender(
@@ -126,7 +153,7 @@ export function DataTable<TData, TValue>({
                 tabIndex={onRowClick ? 0 : undefined}
                 className={cn(
                   "even:bg-muted/50 hover:bg-muted",
-                  onRowClick && "cursor-pointer"
+                  onRowClick && "cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 )}
               >
                 {row.getVisibleCells().map((cell) => (
@@ -150,7 +177,7 @@ export function DataTable<TData, TValue>({
       </Table>
 
       {showPagination && (
-        <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm tabular-nums lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
             <span>
               Mostrando{" "}
@@ -165,7 +192,7 @@ export function DataTable<TData, TValue>({
                 value={String(currentPageSize)}
                 onValueChange={(value) => table.setPageSize(Number(value))}
               >
-                <SelectTrigger size="sm" className="h-7 w-[72px]">
+                <SelectTrigger className="w-[76px] data-[size=default]:h-10" aria-label="Filas por página">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -179,33 +206,61 @@ export function DataTable<TData, TValue>({
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <nav aria-label={`Paginación${caption ? ` de ${caption}` : ""}`} className="flex items-center justify-center gap-1 sm:justify-end sm:gap-1.5">
             <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-10 transition-colors"
+              aria-label="Primera página"
+              title="Primera página"
+              onClick={() => table.firstPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              <ChevronsLeft aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
               variant="outline"
               size="sm"
-              className="h-7 gap-1"
+              className="h-10 min-w-10 gap-1 transition-colors"
+              aria-label="Página anterior"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              <ChevronLeft />
-              Anterior
+              <ChevronLeft aria-hidden="true" />
+              <span className="hidden sm:inline">Anterior</span>
             </Button>
-            <span className="text-muted-foreground">
+            <span className="min-w-0 flex-1 text-center text-xs text-muted-foreground sm:min-w-28 sm:flex-none sm:px-2 sm:text-sm" role="status" aria-live="polite" aria-atomic="true">
               Página{" "}
               <span className="font-medium text-foreground">{pageIndex + 1}</span>{" "}
               de <span className="font-medium text-foreground">{pageCount}</span>
             </span>
             <Button
+              type="button"
               variant="outline"
               size="sm"
-              className="h-7 gap-1"
+              className="h-10 min-w-10 gap-1 transition-colors"
+              aria-label="Página siguiente"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              Siguiente
-              <ChevronRight />
+              <span className="hidden sm:inline">Siguiente</span>
+              <ChevronRight aria-hidden="true" />
             </Button>
-          </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-10 transition-colors"
+              aria-label="Última página"
+              title="Última página"
+              onClick={() => table.lastPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              <ChevronsRight aria-hidden="true" />
+            </Button>
+          </nav>
         </div>
       )}
     </div>

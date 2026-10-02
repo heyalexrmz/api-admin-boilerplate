@@ -16,6 +16,7 @@ import {
   ChevronsUpDown,
   Clock3,
   FileText,
+  RefreshCw,
   X,
   XCircle,
 } from "lucide-react"
@@ -70,7 +71,7 @@ function SortableHeader<TData>({
     <button
       type="button"
       onClick={column.getToggleSortingHandler()}
-      className="inline-flex items-center gap-1 text-left font-medium"
+      className="inline-flex min-h-10 items-center gap-1 rounded-sm text-left font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       {children}
       <Icon className={sorted ? "size-3.5 opacity-70" : "size-3.5 opacity-40"} />
@@ -215,15 +216,23 @@ export function TicketsView({
   const [status, setStatus] = useState("all")
   const [mode, setMode] = useState("all")
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const [refreshPending, startRefreshTransition] = useTransition()
+  const refreshTickets = useCallback(() => {
+    startRefreshTransition(() => router.refresh())
+  }, [router])
+  const paginationResetKey = JSON.stringify([
+    query.trim().toLowerCase(), status, mode,
+    dateRange?.from?.getTime() ?? null, dateRange?.to?.getTime() ?? null,
+  ])
 
   const hasActiveTickets = tickets.some((ticket) => IN_PROCESS_STATUSES.has(ticket.status))
   useEffect(() => {
     if (!hasActiveTickets) return
     const interval = setInterval(() => {
-      if (document.visibilityState === "visible") router.refresh()
+      if (document.visibilityState === "visible") refreshTickets()
     }, 5000)
     return () => clearInterval(interval)
-  }, [hasActiveTickets, router])
+  }, [hasActiveTickets, refreshTickets])
 
   const selectedId = selected?.id
   const selectedUpdatedAt = selected?.updatedAt
@@ -369,8 +378,8 @@ export function TicketsView({
         header: ({ column }) => <SortableHeader column={column}>Creado</SortableHeader>,
         cell: ({ row }) => (
           <div className="flex flex-col">
-            <span>{formatRelativeTime(row.original.createdAt)}</span>
-            <span className="text-xs text-muted-foreground">{formatDate(row.original.createdAt)}</span>
+            <time dateTime={row.original.createdAt} suppressHydrationWarning>{formatRelativeTime(row.original.createdAt)}</time>
+            <time dateTime={row.original.createdAt} suppressHydrationWarning className="text-xs text-muted-foreground">{formatDate(row.original.createdAt)}</time>
           </div>
         ),
       },
@@ -453,21 +462,23 @@ export function TicketsView({
         >
           <DateRangePicker value={dateRange} onChange={setDateRange} />
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="w-36" aria-label="Filter by status">
+            <SelectTrigger className="w-44" aria-label="Filtrar por estado">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los estados</SelectItem>
               <SelectItem value="received">Recibido</SelectItem>
+              <SelectItem value="queued">En cola</SelectItem>
               <SelectItem value="pending">Pendiente</SelectItem>
               <SelectItem value="processing">Procesando</SelectItem>
               <SelectItem value="finalized">Finalizado</SelectItem>
               <SelectItem value="not_invoiceable">No facturable</SelectItem>
               <SelectItem value="failed">Fallido</SelectItem>
+              <SelectItem value="cancelled">Cancelado</SelectItem>
             </SelectContent>
           </Select>
           <Select value={mode} onValueChange={setMode}>
-            <SelectTrigger className="w-36" aria-label="Filter by mode">
+            <SelectTrigger className="w-44" aria-label="Filtrar por modo">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -478,10 +489,29 @@ export function TicketsView({
           </Select>
         </FilterBar>
 
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            {hasActiveTickets ? "Actualización automática cada 5 segundos" : "Actualiza para consultar nuevos tickets"}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 transition-colors"
+            onClick={refreshTickets}
+            disabled={refreshPending}
+            aria-busy={refreshPending}
+          >
+            <RefreshCw className={cn("size-4", refreshPending && "motion-safe:animate-spin")} aria-hidden="true" />
+            Actualizar
+          </Button>
+        </div>
+
         <DataTable
           columns={columns}
           data={filtered}
           caption="Tickets"
+          paginationResetKey={paginationResetKey}
+          getRowId={(ticket) => ticket.id}
           empty="No hay tickets que coincidan con tus filtros."
           onRowClick={(ticket) => openTicket(ticket.id)}
         />
