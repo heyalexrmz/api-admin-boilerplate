@@ -1,6 +1,8 @@
 "use server"
 
 import { and, count, desc, eq, sql } from "drizzle-orm"
+import { revalidatePath } from "next/cache"
+import { z } from "zod"
 
 import {
   requireActiveOrganization,
@@ -30,6 +32,8 @@ import {
 } from "@/lib/facturador/responses"
 import { createSignedDocumentUrl } from "@/lib/storage/document-links"
 import { publicTicketError } from "@/lib/facturador/public-errors"
+import { canRetryTicketSubmission } from "@/lib/facturador/retry-eligibility"
+import { retryTicketSubmission } from "@/lib/facturador/retry"
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -40,6 +44,7 @@ function toTicket(row: {
   mode: "live" | "test"
   originalFileName: string | null
   providerRequestId: string | null
+  upstreamRaw: unknown
   errorCode: string | null
   errorType: string | null
   errorMessage: string | null
@@ -56,6 +61,7 @@ function toTicket(row: {
     taxId: row.taxId,
     status: row.status,
     livemode: row.mode === "live",
+    canRetry: canRetryTicketSubmission(row),
     originalFileName: row.originalFileName,
     errorCode: error?.code ?? null,
     errorType: error?.type ?? null,
@@ -110,6 +116,7 @@ async function listDashboardTicketsForOrganization(
       mode: ticket.mode,
       originalFileName: ticket.originalFileName,
       providerRequestId: ticket.providerRequestId,
+      upstreamRaw: ticket.upstreamRaw,
       errorCode: ticket.errorCode,
       errorType: ticket.errorType,
       errorMessage: ticket.errorMessage,
@@ -144,6 +151,7 @@ export async function getDashboardTicketOverview(): Promise<DashboardTicketOverv
       finalized: sql<number>`(count(*) filter (where ${ticket.status} = 'finalized'))::int`,
       active: sql<number>`(count(*) filter (where ${ticket.status} in ('received', 'queued', 'pending', 'processing')))::int`,
       failed: sql<number>`(count(*) filter (where ${ticket.status} = 'failed'))::int`,
+      notInvoiceable: sql<number>`(count(*) filter (where ${ticket.status} = 'not_invoiceable'))::int`,
       live: sql<number>`(count(*) filter (where ${ticket.mode} = 'live'))::int`,
       sandbox: sql<number>`(count(*) filter (where ${ticket.mode} = 'test'))::int`,
     })
@@ -156,6 +164,7 @@ export async function getDashboardTicketOverview(): Promise<DashboardTicketOverv
     finalized: stats?.finalized ?? 0,
     active: stats?.active ?? 0,
     failed: stats?.failed ?? 0,
+    notInvoiceable: stats?.notInvoiceable ?? 0,
     live: stats?.live ?? 0,
     sandbox: stats?.sandbox ?? 0,
     recentTickets: await listDashboardTicketsForOrganization(organization.id, 8),
@@ -372,6 +381,23 @@ export async function getDashboardInvoiceDetail(
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }
+}
+
+export async function retryDashboardTicket(
+  id: string
+): Promise<{ success: true } | { error: string }> {
+  const { organization, user } = await requireOrganizationManager()
+  if (!z.string().uuid().safeParse(id).success) return { error: "El identificador del ticket no es válido." }
+  const result = await retryTicketSubmission({
+    organizationId: organization.id,
+    ticketId: id,
+    userId: user.id,
+  })
+  if ("success" in result) {
+    revalidatePath("/dashboard/tickets")
+    revalidatePath("/dashboard")
+  }
+  return result
 }
 
 export async function refreshDashboardTicket(

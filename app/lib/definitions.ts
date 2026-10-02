@@ -453,6 +453,7 @@ export type DashboardTicket = {
   taxId: string
   status: string
   livemode: boolean
+  canRetry: boolean
   originalFileName: string | null
   errorCode: string | null
   errorType: string | null
@@ -471,6 +472,7 @@ export type DashboardTicketOverview = {
   finalized: number
   active: number
   failed: number
+  notInvoiceable: number
   live: number
   sandbox: number
   recentTickets: DashboardTicket[]

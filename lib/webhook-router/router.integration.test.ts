@@ -1,4 +1,6 @@
 import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { sql } from "drizzle-orm";
 
@@ -46,6 +48,8 @@ describe.skipIf(!testDatabase)("webhook router with PostgreSQL", () => {
     await db.execute(sql`drop table if exists upstream_webhook_delivery`);
     const migration = await readFile(new URL("../db/migrations/0008_webhook_router.sql", import.meta.url), "utf8");
     await db.execute(sql.raw(migration));
+    const ticketStatusMigration = await readFile(new URL("../db/migrations/0009_ticket_not_invoiceable_status.sql", import.meta.url), "utf8");
+    await db.execute(sql.raw(ticketStatusMigration));
   });
   beforeEach(async () => {
     await db.execute(sql`truncate upstream_webhook_delivery, organization cascade`);
@@ -84,6 +88,37 @@ describe.skipIf(!testDatabase)("webhook router with PostgreSQL", () => {
     expect(rows[0]).toEqual({ status: "failed", error_code: "MERCHANT_ERROR", error_message: "Ticket vencido" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("persists non-invoiceable callbacks separately from technical failures", async () => {
+    await seedTicket();
+    const reason = "Fecha del ticket fuera del rango facturable establecido por el comercio.";
+    await acceptRouterWebhook(request({
+      nova_request_id: "request-1", status: "failed", invoice: { not_invoiceable_cause: reason },
+    }));
+    await tickRouterDelivery("local");
+    expect((await db.execute(sql`select status, error_code, error_message from ticket`)).rows).toEqual([
+      { status: "not_invoiceable", error_code: "NOT_INVOICEABLE", error_message: reason },
+    ]);
+    expect((await db.execute(sql`select status from upstream_webhook_delivery where destination = 'local'`)).rows[0]!.status).toBe("completed");
+  });
+
+  it("backfills only historical NOT_INVOICEABLE failures and is safe to repeat", async () => {
+    const historical = await seedTicket();
+    const technical = await seedTicket("technical-org", "request-2", "key-2");
+    await db.execute(sql`update ticket set status = 'failed', error_code = 'NOT_INVOICEABLE', error_message = 'Ticket vencido' where id = ${historical.id}`);
+    await db.execute(sql`update ticket set status = 'failed', error_code = 'UPSTREAM_UNAVAILABLE' where id = ${technical.id}`);
+    const before = (await db.execute(sql`select updated_at from ticket where id = ${historical.id}`)).rows[0]!;
+    const runBackfill = () => promisify(execFile)(process.execPath, ["--import", "tsx", "scripts/backfill-not-invoiceable.ts"], {
+      env: { ...process.env, DATABASE_URL: testDatabase, DATABASE_SSL: "false" },
+    });
+    expect((await runBackfill()).stdout).toContain("Reclassified 1");
+    const { rows } = await db.execute(sql`select id, status, error_message, updated_at from ticket`);
+    expect(rows.find((row) => row.id === historical.id)).toMatchObject({
+      status: "not_invoiceable", error_message: "Ticket vencido", updated_at: before.updated_at,
+    });
+    expect(rows.find((row) => row.id === technical.id)!.status).toBe("failed");
+    expect((await runBackfill()).stdout).toContain("Reclassified 0");
+  }, 15_000); // Two CLI startups can exceed the default timeout during a parallel suite.
 
   it("deduplicates simultaneous callbacks and claims each destination once", async () => {
     const payload = { nova_request_id: "request-1", status: "failed" };

@@ -24,6 +24,7 @@ export const ticketStatus = pgEnum("ticket_status", [
   "processing",
   "finalized",
   "failed",
+  "not_invoiceable",
   "cancelled",
 ]);
 

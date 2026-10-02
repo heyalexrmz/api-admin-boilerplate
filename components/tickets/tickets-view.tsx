@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react"
+import { useRouter } from "next/navigation"
 import {
   type Column,
   type ColumnDef,
@@ -21,6 +22,7 @@ import {
 
 import {
   getDashboardTicketDetail,
+  retryDashboardTicket,
 } from "@/app/actions/facturador"
 import type { DashboardTicket, DashboardTicketDetail } from "@/app/lib/definitions"
 import { EmptyState } from "@/components/empty-state"
@@ -28,6 +30,7 @@ import { FilterBar, FilterSearchInput } from "@/components/filter-bar"
 import { DataTable } from "@/components/data-table"
 import { StatusBadge } from "@/components/status-badge"
 import { TicketDetailSheet } from "@/components/tickets/ticket-detail-sheet"
+import { TicketRetryButton } from "@/components/tickets/ticket-retry-button"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -170,12 +173,13 @@ function KpiCard({
   title: string
   value: number
   icon: typeof Clock3
-  tone: "process" | "success" | "failed"
+  tone: "process" | "success" | "failed" | "notInvoiceable"
 }) {
   const toneClass = {
     process: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
     success: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
     failed: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+    notInvoiceable: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
   }[tone]
 
   return (
@@ -195,16 +199,70 @@ function KpiCard({
 
 export function TicketsView({
   initialTickets,
+  canManage,
 }: {
   initialTickets: DashboardTicket[]
+  canManage: boolean
 }) {
+  const router = useRouter()
   const [query, setQuery] = useState("")
-  const [tickets] = useState(initialTickets)
+  const tickets = initialTickets
   const [selected, setSelected] = useState<DashboardTicketDetail | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [retryingId, setRetryingId] = useState<string | null>(null)
+  const [retryPending, startRetryTransition] = useTransition()
+  const retryInFlight = useRef(false)
   const [status, setStatus] = useState("all")
   const [mode, setMode] = useState("all")
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
+
+  const hasActiveTickets = tickets.some((ticket) => IN_PROCESS_STATUSES.has(ticket.status))
+  useEffect(() => {
+    if (!hasActiveTickets) return
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") router.refresh()
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [hasActiveTickets, router])
+
+  const selectedId = selected?.id
+  const selectedUpdatedAt = selected?.updatedAt
+  const latestUpdatedAt = tickets.find((ticket) => ticket.id === selectedId)?.updatedAt
+  useEffect(() => {
+    if (!detailOpen || !selectedId || !latestUpdatedAt || latestUpdatedAt === selectedUpdatedAt) return
+    let cancelled = false
+    getDashboardTicketDetail(selectedId).then((detail) => {
+      if (!cancelled && detail) setSelected(detail)
+    }).catch(() => {
+      if (!cancelled) toast.error("No pudimos actualizar el detalle del ticket.")
+    })
+    return () => { cancelled = true }
+  }, [detailOpen, selectedId, selectedUpdatedAt, latestUpdatedAt])
+
+  const handleRetry = useCallback((id: string) => {
+    if (retryInFlight.current) return
+    retryInFlight.current = true
+    setRetryingId(id)
+    startRetryTransition(async () => {
+      try {
+        const result = await retryDashboardTicket(id)
+        if ("error" in result) {
+          toast.error(result.error)
+          router.refresh()
+          return
+        }
+        toast.success("Reintento en cola", {
+          description: "El ticket se enviará de nuevo sin consumir otro crédito.",
+        })
+      } catch {
+        toast.error("No pudimos confirmar el reintento. Actualiza el estado antes de volver a intentarlo.")
+        router.refresh()
+      } finally {
+        retryInFlight.current = false
+        setRetryingId(null)
+      }
+    })
+  }, [router])
 
   const scopedTickets = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -231,10 +289,11 @@ export function TicketsView({
       (acc, ticket) => {
         if (IN_PROCESS_STATUSES.has(ticket.status)) acc.inProcess += 1
         if (ticket.status === "failed") acc.failed += 1
+        if (ticket.status === "not_invoiceable") acc.notInvoiceable += 1
         if (ticket.status === "finalized") acc.success += 1
         return acc
       },
-      { inProcess: 0, failed: 0, success: 0 }
+      { inProcess: 0, failed: 0, success: 0, notInvoiceable: 0 }
     )
   }, [scopedTickets])
 
@@ -315,8 +374,21 @@ export function TicketsView({
           </div>
         ),
       },
+      ...(canManage ? [{
+        id: "actions",
+        header: "Acciones",
+        size: 130,
+        cell: ({ row }) => row.original.canRetry ? (
+          <TicketRetryButton
+            ticketId={row.original.id}
+            pending={retryingId === row.original.id}
+            disabled={retryPending}
+            onRetry={handleRetry}
+          />
+        ) : null,
+      } satisfies ColumnDef<DashboardTicket>] : []),
     ],
-    []
+    [canManage, handleRetry, retryPending, retryingId]
   )
 
   if (tickets.length === 0) {
@@ -332,7 +404,7 @@ export function TicketsView({
   return (
     <>
       <div className="flex flex-col gap-4">
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             title="En proceso"
             value={kpis.inProcess}
@@ -344,6 +416,12 @@ export function TicketsView({
             value={kpis.success}
             icon={CheckCircle2}
             tone="success"
+          />
+          <KpiCard
+            title="No facturables"
+            value={kpis.notInvoiceable}
+            icon={FileText}
+            tone="notInvoiceable"
           />
           <KpiCard
             title="Fallidos"
@@ -384,6 +462,7 @@ export function TicketsView({
               <SelectItem value="pending">Pendiente</SelectItem>
               <SelectItem value="processing">Procesando</SelectItem>
               <SelectItem value="finalized">Finalizado</SelectItem>
+              <SelectItem value="not_invoiceable">No facturable</SelectItem>
               <SelectItem value="failed">Fallido</SelectItem>
             </SelectContent>
           </Select>
@@ -411,6 +490,10 @@ export function TicketsView({
         ticket={selected}
         open={detailOpen}
         onOpenChange={setDetailOpen}
+        canManage={canManage}
+        retryingId={retryingId}
+        retryPending={retryPending}
+        onRetry={handleRetry}
       />
     </>
   )

@@ -5,7 +5,7 @@
 **Audiencia:** integradores, soporte y equipo de producto.
 **Alcance:** API v1, recepción de tickets, procesamiento de facturación y notificaciones de falla. Describe el código local revisado; su aplicación en producción requiere desplegar la aplicación y el worker.
 
-Taxo Timbre comunica cada falla mediante un código estable, una categoría y un motivo legible. **Cuando el servicio de facturación rechaza una solicitud, el ticket pasa a `failed` y se emite `ticket.failed` en cuanto se procesa ese rechazo. No se espera una ventana de disponibilidad ni se reenvía automáticamente el ticket.** Esta regla también aplica a los límites temporales de solicitudes.
+Taxo Timbre comunica cada falla mediante un código estable, una categoría y un motivo legible. **Los errores de procesamiento dejan el ticket en `failed`; los rechazos con código `NOT_INVOICEABLE` lo dejan en `not_invoiceable` (No facturable). En ambos casos se emite `ticket.failed` en cuanto se procesa el resultado. No se espera una ventana de disponibilidad ni se reenvía automáticamente el ticket.** Esta regla también aplica a los límites temporales de solicitudes.
 
 ## Política de comunicación
 
@@ -25,12 +25,20 @@ Taxo Timbre comunica cada falla mediante un código estable, una categoría y un
 | Se comienza a enviar para procesamiento | `ticket.processing` | Comenzó el intento de procesamiento. |
 | Se recibe un rechazo durante el envío | Estado `failed` y evento `ticket.failed` con el motivo | El intento terminó. No se programa otro envío. |
 | Se acepta el envío | Estado `pending` | Se espera el resultado posterior de la facturación. |
-| Se recibe un resultado posterior fallido | `ticket.failed` e `invoice.failed` | El procesamiento terminó con una falla. |
+| Se recibe un resultado posterior sin factura | `ticket.failed` e `invoice.failed` | El ticket queda `not_invoiceable` si el código es `NOT_INVOICEABLE`; los demás errores quedan `failed`. |
 | No llega un resultado durante 24 horas de espera o procesamiento | `PROVIDER_TIMEOUT`, `ticket.failed` e `invoice.failed` | Se agotó la espera del resultado. |
 
 «Inmediato» significa que se guarda la falla y se despacha su notificación en la misma ejecución que procesa el rechazo, sin aplazarla por un reintento. No significa que la respuesta inicial HTTP 201 espere la facturación. El worker revisa normalmente la cola cada dos segundos, y los webhooks dependen de que el destino esté habilitado, suscrito y disponible. El estado actualizado también puede consultarse con `GET /api/v1/tickets/:id`.
 
 Los reintentos de **entrega del webhook** son independientes: pueden repetir una notificación que no llegó al cliente, pero no vuelven a enviar el ticket para facturar.
+
+## Reintento manual desde el dashboard
+
+Los propietarios, administradores y superadministradores pueden usar **Reintentar** en la lista o el detalle de un ticket cuyo envío haya fallado, siempre que no exista confirmación de recepción del servicio ni una factura asociada. No está disponible para tickets activos, finalizados, cancelados, no facturables ni para fallas posteriores a la recepción.
+
+El reintento conserva el ticket, los archivos, los datos fiscales y la llave de idempotencia del envío original, sin descontar otro crédito. Registra la falla anterior y el usuario que solicitó el reintento en un nuevo trabajo de la cola; después devuelve el ticket a `received`. El worker vuelve a enviarlo y publica el resultado mediante los eventos habituales. Las solicitudes simultáneas no crean varios reintentos y un trabajo de envío aún activo impide crear otro.
+
+La lista y el detalle abierto actualizan el estado mientras hay tickets activos. Si el nuevo envío falla, vuelve a quedar `failed`: cualquier intento adicional requiere otra acción manual.
 
 ## Formato de los errores de API
 
@@ -109,7 +117,7 @@ En registros históricos, un mensaje de límite temporal puede haber quedado gua
 
 | Código | Tipo | Cuándo ocurre | Comunicación actual |
 | --- | --- | --- | --- |
-| `NOT_INVOICEABLE` | `site` | El comercio informa que el ticket no se puede facturar. | `failed`, con el motivo de no facturabilidad; eventos `ticket.failed` e `invoice.failed`. |
+| `NOT_INVOICEABLE` | `site` | El comercio informa que el ticket no se puede facturar. | `not_invoiceable` (No facturable), con el motivo original; eventos `ticket.failed` e `invoice.failed` por compatibilidad. El payload del ticket lleva `status: not_invoiceable`; el de la factura conserva `status: failed`. |
 | `MERCHANT_ERROR` | `site` | El comercio devuelve un mensaje de falla sin un código específico. | `failed`, conservando el motivo legible; eventos de falla del ticket y la factura. |
 | Código específico del comercio | `site` | La respuesta incluye un código de negocio propio. | Se conserva cuando no expone identidad interna. Un ejemplo recibido puede ser `UPSTREAM_ERROR`; su significado concreto depende de `message`. No existe una definición local única para todos esos códigos. |
 | `PROVIDER_TIMEOUT` | `upstream` | No llega un resultado final durante 24 horas de espera o procesamiento. | `failed`, con `ticket.failed` e `invoice.failed`. No confundir con los 30 segundos de espera de una petición de envío. |
@@ -139,7 +147,7 @@ Fragmento del evento entregado al cliente:
 }
 ```
 
-La interfaz muestra «No se pudo facturar el ticket», el motivo y el código. Para un límite temporal también aclara que el ticket no se reenviará automáticamente. Un tiempo de espera recibido se conserva para diagnóstico y no constituye una programación de reenvío ni una garantía de disponibilidad futura.
+La interfaz muestra «No facturable» para `not_invoiceable` y «No se pudo facturar el ticket» para `failed`, conservando el motivo y el código. Para un límite temporal también aclara que el ticket no se reenviará automáticamente. Un tiempo de espera recibido se conserva para diagnóstico y no constituye una programación de reenvío ni una garantía de disponibilidad futura.
 
 ## Cómo debe actuar una integración
 
@@ -150,3 +158,15 @@ La interfaz muestra «No se pudo facturar el ticket», el motivo y el código. P
 5. Para soporte, compartir el identificador del ticket, código, mensaje, hora del incidente y `request_id` si existe. No incluir llaves API ni credenciales.
 
 Repetir la creación con la misma llave de idempotencia recupera la respuesta de recepción guardada; no reactiva un ticket fallido. Crear una nueva solicitud live puede consumir otro crédito. Este cambio de manejo de errores no introduce reembolsos automáticos.
+
+## Métricas de facturación
+
+`GET /api/v1/stats` conserva todos los tickets en `tickets.total` y `tickets.by_status`, incluyendo `not_invoiceable` como categoría independiente. Las tasas de salud usan únicamente resultados evaluables:
+
+- `tickets.success_rate = finalized / (finalized + failed)`.
+- `tickets.error_rate = failed / (finalized + failed)`.
+- Los no facturables, activos y cancelados no forman parte del denominador. Si no hay resultados evaluables, ambas tasas son `0`.
+
+Las tasas son fracciones entre 0 y 1. Esto cambia el denominador anterior de `error_rate`, que incluía todos los tickets. El resumen del dashboard muestra la tasa de éxito como porcentaje y «—» si no hay resultados evaluables. Los conteos de fallidos y no facturables se muestran por separado. Las métricas HTTP de la API siguen midiendo respuestas HTTP.
+
+`pnpm db:push` y `pnpm db:migrate` ejecutan el backfill después de confirmar el cambio de esquema. También puede repetirse con `pnpm db:backfill-not-invoiceable`. Reclasifica únicamente tickets `failed` con `error_code = 'NOT_INVOICEABLE'`; conserva motivos, fechas y payloads históricos y no reenvía webhooks.

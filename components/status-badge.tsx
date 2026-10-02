@@ -46,6 +46,10 @@ const STATUS_STYLES: Record<string, { badge: string; dot: string }> = {
     badge: "border-transparent bg-rose-500/10 text-rose-600 dark:text-rose-400",
     dot: "bg-rose-500",
   },
+  not_invoiceable: {
+    badge: "border-transparent bg-amber-500/10 text-amber-700 dark:text-amber-400",
+    dot: "bg-amber-500",
+  },
   revoked: {
     badge: "border-transparent bg-rose-500/10 text-rose-600 dark:text-rose-400",
     dot: "bg-rose-500",
@@ -80,6 +84,7 @@ const STATUS_LABELS: Record<string, string> = {
   received: "Recibido",
   expired: "Expirado",
   failed: "Fallido",
+  not_invoiceable: "No facturable",
   revoked: "Revocado",
   rejected: "Rechazado",
   canceled: "Cancelado",

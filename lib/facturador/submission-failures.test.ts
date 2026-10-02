@@ -135,7 +135,7 @@ describe("immediate submission failures", () => {
     expect(mocks.dispatch.mock.calls.filter((call) => call[1] === "ticket.failed")).toHaveLength(1);
   });
 
-  it.each(["failed", "finalized", "cancelled", "pending"])("does not resubmit a %s ticket", async (status) => {
+  it.each(["failed", "not_invoiceable", "finalized", "cancelled", "pending"])("does not resubmit a %s ticket", async (status) => {
     ticketState.status = status;
     await tick();
     expect(fetchMock).not.toHaveBeenCalled();

@@ -198,7 +198,7 @@
                 {
                   "key": "status",
                   "value": "finalized",
-                  "description": "received, queued, pending, processing, finalized, failed, or cancelled"
+                  "description": "received, queued, pending, processing, finalized, failed, not_invoiceable, or cancelled"
                 }
               ]
             },
@@ -228,7 +228,7 @@
                 {
                   "key": "status",
                   "value": "finalized",
-                  "description": "received, queued, pending, processing, finalized, failed, or cancelled"
+                  "description": "received, queued, pending, processing, finalized, failed, not_invoiceable, or cancelled"
                 }
               ]
             },

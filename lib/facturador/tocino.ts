@@ -157,8 +157,12 @@ export function mapTocinoError(
 
   const invoice = value?.invoice as Record<string, unknown> | undefined;
   const notInvoiceableCause = invoice?.not_invoiceable_cause;
-  if (notInvoiceableCause) {
-    return error("NOT_INVOICEABLE", "site", String(notInvoiceableCause));
+  if (notInvoiceableCause || String(value?.status ?? "").toLowerCase() === "not_invoiceable") {
+    return error(
+      "NOT_INVOICEABLE",
+      "site",
+      stringValue(notInvoiceableCause) ?? stringValue(value?.error_msg) ?? "Este ticket no es facturable."
+    );
   }
   if (value?.error_code) {
     return error(
