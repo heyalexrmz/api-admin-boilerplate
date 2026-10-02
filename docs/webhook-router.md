@@ -10,7 +10,7 @@ flowchart LR
   B --> C[(Entregas persistidas)]
   C --> D[Procesamiento local]
   C --> E[Reenvío a cada destino]
-  D --> F[Ticket finalized o failed con motivo]
+  D --> F[Ticket finalized, not_invoiceable o failed con motivo]
   D --> G[Webhooks de la organización]
   E --> H[Reintentos independientes]
 ```
@@ -18,10 +18,10 @@ flowchart LR
 1. `POST /api/v1/webhooks/upstream` valida el header configurado y acepta un objeto JSON de hasta 1 MiB.
 2. Una única escritura guarda el cuerpo original y todas sus entregas. La respuesta `200 OK` confirma almacenamiento, no que el ticket ya terminó ni que los destinos ya recibieron el evento. El emisor exige exactamente `200`; también se devuelve para reintentos duplicados ya persistidos.
 3. El worker ejecuta por separado el procesamiento de tickets, los callbacks locales y los reenvíos. El polling es de 2 segundos por defecto; la carga pendiente puede aumentar la demora.
-4. El procesamiento local reutiliza el finalizador existente: éxito → `finalized`; rechazo → `failed`, motivo normalizado y eventos de la organización. Un destino externo lento o caído no bloquea este recorrido.
+4. El procesamiento local reutiliza el finalizador existente: éxito → `finalized`; no facturable (`NOT_INVOICEABLE`) → `not_invoiceable`; otros errores → `failed`, con motivo normalizado y eventos de la organización. Un destino externo lento o caído no bloquea este recorrido.
 5. Los eventos de progreso se reenvían, pero no finalizan tickets. Un callback terminal cuyo ticket aún no aparece se conserva para reintento. Los eventos que pertenecen a otra aplicación se reenvían aunque no exista un ticket local.
 
-La política de rechazo de solicitudes de facturación se mantiene: `failed` con motivo en cuanto se recibe el rechazo. Los reintentos de este router son entregas de callbacks; no vuelven a enviar tickets a facturación.
+Los rechazos se registran de inmediato con su motivo: `not_invoiceable` para `NOT_INVOICEABLE` y `failed` para otros errores. Los eventos `ticket.failed` e `invoice.failed` se mantienen por compatibilidad; el estado del payload del ticket distingue ambos resultados. Los reintentos de este router son entregas de callbacks; no vuelven a enviar tickets a facturación.
 
 ## Servicios y configuración
 

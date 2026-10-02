@@ -851,6 +851,11 @@ export async function getStats(organizationId: string, days = 30) {
   const failed = result.rows
     .filter((row) => row.status === "failed")
     .reduce((sum, row) => sum + row.count, 0);
+  const finalized = result.rows
+    .filter((row) => row.status === "finalized")
+    .reduce((sum, row) => sum + row.count, 0);
+  // Ticket eligibility and unfinished work do not measure service reliability.
+  const completedInvoiceable = finalized + failed;
 
   return {
     object: "stats",
@@ -858,7 +863,8 @@ export async function getStats(organizationId: string, days = 30) {
     tickets: {
       total,
       by_status: Object.fromEntries(result.rows.map((row) => [row.status, row.count])),
-      error_rate: total > 0 ? failed / total : 0,
+      error_rate: completedInvoiceable > 0 ? failed / completedInvoiceable : 0,
+      success_rate: completedInvoiceable > 0 ? finalized / completedInvoiceable : 0,
     },
   };
 }
@@ -1231,10 +1237,11 @@ export async function applyTocinoWebhookEvent(raw: unknown) {
   if (!eventType) return { ok: true, parked: false, ignored: true };
   if (eventType === "ticket.failed") {
     const mapped = tocinoErrorToTicket(mapTocinoError("process", raw));
+    const status = mapped.errorCode === "NOT_INVOICEABLE" ? "not_invoiceable" : "failed";
     await db
       .update(ticket)
       .set({
-        status: "failed",
+        status,
         statusRank: 100,
         ...mapped,
         upstreamRaw: raw,
@@ -1247,7 +1254,7 @@ export async function applyTocinoWebhookEvent(raw: unknown) {
       {
         object: "ticket",
         id: row.ticket.id,
-        status: "failed",
+        status,
         error: {
           code: mapped.errorCode,
           type: mapped.errorType,

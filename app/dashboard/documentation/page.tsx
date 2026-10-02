@@ -38,6 +38,7 @@ const ticketStatuses = [
   "processing",
   "finalized",
   "failed",
+  "not_invoiceable",
   "cancelled",
 ]
 
@@ -344,7 +345,7 @@ const ticketFailedWebhook = `{
       "object": "ticket",
       "id": "4b96e5de-69de-4dc8-aad7-4d5045fa5b31",
       "tax_id": "EKU9003173C9",
-      "status": "failed",
+      "status": "not_invoiceable",
       "livemode": true,
       "created_at": "2026-07-01T18:20:00.000Z",
       "updated_at": "2026-07-01T18:23:00.000Z",
@@ -611,8 +612,9 @@ function ApiReferenceContent() {
           <div className="flex flex-col gap-3 text-sm text-muted-foreground">
             <h3 className="font-medium text-foreground">Rechazos y errores de facturación</h3>
             <p>
-              Cualquier rechazo del servicio de facturación marca el ticket como
-              failed y emite ticket.failed con error.code, error.type y error.message
+              Los errores de procesamiento marcan el ticket como failed. Un rechazo
+              con código NOT_INVOICEABLE lo marca como not_invoiceable (No facturable).
+              Ambos emiten ticket.failed con error.code, error.type y error.message
               en cuanto se recibe la respuesta. No se reenvía automáticamente el ticket.
             </p>
             <p>
@@ -620,6 +622,13 @@ function ApiReferenceContent() {
               Aunque el rechazo indique un tiempo de espera, el ticket queda fallido
               y el motivo se informa de inmediato. Los errores de datos, acceso,
               conexión y servidor se clasifican por separado.
+            </p>
+            <p>
+              En GET /api/v1/stats, tickets.success_rate y tickets.error_rate usan
+              como denominador los tickets finalized + failed. Los tickets
+              not_invoiceable, activos y cancelados quedan excluidos. Las tasas
+              son fracciones entre 0 y 1; ambas son 0 si no hay resultados evaluables.
+              tickets.total y tickets.by_status incluyen todos los estados.
             </p>
             <p>
               La respuesta inicial HTTP 201 confirma la recepción del ticket.
@@ -686,7 +695,9 @@ function WebhookExamplesContent() {
         <CardHeader>
           <CardTitle>ticket.failed</CardTitle>
           <CardDescription>
-            Se emite cuando el ticket no puede procesarse o facturarse.
+            Se emite cuando el ticket no puede procesarse o facturarse. El estado
+            not_invoiceable distingue un ticket no facturable de una falla técnica
+            (failed). invoice.failed conserva su formato actual.
           </CardDescription>
         </CardHeader>
         <CardContent>

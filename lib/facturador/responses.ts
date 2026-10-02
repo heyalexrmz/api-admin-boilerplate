@@ -1,6 +1,6 @@
 import { publicTicketError } from "./public-errors";
 
-type TicketStatus = "received" | "queued" | "pending" | "processing" | "finalized" | "failed" | "cancelled";
+type TicketStatus = "received" | "queued" | "pending" | "processing" | "finalized" | "failed" | "not_invoiceable" | "cancelled";
 type InvoiceStatus = "pending" | "finalized" | "failed";
 
 type WebhookDocument = {
@@ -36,7 +36,9 @@ export function ticketProviderResponseView(input: {
     status: input.status,
     livemode: input.livemode,
     message:
-      input.status === "failed"
+      input.status === "not_invoiceable"
+        ? "Ticket is not invoiceable."
+        : input.status === "failed"
         ? "Ticket submission failed."
         : "Ticket submitted for processing.",
     error: publicTicketError(input.error ?? null),

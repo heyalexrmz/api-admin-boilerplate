@@ -7,14 +7,15 @@ import { publicTicketError } from "@/lib/facturador/public-errors"
 type TicketError = Pick<DashboardTicketDetail, "status" | "errorCode" | "errorType" | "errorMessage">
 
 export function TicketErrorAlert({ ticket }: { ticket: TicketError }) {
-  if (ticket.status !== "failed") return null
+  const notInvoiceable = ticket.status === "not_invoiceable"
+  if (ticket.status !== "failed" && !notInvoiceable) return null
   const error = publicTicketError({ code: ticket.errorCode, type: ticket.errorType, message: ticket.errorMessage })
   if (!error) return null
 
   return (
-    <Alert variant="destructive" className="mt-4">
+    <Alert variant={notInvoiceable ? "default" : "destructive"} className="mt-4">
       <CircleAlert />
-      <AlertTitle>No se pudo facturar el ticket</AlertTitle>
+      <AlertTitle>{notInvoiceable ? "No facturable" : "No se pudo facturar el ticket"}</AlertTitle>
       <AlertDescription>
         <p>{error.message ?? "No fue posible completar la solicitud. Contacta a soporte."}</p>
         {error.code === "UPSTREAM_RATE_LIMITED" && <p>Este ticket quedó fallido y no se reenviará automáticamente.</p>}

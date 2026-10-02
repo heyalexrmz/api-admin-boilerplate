@@ -33,7 +33,7 @@ function MetricCard({
   icon: Icon,
 }: {
   label: string
-  value: number
+  value: number | string
   note: string
   icon: LucideIcon
 }) {
@@ -86,9 +86,14 @@ export function TicketRequestOverview({
 }: {
   overview: DashboardTicketOverview
 }) {
+  const completedInvoiceable = overview.finalized + overview.failed
+  const successRate = completedInvoiceable > 0
+    ? `${((overview.finalized / completedInvoiceable) * 100).toFixed(1)}%`
+    : "—"
+
   return (
     <div className="grid gap-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <MetricCard
           label="Total de tickets"
           value={overview.total}
@@ -108,10 +113,22 @@ export function TicketRequestOverview({
           icon={Activity}
         />
         <MetricCard
+          label="No facturables"
+          value={overview.notInvoiceable}
+          note="tickets que no cumplen los requisitos de facturación"
+          icon={FileWarning}
+        />
+        <MetricCard
           label="Fallidos"
           value={overview.failed}
-          note="solicitudes que requieren revisión"
+          note="errores de procesamiento o del servicio"
           icon={FileWarning}
+        />
+        <MetricCard
+          label="Tasa de éxito"
+          value={successRate}
+          note="finalizados / (finalizados + fallidos); excluye no facturables"
+          icon={CheckCircle2}
         />
       </div>
 

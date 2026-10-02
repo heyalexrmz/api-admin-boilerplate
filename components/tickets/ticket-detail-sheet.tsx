@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { TicketErrorAlert } from "@/components/tickets/ticket-error-alert"
+import { TicketRetryButton } from "@/components/tickets/ticket-retry-button"
 import { StatusBadge } from "@/components/status-badge"
 import {
   Sheet,
@@ -76,10 +77,18 @@ export function TicketDetailSheet({
   ticket,
   open,
   onOpenChange,
+  canManage,
+  retryingId,
+  retryPending,
+  onRetry,
 }: {
   ticket: DashboardTicketDetail | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  canManage: boolean
+  retryingId: string | null
+  retryPending: boolean
+  onRetry: (id: string) => void
 }) {
   const image = ticket?.documents.find((doc) => doc.kind === "ticket_image")
   const defaultAccordion = ticket?.invoice
@@ -108,6 +117,20 @@ export function TicketDetailSheet({
             </div>
 
             <TicketErrorAlert ticket={ticket} />
+
+            {canManage && ticket.canRetry && (
+              <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Reenvía los mismos datos y archivos sin consumir otro crédito.
+                </p>
+                <TicketRetryButton
+                  ticketId={ticket.id}
+                  pending={retryingId === ticket.id}
+                  disabled={retryPending}
+                  onRetry={onRetry}
+                />
+              </div>
+            )}
 
             <Accordion
               type="multiple"

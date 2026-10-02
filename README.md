@@ -133,9 +133,10 @@ POST with a JSON body to echo payload; add `?error=true` or `"simulate_error": t
 | `pnpm lint` | ESLint |
 | `pnpm test` / `pnpm test:watch` | Vitest unit tests |
 | `pnpm db:up` | Start local Postgres via Docker Compose |
-| `pnpm db:push` | Push schema changes to the database |
+| `pnpm db:push` | Push schema changes, then backfill non-invoiceable ticket statuses |
 | `pnpm db:studio` | Open Drizzle Studio |
-| `pnpm db:generate` / `pnpm db:migrate` | Generate and apply migrations |
+| `pnpm db:generate` / `pnpm db:migrate` | Generate and apply migrations (migrate also runs the status backfill) |
+| `pnpm db:backfill-not-invoiceable` | Reclassify historical `failed` tickets with `NOT_INVOICEABLE` after schema changes commit |
 | `pnpm email:dev` | React Email preview at http://localhost:3030 |
 
 ## Project layout
