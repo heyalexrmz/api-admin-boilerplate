@@ -8,6 +8,7 @@ import {
   createTicketFromJson,
   listTickets,
 } from "@/lib/facturador/core";
+import { triggerHealthWatchdog } from "@/lib/facturador/health-watchdog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,6 +45,9 @@ export async function POST(req: NextRequest) {
     requiredScope: "write",
     requestBodyForLog: isJson ? "[json body omitted]" : "[multipart body omitted]",
     handler: async (ctx) => {
+      // Keeps service status, service.* webhooks and stale-ticket closing
+      // current even when the worker is not running.
+      triggerHealthWatchdog(after);
       const baseInput = {
         organizationId: ctx.organization.id,
         apiKeyId: ctx.key.id,
@@ -52,7 +56,7 @@ export async function POST(req: NextRequest) {
         idempotencyKey: req.headers.get("Idempotency-Key"),
         defer: after,
       } as const;
-      const ticket = isJson
+      const result = isJson
         ? await createTicketFromJson({
             ...baseInput,
             body: await req.json().catch(() => {
@@ -68,7 +72,10 @@ export async function POST(req: NextRequest) {
             ...baseInput,
             formData: await req.formData(),
           });
-      return objectResponse("ticket", ticket, ctx.requestId, { status: 201 });
+      return objectResponse("ticket", result.response, ctx.requestId, {
+        status: 201,
+        headers: result.replayed ? { "Idempotent-Replayed": "true" } : undefined,
+      });
     },
   });
 }

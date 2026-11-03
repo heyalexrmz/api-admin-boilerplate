@@ -9,7 +9,7 @@ import {
 } from "@/lib/facturador/core";
 import { retryWebhookDelivery } from "@/lib/webhook-dispatch";
 
-const WORKER_ID = `worker_${randomUUID()}`;
+export const WORKER_ID = `worker_${randomUUID()}`;
 
 type JobRow = {
   id: string;

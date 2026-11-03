@@ -1,4 +1,6 @@
-import { tick } from "./jobs";
+import { tick, WORKER_ID } from "./jobs";
+import { runHealthWatchdog, WATCHDOG_INTERVAL_MS } from "@/lib/facturador/health-watchdog";
+import { pruneWorkerHeartbeats, recordWorkerHeartbeat } from "@/lib/facturador/service-health";
 import { tickRouterDelivery } from "@/lib/webhook-router/consumer";
 import { getRouterConfig } from "@/lib/webhook-router/config";
 
@@ -12,12 +14,19 @@ let stopping = false;
 process.once("SIGTERM", () => { stopping = true; });
 process.once("SIGINT", () => { stopping = true; });
 
-async function runLoop(name: string, work: () => Promise<unknown>) {
+async function runLoop(name: string, work: () => Promise<unknown>, intervalMs = POLL_INTERVAL_MS) {
   while (!stopping) {
     try { await work(); }
     catch { console.error(`[worker] ${name} poll failed; retrying next poll`); }
-    await sleep(POLL_INTERVAL_MS);
+    await sleep(intervalMs);
   }
+}
+
+// The heartbeat is written by the job loop itself, so a stuck job loop shows
+// up as stopped extraction in GET /api/v1/status.
+async function jobsWithHeartbeat() {
+  await recordWorkerHeartbeat(WORKER_ID);
+  await tick();
 }
 
 async function main() {
@@ -25,7 +34,11 @@ async function main() {
   console.log("[worker] started");
   // Independent loops keep forwarding latency out of the ticket processing path.
   await Promise.all([
-    runLoop("jobs", tick),
+    runLoop("jobs", jobsWithHeartbeat),
+    runLoop("health", async () => {
+      await runHealthWatchdog();
+      await pruneWorkerHeartbeats();
+    }, WATCHDOG_INTERVAL_MS),
     runLoop("router-local", () => tickRouterDelivery("local")),
     runLoop("router-forward", () => tickRouterDelivery("forward")),
   ]);

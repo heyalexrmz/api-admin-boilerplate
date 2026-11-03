@@ -48,7 +48,7 @@ describe("non-invoiceable ticket outcomes", () => {
       error: { code: "NOT_INVOICEABLE", type: "site", message: reason },
     }, { id: "ticket-1", idempotencyKey: "key-1", livemode: true });
     expect(mocks.dispatch).toHaveBeenCalledWith("org-1", "invoice.failed", expect.objectContaining({
-      status: "failed", error: { code: "NOT_INVOICEABLE", type: "site", message: reason },
+      status: "failed", error: { code: "NOT_INVOICEABLE", type: "site", message: reason, retryable: false },
     }), expect.anything());
 
     const error = { code: "NOT_INVOICEABLE", type: "site", message: reason };

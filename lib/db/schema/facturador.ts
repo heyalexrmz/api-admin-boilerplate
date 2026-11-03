@@ -82,6 +82,7 @@ export const creditLedgerReason = pgEnum("credit_ledger_reason", [
   "initial_grant",
   "refill",
   "ticket_submission",
+  "ticket_refund",
   "manual_adjustment",
 ]);
 

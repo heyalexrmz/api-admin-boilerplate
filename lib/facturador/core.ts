@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 
 import { ApiError } from "@/lib/api-contracts";
-import { debitTicketCredit, getCreditBalance } from "@/lib/credits";
+import { debitTicketCredit, getCreditBalance, refundTicketCredit } from "@/lib/credits";
 import { db } from "@/lib/db";
 import {
   document,
@@ -40,6 +40,7 @@ import {
 } from "@/lib/facturador/responses";
 import { createTocinoWebhookJobValues } from "@/lib/facturador/upstream-webhooks";
 import { publicTicketError } from "@/lib/facturador/public-errors";
+import { getServiceHealth, type ServiceHealth } from "@/lib/facturador/service-health";
 import {
   documentObjectKey,
   getS3StorageConfig,
@@ -466,18 +467,96 @@ export function ticketView(input: {
   };
 }
 
+export type TicketReceivedResponse = ReturnType<typeof ticketReceivedView>;
+
 function ticketReceivedView(input: {
   ticket: typeof ticket.$inferSelect;
   taxpayerRfc: string;
+  health?: ServiceHealth;
 }) {
+  // Accepted while degraded: processing will start, but later than usual.
+  const delayed = input.health?.status === "degraded";
+  const delayReason = delayed
+    ? Object.values(input.health!.components).find((component) => component.status !== "operational")
+        ?.reason ?? null
+    : null;
   return {
     object: "ticket",
     id: input.ticket.id,
     tax_id: input.taxpayerRfc,
     status: input.ticket.status,
     livemode: input.ticket.mode === "live",
+    delayed,
+    delay_reason: delayReason,
     created_at: input.ticket.createdAt.toISOString(),
   };
+}
+
+const FINGERPRINT_PREFIX = "v2:";
+
+/** Stable hash of everything that defines a ticket request, used to detect a reused Idempotency-Key. */
+export function ticketRequestFingerprint(input: {
+  mode: "live" | "test";
+  taxId: string;
+  submitFields: Record<string, string>;
+  testScenario: string;
+  ticketFile: Buffer;
+  csfFile: Buffer | null;
+}): string {
+  const fields = Object.fromEntries(
+    Object.entries(input.submitFields).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  );
+  return `${FINGERPRINT_PREFIX}${sha256(
+    JSON.stringify({
+      mode: input.mode,
+      tax_id: normalizeRfc(input.taxId),
+      fields,
+      scenario: input.mode === "test" ? input.testScenario : null,
+      file: sha256(input.ticketFile),
+      csf: input.csfFile ? sha256(input.csfFile) : null,
+    })
+  )}`;
+}
+
+export function serviceUnavailableError(health: ServiceHealth): ApiError {
+  return new ApiError({
+    status: 503,
+    code: "SERVICE_UNAVAILABLE",
+    type: "unavailable",
+    message:
+      publicTicketError({ code: "SERVICE_UNAVAILABLE", type: "unavailable", message: null })?.message ??
+      "Service unavailable.",
+    retryable: true,
+    retryAfterSeconds: health.retry_after_seconds ?? 60,
+  });
+}
+
+async function notifyTicketFailed(input: {
+  organizationId: string;
+  ticketId: string;
+  idempotencyKey: string | null;
+  livemode: boolean;
+  error: { errorCode: string; errorType: string; errorMessage: string };
+}) {
+  await dispatchOrganizationWebhookEvent(
+    input.organizationId,
+    "ticket.failed",
+    {
+      object: "ticket",
+      id: input.ticketId,
+      status: "failed",
+      error: publicTicketError({
+        code: input.error.errorCode,
+        type: input.error.errorType,
+        message: input.error.errorMessage,
+      }),
+    },
+    ticketWebhookRequestMetadata({
+      ticketId: input.ticketId,
+      idempotencyKey: input.idempotencyKey,
+      livemode: input.livemode,
+    })
+  ).catch((error) => console.error("[facturador] ticket.failed webhook failed", error));
 }
 
 async function documentsForTicket(ticketId: string) {
@@ -597,64 +676,138 @@ async function createTicketFromFiles(input: {
   const csfContentType = input.csfFile ? assertPdf(input.csfFile.buffer, "csf_pdf") : null;
   const ticketId = randomUUID();
   const idempotencyKey = input.idempotencyKey?.trim() || randomUUID();
-
-  const [existingIdempotency] = await db
-    .select()
-    .from(idempotencyRecord)
-    .where(
-      and(
-        eq(idempotencyRecord.organizationId, input.organizationId),
-        eq(idempotencyRecord.idempotencyKey, idempotencyKey)
-      )
-    )
-    .limit(1);
-
-  if (existingIdempotency?.responseBody) {
-    return existingIdempotency.responseBody as ReturnType<typeof ticketReceivedView>;
-  }
-
-  if (input.mode === "live") {
-    await debitTicketCredit({
-      organizationId: input.organizationId,
-      ticketId,
-      requestId: input.requestId,
-    });
-  }
-
-  const [ticketRow] = await db
-    .insert(ticket)
-    .values({
-      id: ticketId,
-      organizationId: input.organizationId,
-      taxpayerId: taxpayerRow.id,
-      idempotencyKey,
-      mode: input.mode,
-      status: "received",
-      originalFileName: input.ticketFile.fileName,
-      submitRequest: {
-        ...input.submitFields,
-        file: "<base64 omitted>",
-        ...(input.csfFile ? { csf_pdf: "<base64 omitted>" } : {}),
-      },
-    })
-    .returning();
-  if (!ticketRow) throw new Error("Could not create ticket.");
-
-  const response = ticketReceivedView({
-    ticket: ticketRow,
-    taxpayerRfc: taxpayerRow.rfc,
+  const fingerprint = ticketRequestFingerprint({
+    mode: input.mode,
+    taxId: taxpayerRow.rfc,
+    submitFields: input.submitFields,
+    testScenario: input.testScenario,
+    ticketFile: input.ticketFile.buffer,
+    csfFile: input.csfFile?.buffer ?? null,
   });
+  // Measured outside the transaction (and cached) to keep intake fast.
+  const health = await getServiceHealth(input.mode);
 
-  await db
-    .insert(idempotencyRecord)
-    .values({
+  // The advisory lock serializes requests that share an Idempotency-Key, and the
+  // debit, ticket and idempotency record commit or roll back together. A retry
+  // after a timeout, a 503 or a crash therefore either finds the first ticket or
+  // creates exactly one.
+  const outcome = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`ticket_create:${input.organizationId}:${idempotencyKey}`}))`
+    );
+    const [existingIdempotency] = await tx
+      .select()
+      .from(idempotencyRecord)
+      .where(
+        and(
+          eq(idempotencyRecord.organizationId, input.organizationId),
+          eq(idempotencyRecord.idempotencyKey, idempotencyKey)
+        )
+      )
+      .limit(1);
+
+    if (
+      existingIdempotency &&
+      existingIdempotency.requestFingerprint.startsWith(FINGERPRINT_PREFIX) &&
+      existingIdempotency.requestFingerprint !== fingerprint
+    ) {
+      throw new ApiError({
+        status: 409,
+        code: "idempotency_key_reused",
+        type: "conflict_error",
+        message: "This Idempotency-Key was already used with a different request body.",
+        param: "Idempotency-Key",
+        retryable: false,
+      });
+    }
+    if (existingIdempotency?.responseBody) {
+      return {
+        replayed: true as const,
+        response: existingIdempotency.responseBody as TicketReceivedResponse,
+      };
+    }
+
+    // A ticket can exist without a stored response (records written before
+    // this transaction existed); answer with that ticket instead of failing.
+    const [existingTicket] = await tx
+      .select({ ticket, taxpayer })
+      .from(ticket)
+      .innerJoin(taxpayer, eq(taxpayer.id, ticket.taxpayerId))
+      .where(and(eq(ticket.organizationId, input.organizationId), eq(ticket.idempotencyKey, idempotencyKey)))
+      .limit(1);
+    if (existingTicket) {
+      const response = ticketReceivedView({
+        ticket: existingTicket.ticket,
+        taxpayerRfc: existingTicket.taxpayer.rfc,
+      });
+      await tx
+        .insert(idempotencyRecord)
+        .values({
+          organizationId: input.organizationId,
+          idempotencyKey,
+          requestFingerprint: fingerprint,
+          responseStatus: 201,
+          responseBody: response,
+        })
+        .onConflictDoUpdate({
+          target: [idempotencyRecord.organizationId, idempotencyRecord.idempotencyKey],
+          set: { responseStatus: 201, responseBody: response, updatedAt: new Date() },
+        });
+      return { replayed: true as const, response };
+    }
+
+    // Refuse before charging or creating anything, so the same key can be
+    // retried once the service is back.
+    if (health.status === "down") {
+      throw serviceUnavailableError(health);
+    }
+
+    if (input.mode === "live") {
+      await debitTicketCredit({
+        organizationId: input.organizationId,
+        ticketId,
+        requestId: input.requestId,
+        client: tx as unknown as typeof db,
+      });
+    }
+
+    const [ticketRow] = await tx
+      .insert(ticket)
+      .values({
+        id: ticketId,
+        organizationId: input.organizationId,
+        taxpayerId: taxpayerRow.id,
+        idempotencyKey,
+        mode: input.mode,
+        status: "received",
+        originalFileName: input.ticketFile.fileName,
+        submitRequest: {
+          ...input.submitFields,
+          file: "<base64 omitted>",
+          ...(input.csfFile ? { csf_pdf: "<base64 omitted>" } : {}),
+        },
+      })
+      .returning();
+    if (!ticketRow) throw new Error("Could not create ticket.");
+
+    const response = ticketReceivedView({
+      ticket: ticketRow,
+      taxpayerRfc: taxpayerRow.rfc,
+      health,
+    });
+
+    await tx.insert(idempotencyRecord).values({
       organizationId: input.organizationId,
       idempotencyKey,
-      requestFingerprint: sha256(ticketId),
+      requestFingerprint: fingerprint,
       responseStatus: 201,
       responseBody: response,
-    })
-    .onConflictDoNothing();
+    });
+    return { replayed: false as const, response };
+  });
+
+  if (outcome.replayed) return outcome;
+  const response = outcome.response;
 
   dispatchOrganizationWebhookEvent(
     input.organizationId,
@@ -721,18 +874,37 @@ async function createTicketFromFiles(input: {
       }
     } catch (error) {
       console.error(`[facturador] post-response intake failed for ticket=${ticketId}`, error);
-      await db
+      const failure = {
+        errorCode: "INTAKE_FAILED",
+        errorType: "internal",
+        errorMessage: error instanceof Error ? error.message : "Ticket intake failed.",
+      };
+      const [failed] = await db
         .update(ticket)
         .set({
           status: "failed",
           statusRank: 100,
-          errorCode: "INTAKE_FAILED",
-          errorType: "internal",
-          errorMessage:
-            error instanceof Error ? error.message : "Ticket intake failed.",
+          ...failure,
           updatedAt: new Date(),
         })
-        .where(eq(ticket.id, ticketId));
+        .where(and(eq(ticket.id, ticketId), eq(ticket.status, "received")))
+        .returning({ id: ticket.id });
+      if (!failed) return;
+      if (input.mode === "live") {
+        // The ticket never left intake, so its credit is returned.
+        await refundTicketCredit({
+          organizationId: input.organizationId,
+          ticketId,
+          reason: "intake_failed",
+        }).catch((refundError) => console.error("[facturador] intake refund failed", refundError));
+      }
+      await notifyTicketFailed({
+        organizationId: input.organizationId,
+        ticketId,
+        idempotencyKey,
+        livemode: input.mode === "live",
+        error: failure,
+      });
     }
   };
 
@@ -742,7 +914,7 @@ async function createTicketFromFiles(input: {
     await finishIntake();
   }
 
-  return response;
+  return { replayed: false as const, response };
 }
 
 export async function getTicket(organizationId: string, id: string) {
@@ -929,17 +1101,30 @@ export async function submitTicketToTocino(input: {
   const docs = await documentsForTicket(row.ticket.id);
   const image = docs.find((doc) => doc.kind === "ticket_image");
   if (!image) {
-    await db
+    const failure = {
+      errorCode: "IMAGE_MISSING",
+      errorType: "validation",
+      errorMessage: "Ticket image not found in storage.",
+    };
+    const [failed] = await db
       .update(ticket)
       .set({
         status: "failed",
         statusRank: 100,
-        errorCode: "IMAGE_MISSING",
-        errorType: "validation",
-        errorMessage: "Ticket image not found in storage.",
+        ...failure,
         updatedAt: new Date(),
       })
-      .where(eq(ticket.id, row.ticket.id));
+      .where(and(eq(ticket.id, row.ticket.id), eq(ticket.status, "received")))
+      .returning({ id: ticket.id });
+    if (failed) {
+      await notifyTicketFailed({
+        organizationId: input.organizationId,
+        ticketId: row.ticket.id,
+        idempotencyKey: row.ticket.idempotencyKey,
+        livemode: row.ticket.mode === "live",
+        error: failure,
+      });
+    }
     return {
       outcome: "tocino_failed" as const,
       errorCode: "IMAGE_MISSING",

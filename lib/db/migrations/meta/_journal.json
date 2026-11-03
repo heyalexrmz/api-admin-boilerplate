@@ -71,6 +71,13 @@
       "when": 1790942400000,
       "tag": "0009_ticket_not_invoiceable_status",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793750400000,
+      "tag": "0010_service_health",
+      "breakpoints": true
     }
   ]
 }
