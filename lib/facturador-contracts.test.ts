@@ -555,6 +555,7 @@ describe("invoiceFailedWebhookPayload", () => {
         code: "NOT_INVOICEABLE",
         type: "site",
         message: "This ticket cannot be invoiced.",
+        retryable: false,
       },
     });
   });

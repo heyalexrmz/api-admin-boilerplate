@@ -269,8 +269,10 @@ export async function debitTicketCredit(input: {
   ticketId: string;
   requestId: string;
   now?: Date;
+  /** Run inside the caller's transaction so a rollback also undoes the debit. */
+  client?: DbClient;
 }) {
-  return db.transaction(async (tx) => {
+  return (input.client ?? db).transaction(async (tx) => {
     const now = input.now ?? new Date();
     const account = await ensureAccountRefilled(input.organizationId, {
       now,
@@ -319,6 +321,58 @@ export async function debitTicketCredit(input: {
       balance: updated.balance,
       debited: cost,
     };
+  });
+}
+
+/**
+ * Return the credit debited for a ticket that was never sent for invoicing.
+ * Safe to call more than once: a ticket is refunded at most once, and only if
+ * it was debited.
+ */
+export async function refundTicketCredit(input: {
+  organizationId: string;
+  ticketId: string;
+  reason: string;
+}): Promise<{ refunded: boolean }> {
+  return db.transaction(async (tx) => {
+    // Serialize refunds for the same ticket.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`ticket_refund:${input.ticketId}`}))`);
+    const entries = await tx
+      .select({ reason: creditLedgerEntry.reason, delta: creditLedgerEntry.delta })
+      .from(creditLedgerEntry)
+      .where(
+        and(
+          eq(creditLedgerEntry.organizationId, input.organizationId),
+          eq(creditLedgerEntry.ticketId, input.ticketId)
+        )
+      );
+    const debit = entries.find((entry) => entry.reason === "ticket_submission");
+    if (!debit || entries.some((entry) => entry.reason === "ticket_refund")) {
+      return { refunded: false };
+    }
+
+    const account = await ensureAccountRefilled(input.organizationId, {
+      client: tx as unknown as DbClient,
+    });
+    const amount = Math.abs(debit.delta);
+    const [updated] = await tx
+      .update(creditAccount)
+      .set({ balance: sql`${creditAccount.balance} + ${amount}`, updatedAt: new Date() })
+      .where(eq(creditAccount.organizationId, input.organizationId))
+      .returning({ balance: creditAccount.balance });
+    if (!updated) throw new Error("Could not refund ticket credit.");
+
+    await tx.insert(creditLedgerEntry).values({
+      organizationId: input.organizationId,
+      accountOrganizationId: input.organizationId,
+      planId: account.planId,
+      delta: amount,
+      balanceAfter: updated.balance,
+      reason: "ticket_refund",
+      ticketId: input.ticketId,
+      metadata: { reason: input.reason },
+    });
+    return { refunded: true };
   });
 }
 

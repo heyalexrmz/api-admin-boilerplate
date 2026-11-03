@@ -22,6 +22,9 @@ export const FACTURADOR_WEBHOOK_EVENTS = [
   "delivery.succeeded",
   "delivery.failed",
   "delivery.exhausted",
+  "service.degraded",
+  "service.down",
+  "service.recovered",
 ] as const;
 
 export type FacturadorWebhookEvent = (typeof FACTURADOR_WEBHOOK_EVENTS)[number];
@@ -33,6 +36,7 @@ export type ApiErrorType =
   | "conflict_error"
   | "rate_limit_error"
   | "processing_error"
+  | "unavailable"
   | "internal_error";
 
 export type ApiErrorBody = {
@@ -41,6 +45,7 @@ export type ApiErrorBody = {
     type: ApiErrorType;
     message: string;
     param?: string | null;
+    retryable: boolean;
   };
   request_id: string;
 };
@@ -80,6 +85,8 @@ export class ApiError extends Error {
   readonly code: string;
   readonly type: ApiErrorType;
   readonly param?: string | null;
+  readonly retryable: boolean;
+  readonly retryAfterSeconds?: number;
 
   constructor(input: {
     status: number;
@@ -87,6 +94,10 @@ export class ApiError extends Error {
     type: ApiErrorType;
     message: string;
     param?: string | null;
+    /** Whether repeating the same request (same Idempotency-Key and body) can succeed. */
+    retryable?: boolean;
+    /** Sent as the Retry-After header. */
+    retryAfterSeconds?: number;
   }) {
     super(input.message);
     this.name = "ApiError";
@@ -94,7 +105,14 @@ export class ApiError extends Error {
     this.code = input.code;
     this.type = input.type;
     this.param = input.param;
+    this.retryable = input.retryable ?? defaultRetryable(input.status);
+    this.retryAfterSeconds = input.retryAfterSeconds;
   }
+}
+
+// 5xx and 429 responses never commit a resource, so the same request may be repeated.
+function defaultRetryable(status: number): boolean {
+  return status === 429 || status >= 500;
 }
 
 export function objectResponse<T>(
@@ -135,10 +153,17 @@ export function errorResponse(error: ApiError, requestId: string): Response {
         type: error.type,
         message: error.message,
         param: error.param ?? null,
+        retryable: error.retryable,
       },
       request_id: requestId,
     } satisfies ApiErrorBody,
-    { status: error.status }
+    {
+      status: error.status,
+      headers:
+        error.retryAfterSeconds !== undefined
+          ? { "Retry-After": String(Math.max(1, Math.ceil(error.retryAfterSeconds))) }
+          : undefined,
+    }
   );
 }
 

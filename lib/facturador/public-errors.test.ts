@@ -41,3 +41,27 @@ describe("public error contract", () => {
     for (const view of views) expect(view.error?.message).toContain("RFC inválido");
   });
 });
+
+describe("retryable public catalog", () => {
+  it.each([
+    ["SERVICE_UNAVAILABLE", "unavailable", true],
+    ["UPSTREAM_UNAVAILABLE", "upstream", true],
+    ["UPSTREAM_UNAVAILABLE", "connection", false],
+    ["UPSTREAM_RATE_LIMITED", "quota", true],
+    ["PROVIDER_TIMEOUT", "upstream", false],
+    ["NOT_INVOICEABLE", "site", false],
+    ["UPSTREAM_VALIDATION", "validation", false],
+    ["SOMETHING_NEW", "upstream", false],
+  ])("%s/%s retryable=%s", (code, type, retryable) => {
+    const error = publicTicketError({ code, type, message: "Provider said something via Tocino" });
+    expect(error?.retryable).toBe(retryable);
+    expect(error?.message).not.toMatch(/tocino|nova|timbre/i);
+  });
+
+  it("uses Spanish end-user messages for service failures", () => {
+    for (const code of ["SERVICE_UNAVAILABLE", "UPSTREAM_UNAVAILABLE", "PROVIDER_TIMEOUT", "UPSTREAM_RATE_LIMITED"]) {
+      expect(publicTicketError({ code, type: "upstream", message: "Upstream did not respond." })?.message)
+        .toMatch(/servicio|facturación/);
+    }
+  });
+});

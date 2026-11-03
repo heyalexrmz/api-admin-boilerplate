@@ -218,6 +218,9 @@ export const WEBHOOK_EVENTS = [
   "delivery.succeeded",
   "delivery.failed",
   "delivery.exhausted",
+  "service.degraded",
+  "service.down",
+  "service.recovered",
 ] as const
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number]
 
@@ -283,6 +286,9 @@ export const WebhookEventLabels: Record<WebhookEvent, string> = {
   "delivery.succeeded": "Entrega exitosa",
   "delivery.failed": "Entrega fallida",
   "delivery.exhausted": "Entrega agotada",
+  "service.degraded": "Servicio degradado",
+  "service.down": "Servicio caído",
+  "service.recovered": "Servicio recuperado",
 }
 
 export const CreateWebhookFormSchema = z.object({

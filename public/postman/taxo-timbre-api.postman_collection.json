@@ -284,6 +284,26 @@
             },
             "description": "Editable failure request for validating ticket not found handling."
           }
+        },
+        {
+          "name": "Get service status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "status"
+              ]
+            },
+            "description": "Measured availability of ingest, extraction and invoicing (operational, degraded or down). When status is down, POST /api/v1/tickets answers 503 with Retry-After. Requires a read, admin, or access API key."
+          },
+          "response": []
         }
       ]
     }

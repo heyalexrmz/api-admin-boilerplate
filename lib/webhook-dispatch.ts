@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { job, webhook, webhookEventLog } from "@/lib/db/schema";
 import { validateWebhookUrlForDelivery } from "@/lib/server/webhook-url-policy";
 import { signPayload } from "@/lib/webhooks";
+import { publicTicketError } from "@/lib/facturador/public-errors";
 
 const DELIVERY_TIMEOUT_MS = 10_000;
 const MAX_DELIVERY_ATTEMPTS = 5;
@@ -216,6 +217,21 @@ export async function retryWebhookDelivery(webhookEventLogId: string) {
   return attemptWebhookDelivery(row.webhook, row.log);
 }
 
+/**
+ * Every outgoing ticket error goes through the public catalog: stable code,
+ * `retryable`, and an end-user message without service or vendor names.
+ */
+export function publicEventData(data: Record<string, unknown>): Record<string, unknown> {
+  const error = data.error;
+  if (!error || typeof error !== "object" || Array.isArray(error)) return data;
+  const raw = error as Record<string, unknown>;
+  const text = (value: unknown) => (typeof value === "string" ? value : null);
+  return {
+    ...data,
+    error: publicTicketError({ code: text(raw.code), type: text(raw.type), message: text(raw.message) }),
+  };
+}
+
 /** Deliver an event to every enabled webhook in the org that subscribes to it. */
 export async function dispatchOrganizationWebhookEvent(
   organizationId: string,
@@ -245,7 +261,7 @@ export async function dispatchOrganizationWebhookEvent(
         row,
         organizationId,
         eventType as FacturadorWebhookEvent,
-        data,
+        publicEventData(data),
         request
       )
     )
