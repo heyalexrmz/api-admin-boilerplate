@@ -50,16 +50,36 @@ describe("persona fisica name normalization", () => {
   );
 
   it.each([
-    ["LOTJ900101AB1", "JULIETA LOPEZ"],
-    ["PEXJ900101AB1", "JUAN CARLOS PEREZ"],
-    ["CUPA900101AB1", "ANA DE LA CRUZ PEREZ"],
-    ["LOPM900101AB1", "MARIA LOPEZ DEL RIO"],
-    ["LOPM900101AB1", "MARIA DEL CARMEN LOPEZ PEREZ"],
-    ["LOTJ900101AB1", "LOPEZ TORRES, JULIETA SOFIA"],
-    ["LOTJ900101AB1", "ANA LOPEZ PEREZ"],
-  ])("asks for explicit fields for %s / %s", (tax_id, taxpayer) => {
+    ["LOPM900101AB1", "MARIA DEL CARMEN LOPEZ PEREZ", "MARIA DEL CARMEN", "LOPEZ", "PEREZ"],
+    ["LOPC900101AB1", "MARIA DEL CARMEN LOPEZ PEREZ", "MARIA DEL CARMEN", "LOPEZ", "PEREZ"],
+    ["GAHJ900101AB1", "JUAN DE DIOS GARCIA HERNANDEZ", "JUAN DE DIOS", "GARCIA", "HERNANDEZ"],
+    ["CUPA900101AB1", "ANA DE LA CRUZ PEREZ", "ANA", "DE LA CRUZ", "PEREZ"],
+    ["LORM900101AB1", "MARIA LOPEZ DEL RIO", "MARIA", "LOPEZ", "DEL RIO"],
+    ["RORL900101AB1", "LUZ MARIA DE LA ROSA DE LOS RIOS", "LUZ MARIA", "DE LA ROSA", "DE LOS RIOS"],
+    ["ROVJ900101AB1", "MARIA DE JESUS DE LA ROSA VEGA", "MARIA DE JESUS", "DE LA ROSA", "VEGA"],
+    ["lopm900101ab1", "maría del carmen lópez pérez", "maría del carmen", "lópez", "pérez"],
+  ])("splits a name with Spanish connectors confirmed by the RFC: %s / %s", (tax_id, taxpayer, name, last, second) => {
+    expect(normalizeTicketSubmitFields({ tax_id, taxpayer })).toMatchObject({
+      taxpayer_name: name, taxpayer_last_name: last, taxpayer_second_last_name: second,
+    });
+  });
+
+  it.each([
+    ["LOTJ900101AB1", "JULIETA LOPEZ", "too_few_words"],
+    ["CUXA900101AB1", "ANA DE LA CRUZ", "too_few_words"],
+    ["PEXJ900101AB1", "JUAN CARLOS PEREZ", "initials_mismatch"],
+    ["PEXL900101AB1", "MARIA DE LA LUZ PEREZ", "initials_mismatch"],
+    ["LOPM900101AB1", "MARIA LOPEZ DEL RIO", "initials_mismatch"],
+    ["LOTJ900101AB1", "ANA LOPEZ PEREZ", "initials_mismatch"],
+    ["LOTJ900101AB1", "LOPEZ TORRES, JULIETA SOFIA", "unsupported_characters"],
+    ["SAPA900101AB1", "ANA SAN MARTIN PEREZ", "unsupported_particle"],
+    ["MAPA900101AB1", "ANA MAC GREGOR PEREZ", "unsupported_particle"],
+    ["GAPJ900101AB1", "JUAN GARCIA Y PEREZ LOPEZ", "unsupported_particle"],
+    ["LOPM900101AB1", "DE LA MARIA LOPEZ PEREZ", "misplaced_connector"],
+    ["LOPM900101AB1", "MARIA LOPEZ PEREZ DE", "misplaced_connector"],
+  ])("asks for explicit fields for %s / %s (%s)", (tax_id, taxpayer, logReason) => {
     expect(() => normalizeTicketSubmitFields({ tax_id, taxpayer })).toThrow(expect.objectContaining({
-      status: 400, code: "ambiguous_taxpayer_name", type: "validation_error", param: "taxpayer",
+      status: 400, code: "ambiguous_taxpayer_name", type: "validation_error", param: "taxpayer", logReason,
     }));
   });
 

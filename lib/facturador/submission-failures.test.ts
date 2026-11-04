@@ -119,7 +119,7 @@ describe("name normalization at submission boundaries", () => {
   });
 
   it("fails an ambiguous historical payload once, notifies, and never contacts the provider", async () => {
-    const original = { tax_id: "CUPA900101AB1", taxpayer: "ANA DE LA CRUZ PEREZ" };
+    const original = { tax_id: "SAPA900101AB1", taxpayer: "ANA SAN MARTIN PEREZ" };
     ticketState.submitRequest = original;
     await tick();
     expect(ticketState).toMatchObject({
@@ -137,7 +137,7 @@ describe("name normalization at submission boundaries", () => {
 
   it.each(["json", "multipart"])("rejects an ambiguous new %s request before persistence or charging", async (format) => {
     const input = { organizationId: "org-1", apiKeyId: "key-1", mode: "live" as const, requestId: "request-1" };
-    const fields = { tax_id: "CUPA900101AB1", taxpayer: "ANA DE LA CRUZ PEREZ" };
+    const fields = { tax_id: "SAPA900101AB1", taxpayer: "ANA SAN MARTIN PEREZ" };
     const formData = new FormData();
     Object.entries(fields).forEach(([key, value]) => formData.set(key, value));
     formData.set("file", new File([new Uint8Array([0xff, 0xd8, 0xff])], "ticket.jpg", { type: "image/jpeg" }));

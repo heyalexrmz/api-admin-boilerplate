@@ -634,11 +634,12 @@ function ApiReferenceContent() {
           <FieldsTable fields={createTicketFields} />
           <p className="text-sm text-muted-foreground">
             Para RFC de persona física, si solo envías taxpayer, se intenta separar
-            el nombre completo tomando las dos últimas palabras como apellidos y
-            comprobando sus iniciales contra el RFC. Los RFC genéricos se excluyen.
-            Es una inferencia, no una validación de identidad ante el SAT. Los
-            apellidos compuestos, nombres con un solo apellido o iniciales que no
-            coinciden requieren datos explícitos. Envía los tres campos juntos:
+            el nombre completo ignorando los conectores DE, DEL, LA, LAS y LOS,
+            tomando las dos últimas palabras restantes como apellidos y comprobando
+            sus iniciales contra el RFC. Los RFC genéricos se excluyen. Es una
+            inferencia, no una validación de identidad ante el SAT. Los nombres con
+            otras partículas, con un solo apellido o con iniciales que no coinciden
+            requieren datos explícitos. Envía los tres campos juntos:
             taxpayer_name, taxpayer_last_name y taxpayer_second_last_name.
             Si ya están completos, se conservan sin inferir otros valores.
           </p>
