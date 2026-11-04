@@ -12,7 +12,14 @@ import {
 } from "./facturador/responses";
 import { normalizeTicketSubmitFields } from "./facturador/submit-fields";
 import { tocinoSubmitBody } from "./facturador/provider-submit";
-import { mapTocinoError, submitToTocino } from "./facturador/tocino";
+import {
+  classifyTocinoEvent,
+  extractTocinoInvoice,
+  mapTocinoError,
+  parseCfdiIdentifiers,
+  submitToTocino,
+  tocinoTicketId,
+} from "./facturador/tocino";
 import { createTocinoWebhookJobValues } from "./facturador/upstream-webhooks";
 import { documentObjectKey, sanitizeObjectKeySegment } from "./storage/s3";
 
@@ -216,7 +223,7 @@ describe("submitToTocino", () => {
 
   it("forwards taxpayer for personas morales", async () => {
     const fetchMock = vi.fn<typeof fetch>(async () =>
-      new Response(JSON.stringify({ nova_request_id: "nova_123" }), {
+      new Response(JSON.stringify({ ticket_id: "nova_123" }), {
         status: 200,
         headers: { "content-type": "application/json" },
       })
@@ -252,7 +259,7 @@ describe("submitToTocino", () => {
 
   it("forwards Tocino persona fisica name fields", async () => {
     const fetchMock = vi.fn<typeof fetch>(async () =>
-      new Response(JSON.stringify({ nova_request_id: "nova_123" }), {
+      new Response(JSON.stringify({ ticket_id: "nova_123" }), {
         status: 200,
         headers: { "content-type": "application/json" },
       })
@@ -292,7 +299,7 @@ describe("submitToTocino", () => {
 
   it("returns the provider request id without exposing the upstream provider name", async () => {
     const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify({ nova_request_id: "nova_123" }), {
+      new Response(JSON.stringify({ ticket_id: "nova_123" }), {
         status: 200,
         headers: { "content-type": "application/json" },
       })
@@ -315,8 +322,8 @@ describe("submitToTocino", () => {
     expect(JSON.stringify(result)).not.toContain("tocino");
     expect(result).toEqual({
       ok: true,
-      novaRequestId: "nova_123",
-      raw: { nova_request_id: "nova_123" },
+      providerTicketId: "nova_123",
+      raw: { ticket_id: "nova_123" },
     });
   });
 });
@@ -347,11 +354,11 @@ describe("tocinoSubmitBody", () => {
       taxpayer_name: "ALEJANDRO",
       taxpayer_last_name: "DOMINGUEZ",
       taxpayer_second_last_name: "RAMIREZ",
-      invoice_fiscal_regimen: "612",
-      invoice_cfdi_use: "G03",
+      fiscal_regimen_code: "612",
+      cfdi_use_code: "G03",
       country: "México",
       file: "base64_ticket_image",
-      file_name: "ticket.jpg",
+      filename: "ticket.jpg",
       csf_pdf: "base64_csf_pdf",
     });
   });
@@ -376,11 +383,139 @@ describe("tocinoSubmitBody", () => {
       taxpayer_name: "ALEJANDRO",
       taxpayer_last_name: "DOMINGUEZ",
       taxpayer_second_last_name: "RAMIREZ",
-      invoice_fiscal_regimen: "626",
-      invoice_cfdi_use: "G03",
+      fiscal_regimen_code: "626",
+      cfdi_use_code: "G03",
       country: "México",
       file: "base64_ticket_image",
-      file_name: "ticket.jpg",
+      filename: "ticket.jpg",
+    });
+  });
+
+  it("keeps fiscal codes when a retry reads a request stored with provider names", () => {
+    expect(
+      tocinoSubmitBody({
+        storedFields: {
+          tax_id: "EKU9003173C9",
+          taxpayer: "Empresa Demo",
+          fiscal_regimen_code: "601",
+          cfdi_use_code: "G03",
+          file: "<base64 omitted: 8 chars>",
+        },
+        imageBase64: "base64_ticket_image",
+        fileName: "ticket.jpg",
+      })
+    ).toMatchObject({ fiscal_regimen_code: "601", cfdi_use_code: "G03", file: "base64_ticket_image" });
+  });
+});
+
+describe("Tocino external tickets contract", () => {
+  it("posts to the external tickets endpoint and keeps the returned ticket_id", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      new Response(JSON.stringify({
+        message: "Ticket received",
+        ticket_id: "2f502648-44cd-49f0-94b1-ab307cda8295",
+        internal_id: "89fc579c-be0a-49c1-a320-78ce81864871",
+      }), { status: 200 })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await submitToTocino({
+      idempotencyKey: "ticket_123",
+      body: {},
+      config: {
+        baseUrl: "https://bacon.tocino.ai/",
+        apiKey: "api_key",
+        webhookHeader: "typeform-signature",
+        webhookToken: "webhook_token",
+        webhookSecret: "webhook_secret",
+        assetHosts: [],
+      },
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toBe("https://bacon.tocino.ai/api/external/tickets/");
+    expect(result).toMatchObject({ ok: true, providerTicketId: "2f502648-44cd-49f0-94b1-ab307cda8295" });
+  });
+
+  it("matches callbacks by ticket_id and falls back to the previous identifier", () => {
+    expect(tocinoTicketId({ ticket_id: " new ", nova_request_id: "old" })).toBe("new");
+    expect(tocinoTicketId({ nova_request_id: "old" })).toBe("old");
+    expect(tocinoTicketId({ ticket_id: null })).toBeNull();
+  });
+
+  it("reads a finalized callback with direct document links", () => {
+    const raw = {
+      status: "finalized",
+      file_url: "https://assets.example/ticket.jpg",
+      ticket_id: "016df394-5973-47dd-8d8f-154eedea3b31",
+      idempotency_key: "1234563",
+      invoice: {
+        pdf: "https://assets.example/invoice.pdf",
+        xml: "https://assets.example/invoice.xml",
+        invoice_date: "2026-02-07T19:12:37-06:00",
+        issuer_taxid: "NWM9709244W4",
+        invoice_total: "4167.50",
+        issuer_taxpayer: "NUEVA WAL MART DE MEXICO",
+      },
+    };
+    expect(classifyTocinoEvent(raw)).toBe("ticket.finalized");
+    expect(extractTocinoInvoice(raw)).toMatchObject({
+      pdfUrl: "https://assets.example/invoice.pdf",
+      xmlUrl: "https://assets.example/invoice.xml",
+      issuerRfc: "NWM9709244W4",
+      issuerTaxpayer: "NUEVA WAL MART DE MEXICO",
+      total: "4167.50",
+      invoiceDate: "2026-02-07T19:12:37-06:00",
+      satUuid: null,
+    });
+  });
+
+  it("reads a not-invoiceable callback with the cause at its root", () => {
+    const raw = {
+      status: "not_invoiceable",
+      invoice: "",
+      ticket_id: "ca511620-14c6-4b31-a3b5-a8babaa65afa",
+      not_invoiceable_cause: "La imagen no es un ticket.",
+    };
+    expect(classifyTocinoEvent(raw)).toBe("ticket.failed");
+    expect(mapTocinoError("process", raw)).toEqual({
+      code: "NOT_INVOICEABLE",
+      category: "site",
+      message: "La imagen no es un ticket.",
+    });
+  });
+
+  it("takes the SAT identifiers from the CFDI", () => {
+    expect(parseCfdiIdentifiers(Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>
+      <cfdi:Comprobante Version="4.0" Serie="A" Folio="123" Total="10.00">
+        <cfdi:Emisor Rfc="NWM9709244W4" Nombre="A > B"/>
+        <cfdi:Complemento>
+          <tfd:TimbreFiscalDigital Version="1.1"
+            UUID='6128396F-C09B-4EC6-8699-43C5F7E3B230' SelloCFD="abc"/>
+        </cfdi:Complemento>
+      </cfdi:Comprobante>`))).toEqual({
+      satUuid: "6128396F-C09B-4EC6-8699-43C5F7E3B230",
+      series: "A",
+      folio: "123",
+    });
+    expect(parseCfdiIdentifiers(Buffer.from('<Invoice total="1" />'))).toEqual({
+      satUuid: null,
+      series: null,
+      folio: null,
+    });
+  });
+
+  it("does not treat an invoicing ticket as finished", () => {
+    expect(classifyTocinoEvent({ status: "invoicing", invoice: null })).toBeNull();
+    expect(classifyTocinoEvent({ status: "invoicing", invoice: { id: "partial" } })).toBeNull();
+  });
+
+  it("reports a field error under the name our API uses", () => {
+    expect(
+      mapTocinoError("submit", { fiscal_regimen_code: ["This field is required."] }, 400)
+    ).toMatchObject({
+      code: "UPSTREAM_VALIDATION",
+      category: "validation",
+      message: "invoice_fiscal_regimen: This field is required.",
     });
   });
 });
@@ -444,7 +579,7 @@ describe("createTocinoWebhookJobValues", () => {
           invoice: { id: "invoice_123" },
         },
       },
-      idempotencyKey: "process_upstream_webhook:nova_request_id:nova_123",
+      idempotencyKey: "process_upstream_webhook:ticket_id:nova_123",
     });
   });
 });

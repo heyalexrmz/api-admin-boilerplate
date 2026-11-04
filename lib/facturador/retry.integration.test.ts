@@ -40,7 +40,7 @@ describe.skipIf(!process.env.TICKET_RETRY_TEST_DATABASE_URL)("manual retries wit
     vi.spyOn(console, "log").mockImplementation(() => {});
     vi.stubEnv("TOCINO_BASE_URL", "https://provider.example");
     vi.stubEnv("TOCINO_API_KEY", "test-key");
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ nova_request_id: "provider-receipt" }), { status: 200 })));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ ticket_id: "provider-receipt" }), { status: 200 })));
     await db.execute(sql`truncate table organization, plan cascade`);
     await db.insert(organization).values({ id: input.organizationId, name: "Retry tests", slug: "retry-tests" });
     const [owner] = await db.insert(taxpayer).values({ organizationId: input.organizationId, rfc: "LOTJ900101AB1" }).returning();
@@ -87,7 +87,7 @@ describe.skipIf(!process.env.TICKET_RETRY_TEST_DATABASE_URL)("manual retries wit
       body: JSON.stringify({
         tax_id: "LOTJ900101AB1", taxpayer: "JULIETA SOFIA LOPEZ TORRES",
         taxpayer_name: "JULIETA SOFIA", taxpayer_last_name: "LOPEZ", taxpayer_second_last_name: "TORRES",
-        country: "México", file: Buffer.from("original-image").toString("base64"), file_name: "receipt.png",
+        country: "México", file: Buffer.from("original-image").toString("base64"), filename: "receipt.png",
       }),
     }));
     expect(await db.select().from(creditLedgerEntry)).toHaveLength(1);

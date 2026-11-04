@@ -91,6 +91,10 @@ describe("persona fisica name normalization", () => {
     expect(tocinoSubmitBody({
       storedFields: { ...fullNameOnly, file: "<base64 omitted>", request_id: "internal" },
       imageBase64: "actual-image", fileName: "ticket.jpg",
-    })).toEqual({ ...fullNameOnly, ...separateNames, file: "actual-image", file_name: "ticket.jpg" });
+    })).toEqual({
+      tax_id: fullNameOnly.tax_id, taxpayer: fullNameOnly.taxpayer, country: fullNameOnly.country,
+      postal_code: fullNameOnly.postal_code, cfdi_use_code: "G03", fiscal_regimen_code: "612",
+      ...separateNames, file: "actual-image", filename: "ticket.jpg",
+    });
   });
 });
