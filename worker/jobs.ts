@@ -89,7 +89,7 @@ async function processJob(row: JobRow) {
     });
     if (result?.outcome === "tocino_pending") {
       console.log(
-        `[worker] tocino accepted ticket=${ticketId} status=pending nova_request_id=${result.novaRequestId}`
+        `[worker] tocino accepted ticket=${ticketId} status=pending provider_ticket_id=${result.providerTicketId}`
       );
     } else if (result?.outcome === "tocino_failed") {
       console.log(

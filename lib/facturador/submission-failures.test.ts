@@ -101,7 +101,7 @@ function throttled(seconds = 35115) {
 describe("name normalization at submission boundaries", () => {
   it("sends and stores the separate names for a historical full-name-only payload", async () => {
     ticketState.submitRequest = { tax_id: "LOTJ900101AB1", taxpayer: "JULIETA SOFIA LOPEZ TORRES" };
-    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ nova_request_id: "accepted" }), { status: 200 }));
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ ticket_id: "accepted" }), { status: 200 }));
     await tick();
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(body).toMatchObject({

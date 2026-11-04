@@ -1,3 +1,5 @@
+import { tocinoTicketId } from "./tocino";
+
 export const PROCESS_UPSTREAM_WEBHOOK_JOB = "process_upstream_webhook" as const;
 
 function stringValue(value: unknown): string | null {
@@ -8,9 +10,9 @@ function stringValue(value: unknown): string | null {
 
 export function tocinoWebhookJobIdempotencyKey(raw: unknown): string | null {
   const payload = raw as Record<string, unknown>;
-  const providerRequestId = stringValue(payload.nova_request_id);
-  if (providerRequestId) {
-    return `${PROCESS_UPSTREAM_WEBHOOK_JOB}:nova_request_id:${providerRequestId}`;
+  const providerTicketId = tocinoTicketId(payload);
+  if (providerTicketId) {
+    return `${PROCESS_UPSTREAM_WEBHOOK_JOB}:ticket_id:${providerTicketId}`;
   }
 
   const idempotencyKey = stringValue(payload.idempotency_key);

@@ -1,7 +1,12 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { publicTicketError } from "./public-errors";
 
-const SUBMIT_PATH = "/api/ocr/company/ticket-invoice/";
+const SUBMIT_PATH = "/api/external/tickets/";
+const PUBLIC_FIELD_NAMES: Record<string, string> = {
+  cfdi_use_code: "invoice_cfdi_use",
+  filename: "file_name",
+  fiscal_regimen_code: "invoice_fiscal_regimen",
+};
 
 type ErrorCategory =
   | "validation"
@@ -20,7 +25,7 @@ export type TocinoError = {
 };
 
 export type TocinoSubmitResult =
-  | { ok: true; novaRequestId: string; raw: unknown }
+  | { ok: true; providerTicketId: string; raw: unknown }
   | { ok: false; error: TocinoError; raw?: unknown; status?: number; retryAfterSeconds?: number };
 
 export type TocinoConfig = {
@@ -109,6 +114,29 @@ function recordValue(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
+// `nova_request_id` is the previous API's name; tickets accepted before the
+// migration can still receive callbacks carrying it.
+export function tocinoTicketId(raw: unknown): string | null {
+  const payload = recordValue(raw);
+  return stringValue(payload.ticket_id) ?? stringValue(payload.nova_request_id);
+}
+
+// The current API sends the cause at the root and `invoice` as an empty string.
+function notInvoiceableCauseOf(raw: unknown): string | null {
+  const payload = recordValue(raw);
+  return stringValue(payload.not_invoiceable_cause) ??
+    stringValue(recordValue(payload.invoice).not_invoiceable_cause);
+}
+
+function firstFieldError(value: Record<string, unknown>): string | null {
+  for (const [field, messages] of Object.entries(value)) {
+    if (Array.isArray(messages) && typeof messages[0] === "string") {
+      return `${PUBLIC_FIELD_NAMES[field] ?? field}: ${messages[0]}`;
+    }
+  }
+  return null;
+}
+
 export function mapTocinoError(
   phase: "submit" | "process",
   raw: unknown,
@@ -145,6 +173,8 @@ export function mapTocinoError(
     if (value?.message === "Insufficient balance") {
       return error("INSUFFICIENT_BALANCE", "balance", "Insufficient balance.");
     }
+    const fieldError = firstFieldError(recordValue(value));
+    if (fieldError) return error("UPSTREAM_VALIDATION", "validation", fieldError);
     const detailMessage = firstDetailMessage(value?.detail);
     if (detailMessage && (status === undefined || status === 400 || status === 422)) {
       return error("UPSTREAM_VALIDATION", "validation", detailMessage);
@@ -155,13 +185,12 @@ export function mapTocinoError(
     return error("UNKNOWN_UPSTREAM", "unknown", "Unrecognized upstream error.");
   }
 
-  const invoice = value?.invoice as Record<string, unknown> | undefined;
-  const notInvoiceableCause = invoice?.not_invoiceable_cause;
+  const notInvoiceableCause = notInvoiceableCauseOf(value);
   if (notInvoiceableCause || String(value?.status ?? "").toLowerCase() === "not_invoiceable") {
     return error(
       "NOT_INVOICEABLE",
       "site",
-      stringValue(notInvoiceableCause) ?? stringValue(value?.error_msg) ?? "Este ticket no es facturable."
+      notInvoiceableCause ?? stringValue(value?.error_msg) ?? "Este ticket no es facturable."
     );
   }
   if (value?.error_code) {
@@ -215,10 +244,11 @@ export async function submitToTocino(input: {
       signal: AbortSignal.timeout(30_000),
     });
     const json = recordValue(parseResponseBody(await response.text()));
-    if (response.ok && json?.nova_request_id) {
+    const providerTicketId = stringValue(json.ticket_id);
+    if (response.ok && providerTicketId) {
       return {
         ok: true,
-        novaRequestId: String(json.nova_request_id),
+        providerTicketId,
         raw: json,
       };
     }
@@ -272,16 +302,15 @@ export function classifyTocinoEvent(raw: unknown): "ticket.finalized" | "ticket.
   const status = String(value?.status ?? "").toLowerCase();
   const invoice = value?.invoice as Record<string, unknown> | undefined;
   if (["failed", "error", "not_invoiceable"].includes(status)) return "ticket.failed";
-  if (invoice?.not_invoiceable_cause || value?.error_code || value?.error_msg) return "ticket.failed";
-  if (["pending", "processing", "queued", "received"].includes(status)) return null;
+  if (notInvoiceableCauseOf(value) || value?.error_code || value?.error_msg) return "ticket.failed";
+  if (["pending", "processing", "queued", "received", "invoicing"].includes(status)) return null;
   if (["finalized", "completed", "success"].includes(status)) return "ticket.finalized";
   if (invoice && Object.keys(invoice).length > 0) return "ticket.finalized";
   return null;
 }
 
 export function extractTocinoInvoice(raw: unknown) {
-  const value = raw as { invoice?: Record<string, unknown> } | null;
-  const inv = value?.invoice ?? {};
+  const inv = recordValue(recordValue(raw).invoice);
   const xmlAttachment = inv.xml_attachment as Record<string, unknown> | undefined;
   const xmlData = xmlAttachment?.xml_data as Record<string, unknown> | undefined;
   const comp = xmlData?.Comprobante as Record<string, unknown> | undefined;
@@ -302,9 +331,25 @@ export function extractTocinoInvoice(raw: unknown) {
     satUuid: tfd?.UUID ?? null,
     series: comp?.Serie ?? null,
     folio: comp?.Folio ?? null,
-    pdfUrl: pdfAttachment?.file ?? null,
-    xmlUrl: xmlAttachment?.file ?? null,
+    pdfUrl: inv.pdf ?? pdfAttachment?.file ?? null,
+    xmlUrl: inv.xml ?? xmlAttachment?.file ?? null,
     xmlData: xmlAttachment?.xml_data ?? null,
+  };
+}
+
+function xmlAttribute(xml: string, tag: string, attribute: string): string | null {
+  const element = xml.match(new RegExp(`<(?:[\\w.-]+:)?${tag}\\b((?:[^>"']|"[^"]*"|'[^']*')*)>`))?.[1];
+  const match = element?.match(new RegExp(`\\s${attribute}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`));
+  return stringValue(match?.[1] ?? match?.[2]);
+}
+
+// The callback no longer carries these values; the signed CFDI is their only source.
+export function parseCfdiIdentifiers(xml: Buffer) {
+  const text = xml.toString("utf8");
+  return {
+    satUuid: xmlAttribute(text, "TimbreFiscalDigital", "UUID"),
+    series: xmlAttribute(text, "Comprobante", "Serie"),
+    folio: xmlAttribute(text, "Comprobante", "Folio"),
   };
 }
 

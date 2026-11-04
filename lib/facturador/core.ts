@@ -22,7 +22,9 @@ import {
   downloadTocinoAsset,
   extractTocinoInvoice,
   mapTocinoError,
+  parseCfdiIdentifiers,
   submitToTocino,
+  tocinoTicketId,
   type TocinoError,
   type TocinoSubmitResult,
 } from "@/lib/facturador/tocino";
@@ -974,7 +976,7 @@ export async function enqueueTicketJob(input: {
 function webhookTicketCondition(raw: unknown) {
   const payload = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
   const idempotencyKey = typeof payload.idempotency_key === "string" ? payload.idempotency_key.trim() : "";
-  const providerRequestId = typeof payload.nova_request_id === "string" ? payload.nova_request_id.trim() : "";
+  const providerRequestId = tocinoTicketId(payload);
   // Client idempotency keys are scoped to an organization. Prefer the service's
   // request ID; an early callback is retried until that ID has been saved.
   if (providerRequestId) return eq(ticket.providerRequestId, providerRequestId);
@@ -1211,7 +1213,7 @@ export async function submitTicketToTocino(input: {
       .update(ticket)
       .set({
         status: "pending",
-        providerRequestId: result.novaRequestId,
+        providerRequestId: result.providerTicketId,
         lastResponse: normalizedResponse,
         errorCode: null,
         errorType: null,
@@ -1228,7 +1230,7 @@ export async function submitTicketToTocino(input: {
     });
     return {
       outcome: "tocino_pending" as const,
-      novaRequestId: result.novaRequestId,
+      providerTicketId: result.providerTicketId,
     };
   }
 
@@ -1494,34 +1496,6 @@ export async function applyTocinoWebhookEvent(raw: unknown) {
 
   const invoiceData = extractTocinoInvoice(raw);
   const invoiceDate = invoiceData.invoiceDate ? new Date(String(invoiceData.invoiceDate)) : null;
-  const [invoiceRow] = await db
-    .insert(invoice)
-    .values({
-      organizationId: row.ticket.organizationId,
-      taxpayerId: row.taxpayer.id,
-      ticketId: row.ticket.id,
-      status: "finalized",
-      satUuid: nullableString(invoiceData.satUuid),
-      series: nullableString(invoiceData.series),
-      folio: nullableString(invoiceData.folio),
-      issuerTaxpayer: nullableString(invoiceData.issuerTaxpayer),
-      issuerRfc: nullableString(invoiceData.issuerRfc),
-      total: invoiceData.total ? String(invoiceData.total) : null,
-      invoiceDate: invoiceDate && !Number.isNaN(invoiceDate.getTime()) ? invoiceDate : null,
-      metadata: raw as Record<string, unknown>,
-    })
-    .onConflictDoUpdate({
-      target: invoice.ticketId,
-      set: {
-        status: "finalized",
-        updatedAt: new Date(),
-        metadata: raw as Record<string, unknown>,
-      },
-    })
-    .returning();
-  if (!invoiceRow) throw new Error("Could not record Tocino invoice.");
-
-  const storedInvoiceDocuments: (typeof document.$inferSelect)[] = [];
   const xmlFallback = invoiceData.xmlData
     ? Buffer.from(JSON.stringify(invoiceData.xmlData))
     : undefined;
@@ -1536,7 +1510,46 @@ export async function applyTocinoWebhookEvent(raw: unknown) {
       fallbackContentType: "application/pdf",
     }),
   ]);
+  // Identifiers only exist in the CFDI, so a failed download retries this
+  // delivery instead of recording an invoice without them.
+  const cfdi = xmlAsset ? parseCfdiIdentifiers(xmlAsset.buffer) : null;
+  const satUuid = nullableString(invoiceData.satUuid) ?? cfdi?.satUuid ?? null;
+  const series = nullableString(invoiceData.series) ?? cfdi?.series ?? null;
+  const folio = nullableString(invoiceData.folio) ?? cfdi?.folio ?? null;
+  if (xmlAsset && !satUuid) {
+    console.warn(`[facturador] CFDI without SAT UUID ticket=${row.ticket.id}`);
+  }
+  const [invoiceRow] = await db
+    .insert(invoice)
+    .values({
+      organizationId: row.ticket.organizationId,
+      taxpayerId: row.taxpayer.id,
+      ticketId: row.ticket.id,
+      status: "finalized",
+      satUuid,
+      series,
+      folio,
+      issuerTaxpayer: nullableString(invoiceData.issuerTaxpayer),
+      issuerRfc: nullableString(invoiceData.issuerRfc),
+      total: invoiceData.total ? String(invoiceData.total) : null,
+      invoiceDate: invoiceDate && !Number.isNaN(invoiceDate.getTime()) ? invoiceDate : null,
+      metadata: raw as Record<string, unknown>,
+    })
+    .onConflictDoUpdate({
+      target: invoice.ticketId,
+      set: {
+        status: "finalized",
+        ...(satUuid ? { satUuid } : {}),
+        ...(series ? { series } : {}),
+        ...(folio ? { folio } : {}),
+        updatedAt: new Date(),
+        metadata: raw as Record<string, unknown>,
+      },
+    })
+    .returning();
+  if (!invoiceRow) throw new Error("Could not record Tocino invoice.");
 
+  const storedInvoiceDocuments: (typeof document.$inferSelect)[] = [];
   if (xmlAsset) {
     const xmlDoc = await storeDocument({
       organizationId: row.ticket.organizationId,

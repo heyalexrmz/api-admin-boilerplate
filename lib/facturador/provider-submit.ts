@@ -14,9 +14,16 @@ const PROVIDER_FIELD_NAMES = [
   "state",
   "country",
   "postal_code",
-  "invoice_fiscal_regimen",
-  "invoice_cfdi_use",
+  "fiscal_regimen_code",
+  "cfdi_use_code",
 ] as const;
+
+// Our public API keeps these names. A submission overwrites the stored request
+// with the provider's names, so a retry can find either spelling.
+const PUBLIC_FIELD_ALIASES = {
+  invoice_fiscal_regimen: "fiscal_regimen_code",
+  invoice_cfdi_use: "cfdi_use_code",
+} as const;
 
 export function tocinoSubmitBody(input: {
   storedFields: Record<string, unknown>;
@@ -29,6 +36,10 @@ export function tocinoSubmitBody(input: {
   for (const name of PROVIDER_FIELD_NAMES) {
     const value = input.storedFields[name];
     if (typeof value === "string" && value.trim()) storedFields[name] = value.trim();
+  }
+  for (const [publicName, providerName] of Object.entries(PUBLIC_FIELD_ALIASES)) {
+    const value = input.storedFields[publicName];
+    if (typeof value === "string" && value.trim()) storedFields[providerName] = value.trim();
   }
   const fields = normalizeTicketSubmitFields(storedFields);
 
@@ -47,7 +58,7 @@ export function tocinoSubmitBody(input: {
     ...fields,
     country: typeof fields.country === "string" ? fields.country : "México",
     file: input.imageBase64,
-    file_name: input.fileName,
+    filename: input.fileName,
     ...(input.csfBase64 ? { csf_pdf: input.csfBase64 } : {}),
   };
 }

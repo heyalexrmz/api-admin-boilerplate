@@ -1,5 +1,5 @@
 import { applyTocinoWebhookEvent } from "@/lib/facturador/core";
-import { classifyTocinoEvent } from "@/lib/facturador/tocino";
+import { classifyTocinoEvent, tocinoTicketId } from "@/lib/facturador/tocino";
 import { validateWebhookUrlForDelivery } from "@/lib/server/webhook-url-policy";
 import { getRouterConfig } from "./config";
 import { ROUTER_HOP_HEADER } from "./ingress";
@@ -15,7 +15,7 @@ async function deliver(row: RouterDelivery): Promise<Parameters<typeof finishRou
   if (row.destination === "local") {
     const payload = JSON.parse(row.raw_body) as Record<string, unknown>;
     if (!classifyTocinoEvent(payload)) return { ok: true }; // Forward progress events without finalizing a ticket.
-    if (![payload.idempotency_key, payload.nova_request_id].some((id) => typeof id === "string" && id.trim())) {
+    if (![payload.idempotency_key, tocinoTicketId(payload)].some((id) => typeof id === "string" && id.trim())) {
       return { ok: false, error: "missing_request_identifier", permanent: true };
     }
     const result = await applyTocinoWebhookEvent(payload);
