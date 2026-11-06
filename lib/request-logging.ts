@@ -90,10 +90,17 @@ export function safeResponseHeaders(response: Response): RequestHeader[] {
   }));
 }
 
-export async function errorResponseBodyForLog(response: Response): Promise<string | null> {
+export async function errorResponseBodyForLog(
+  response: Response,
+  logReason?: string
+): Promise<string | null> {
   if (response.status < 400) return null;
   try {
-    return capText(await response.clone().text(), MAX_LOG_BODY_BYTES);
+    const body = await response.clone().text();
+    const logged = logReason
+      ? JSON.stringify({ internal_reason: logReason, ...JSON.parse(body) })
+      : body;
+    return capText(logged, MAX_LOG_BODY_BYTES);
   } catch {
     return null;
   }

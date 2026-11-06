@@ -46,7 +46,7 @@ El reintento conserva el ticket, los archivos, los datos fiscales y la llave de 
 
 La lista y el detalle abierto actualizan el estado mientras hay tickets activos. Si el nuevo envío falla, vuelve a quedar `failed`: cualquier intento adicional requiere otra acción manual.
 
-En los envíos nuevos y los reintentos se intenta separar `taxpayer` cuando el RFC tiene formato de persona física y faltan los tres campos de nombre. La inferencia toma las dos últimas palabras como apellidos, excluye los RFC genéricos y requiere iniciales compatibles con el RFC. No valida la identidad ante el SAT. Los nombres con partículas de apellidos compuestos, signos no reconocidos o iniciales incompatibles requieren los campos separados; si se proporciona alguno, deben enviarse los tres completos. Las peticiones nuevas ambiguas reciben HTTP 400 antes de consumir un crédito. Para un ticket histórico, el worker conserva los datos originales, lo deja en `failed` con tipo `validation`, emite `ticket.failed` y no contacta al servicio externo ni repite el trabajo automáticamente.
+En los envíos nuevos y los reintentos se intenta separar `taxpayer` cuando el RFC tiene formato de persona física y faltan los tres campos de nombre. La inferencia ignora los conectores `DE`, `DEL`, `LA`, `LAS` y `LOS`, toma las dos últimas palabras restantes como apellidos (cada una conserva los conectores que la anteceden), excluye los RFC genéricos y requiere iniciales compatibles con el RFC. No valida la identidad ante el SAT. Los nombres con otras partículas (por ejemplo `SAN`, `MAC`, `VAN` o `Y`), con un solo apellido, signos no reconocidos o iniciales incompatibles requieren los campos separados; si se proporciona alguno, deben enviarse los tres completos. Las peticiones nuevas ambiguas reciben HTTP 400 antes de consumir un crédito. Para un ticket histórico, el worker conserva los datos originales, lo deja en `failed` con tipo `validation`, emite `ticket.failed` y no contacta al servicio externo ni repite el trabajo automáticamente.
 
 ## Formato de los errores de API
 
@@ -84,7 +84,7 @@ Un error al ejecutar una operación HTTP tiene este formato:
 | `invalid_json` | 400 | `validation_error` | El cuerpo no es JSON válido. Corregir la sintaxis. |
 | `invalid_payload` | 400 | `validation_error` | La estructura del cuerpo es inválida o faltan identificadores necesarios. Revisar el contrato de la operación. |
 | `missing_field` | 400 | `validation_error` | Falta un campo obligatorio. Consultar `param` y `message`. |
-| `ambiguous_taxpayer_name` | 400 | `validation_error` | El RFC tiene formato de persona física, pero no se puede separar `taxpayer` de forma conservadora. Enviar `taxpayer_name`, `taxpayer_last_name` y `taxpayer_second_last_name` completos. |
+| `ambiguous_taxpayer_name` | 400 | `validation_error` | El RFC tiene formato de persona física, pero no se puede separar `taxpayer` de forma conservadora. Enviar `taxpayer_name`, `taxpayer_last_name` y `taxpayer_second_last_name` completos. `request_log.response_body` guarda el motivo en `internal_reason` (`too_few_words`, `unsupported_characters`, `unsupported_particle`, `misplaced_connector` o `initials_mismatch`), sin datos personales y sin exponerlo al cliente. |
 | `tax_id_required` | 400 | `validation_error` | Falta el RFC del contribuyente. Completar `tax_id`. |
 | `missing_file` | 400 | `validation_error` | Falta el archivo requerido. Adjuntar la imagen o archivo señalado. |
 | `invalid_base64` | 400 | `validation_error` | El archivo no tiene una codificación base64 válida. Corregir su codificación. |

@@ -87,6 +87,7 @@ export class ApiError extends Error {
   readonly param?: string | null;
   readonly retryable: boolean;
   readonly retryAfterSeconds?: number;
+  readonly logReason?: string;
 
   constructor(input: {
     status: number;
@@ -98,6 +99,8 @@ export class ApiError extends Error {
     retryable?: boolean;
     /** Sent as the Retry-After header. */
     retryAfterSeconds?: number;
+    /** Written to the request log only; never sent to the client or built from personal data. */
+    logReason?: string;
   }) {
     super(input.message);
     this.name = "ApiError";
@@ -107,6 +110,7 @@ export class ApiError extends Error {
     this.param = input.param;
     this.retryable = input.retryable ?? defaultRetryable(input.status);
     this.retryAfterSeconds = input.retryAfterSeconds;
+    this.logReason = input.logReason;
   }
 }
 

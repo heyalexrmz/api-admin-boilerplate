@@ -1,9 +1,11 @@
 import { ApiError } from "../api-contracts";
 
 const GENERIC_RFCS = new Set(["XAXX010101000", "XEXX010101000"]);
-const NAME_PARTICLES = new Set([
-  "DA", "DAS", "DE", "DEL", "DEN", "DER", "DI", "DO", "DOS", "DU",
-  "LA", "LAS", "LE", "LOS", "MAC", "MC", "SAN", "SANTA", "SANTO", "VAN", "VON", "Y",
+// The RFC skips these words, so its initials can still confirm the split.
+const RFC_SKIPPED_CONNECTORS = new Set(["DE", "DEL", "LA", "LAS", "LOS"]);
+const UNSUPPORTED_PARTICLES = new Set([
+  "DA", "DAS", "DEN", "DER", "DI", "DO", "DOS", "DU",
+  "LE", "MAC", "MC", "SAN", "SANTA", "SANTO", "VAN", "VON", "Y",
 ]);
 
 function isPersonaFisicaRfc(rfc: string): boolean {
@@ -14,36 +16,54 @@ function nameKey(value: string): string {
   return value.normalize("NFD").replace(/\p{M}/gu, "").toUpperCase();
 }
 
+function ambiguousTaxpayerName(logReason: string): ApiError {
+  return new ApiError({
+    status: 400,
+    code: "ambiguous_taxpayer_name",
+    type: "validation_error",
+    message: "No podemos separar el nombre completo con suficiente certeza. Envía taxpayer_name, taxpayer_last_name y taxpayer_second_last_name por separado.",
+    param: "taxpayer",
+    logReason,
+  });
+}
+
 function splitTaxpayerName(taxpayer: string, rfc: string): Record<string, string> {
   const parts = taxpayer.split(/\s+/);
-  const givenNames = parts.slice(0, -2);
-  const lastName = parts.at(-2) ?? "";
-  const secondLastName = parts.at(-1) ?? "";
+  const keys = parts.map(nameKey);
+  if (parts.some((part) => !/^[\p{L}\p{M}]+(?:[-'’][\p{L}\p{M}]+)*$/u.test(part))) {
+    throw ambiguousTaxpayerName("unsupported_characters");
+  }
+  if (keys.some((key) => UNSUPPORTED_PARTICLES.has(key))) {
+    throw ambiguousTaxpayerName("unsupported_particle");
+  }
+
+  // The last two words outside a connector are the surnames, and each one keeps
+  // the connectors before it: "ANA DE LA CRUZ PEREZ" has "DE LA CRUZ" as a surname.
+  const significant = keys.flatMap((key, index) => (RFC_SKIPPED_CONNECTORS.has(key) ? [] : [index]));
+  if (significant.length < 3) throw ambiguousTaxpayerName("too_few_words");
+  if (RFC_SKIPPED_CONNECTORS.has(keys[0]!) || RFC_SKIPPED_CONNECTORS.has(keys.at(-1)!)) {
+    throw ambiguousTaxpayerName("misplaced_connector");
+  }
+  const lastGivenIndex = significant.at(-3)!;
+  const lastNameIndex = significant.at(-2)!;
+  const secondLastNameIndex = significant.at(-1)!;
+
   // RFC initials only corroborate this conservative split; this is not SAT
   // identity validation. Explicit fields are needed for other name structures.
-  const givenInitials = [nameKey(givenNames[0] ?? "")[0]];
-  if (["MARIA", "JOSE"].includes(nameKey(givenNames[0] ?? ""))) {
-    givenInitials.push(nameKey(givenNames[1] ?? "")[0]);
-  }
+  const givenKeys = significant.slice(0, -2).map((index) => keys[index]!);
+  const givenInitials = [givenKeys[0]![0]];
+  if (["MARIA", "JOSE"].includes(givenKeys[0]!) && givenKeys[1]) givenInitials.push(givenKeys[1][0]);
   if (
-    parts.length < 3 ||
-    parts.some((part) => !/^[\p{L}\p{M}]+(?:[-'’][\p{L}\p{M}]+)*$/u.test(part) || NAME_PARTICLES.has(nameKey(part))) ||
-    nameKey(lastName)[0] !== rfc[0] ||
-    nameKey(secondLastName)[0] !== rfc[2] ||
+    keys[lastNameIndex]![0] !== rfc[0] ||
+    keys[secondLastNameIndex]![0] !== rfc[2] ||
     !givenInitials.includes(rfc[3])
   ) {
-    throw new ApiError({
-      status: 400,
-      code: "ambiguous_taxpayer_name",
-      type: "validation_error",
-      message: "No podemos separar el nombre completo con suficiente certeza. Envía taxpayer_name, taxpayer_last_name y taxpayer_second_last_name por separado.",
-      param: "taxpayer",
-    });
+    throw ambiguousTaxpayerName("initials_mismatch");
   }
   return {
-    taxpayer_name: givenNames.join(" "),
-    taxpayer_last_name: lastName,
-    taxpayer_second_last_name: secondLastName,
+    taxpayer_name: parts.slice(0, lastGivenIndex + 1).join(" "),
+    taxpayer_last_name: parts.slice(lastGivenIndex + 1, lastNameIndex + 1).join(" "),
+    taxpayer_second_last_name: parts.slice(lastNameIndex + 1).join(" "),
   };
 }
 

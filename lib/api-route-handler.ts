@@ -54,6 +54,7 @@ export async function handleApiRoute({
 
   let organizationId: string | null = null;
   let apiKeyId: string | null = null;
+  let logReason: string | undefined;
   let response: Response;
 
   try {
@@ -92,6 +93,7 @@ export async function handleApiRoute({
     }
   } catch (error) {
     if (error instanceof ApiError) {
+      logReason = error.logReason;
       response = errorResponse(error, requestId);
     } else {
       console.error(`[api] ${method} ${path} failed`, error);
@@ -115,7 +117,7 @@ export async function handleApiRoute({
       requestHeaders,
       requestBody: requestBodyForLog,
       responseHeaders: safeResponseHeaders(response),
-      responseBody: await errorResponseBodyForLog(response),
+      responseBody: await errorResponseBodyForLog(response, logReason),
     });
   } catch (logError) {
     console.error(`[api] failed to persist request log for ${path}`, logError);
