@@ -21,6 +21,7 @@ import {
   classifyTocinoEvent,
   downloadTocinoAsset,
   extractTocinoInvoice,
+  isCsfRejected,
   mapTocinoError,
   parseCfdiIdentifiers,
   submitToTocino,
@@ -66,6 +67,7 @@ const MAX_TICKET_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TICKET_IMAGE_TYPES = new Set(["image/jpeg", "image/png"]);
 const ALLOWED_TICKET_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png"]);
 const PROVIDER_TICKET_EXPIRATION_MS = 24 * 60 * 60 * 1000;
+const CSF_FALLBACK_KEY_SUFFIX = ":without-csf";
 
 function periodFor(date = new Date()): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -980,7 +982,12 @@ function webhookTicketCondition(raw: unknown) {
   // Client idempotency keys are scoped to an organization. Prefer the service's
   // request ID; an early callback is retried until that ID has been saved.
   if (providerRequestId) return eq(ticket.providerRequestId, providerRequestId);
-  if (idempotencyKey) return or(eq(ticket.idempotencyKey, idempotencyKey), sql`${ticket.id}::text = ${idempotencyKey}`)!;
+  if (idempotencyKey) {
+    const ticketId = idempotencyKey.endsWith(CSF_FALLBACK_KEY_SUFFIX)
+      ? idempotencyKey.slice(0, -CSF_FALLBACK_KEY_SUFFIX.length)
+      : idempotencyKey;
+    return or(eq(ticket.idempotencyKey, idempotencyKey), sql`${ticket.id}::text = ${ticketId}`)!;
+  }
   throw new ApiError({
     status: 400,
     code: "invalid_payload",
@@ -1192,7 +1199,7 @@ export async function submitTicketToTocino(input: {
 
   // A historical payload that needs explicit names must fail once and notify;
   // throwing here would retry the queue job and leave the ticket in processing.
-  const result: TocinoSubmitResult = validationError
+  let result: TocinoSubmitResult = validationError
     ? {
         ok: false,
         error: { code: validationError.code, category: "validation", message: validationError.message },
@@ -1202,6 +1209,17 @@ export async function submitTicketToTocino(input: {
         idempotencyKey: row.ticket.idempotencyKey ?? row.ticket.id,
         body,
       });
+
+  if (csfBase64 && isCsfRejected(result)) {
+    console.warn(`[facturador] Retrying ticket=${row.ticket.id} after provider rejected its CSF PDF`);
+    delete body.csf_pdf;
+    delete redactedSubmitRequest.csf_pdf;
+    // The fallback changes the payload, so give it its own stable provider key.
+    result = await submitToTocino({
+      idempotencyKey: `${row.ticket.id}${CSF_FALLBACK_KEY_SUFFIX}`,
+      body,
+    });
+  }
 
   if (result.ok) {
     const normalizedResponse = ticketProviderResponseView({
@@ -1214,6 +1232,7 @@ export async function submitTicketToTocino(input: {
       .set({
         status: "pending",
         providerRequestId: result.providerTicketId,
+        submitRequest: redactedSubmitRequest,
         lastResponse: normalizedResponse,
         errorCode: null,
         errorType: null,
@@ -1258,6 +1277,7 @@ export async function submitTicketToTocino(input: {
       status: "failed",
       statusRank: 100,
       ...mapped,
+      submitRequest: validationError ? row.ticket.submitRequest : redactedSubmitRequest,
       lastResponse: normalizedResponse,
       upstreamRaw,
       updatedAt: new Date(),

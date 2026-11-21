@@ -12,7 +12,11 @@ vi.mock("@/lib/webhook-dispatch", () => ({
   dispatchOrganizationWebhookEvent: mocks.dispatch, retryWebhookDelivery: vi.fn(),
 }));
 vi.mock("@/lib/storage/s3", () => ({
-  S3DocumentStore: class { async getBuffer() { return Buffer.from("image"); } },
+  S3DocumentStore: class {
+    async getBuffer(key: string) {
+      return Buffer.from(key === "csf" ? "%PDF-1.7" : "image");
+    }
+  },
   documentObjectKey: vi.fn(), getS3StorageConfig: vi.fn(),
 }));
 
@@ -24,6 +28,7 @@ import { createTicketFromFormData, createTicketFromJson } from "./core";
 // persistence, and outbound webhook delivery are replaced with in-memory boundaries.
 let ticketState: Record<string, unknown>;
 let jobState: Record<string, unknown>;
+let documents: { kind: string; storageKey: string; originalFileName: string }[];
 let fetchMock: ReturnType<typeof vi.fn>;
 const dialect = new PgDialect();
 const now = new Date("2026-10-01T12:00:00Z");
@@ -45,10 +50,11 @@ beforeEach(() => {
     id: "job-1", organizationId: "org-1", type: "submit_ticket", status: "pending",
     payload: { ticketId: "ticket-1" }, attempts: 0, maxAttempts: 5, runAt: now,
   };
+  documents = [{ kind: "ticket_image", storageKey: "image", originalFileName: "ticket.jpg" }];
   mocks.db.select.mockImplementation(() => ({ from: (table: unknown) => ({
     innerJoin: () => ({ where: async () => table === ticket
       ? [{ ticket: structuredClone(ticketState), taxpayer: {} }]
-      : [{ document: { kind: "ticket_image", storageKey: "image", originalFileName: "ticket.jpg" } }],
+      : documents.map((document) => ({ document })),
     }),
   }) }));
   mocks.db.update.mockImplementation((table: unknown) => ({ set: (values: Record<string, unknown>) => ({
@@ -148,6 +154,71 @@ describe("name normalization at submission boundaries", () => {
     expect(mocks.db.insert).not.toHaveBeenCalled();
     expect(mocks.debit).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("provider CSF rejections", () => {
+  const fieldErrors = { csf_pdf: ["Invalid base64 encoded string."] };
+  const rejection = { error: "Error al facturar el ticket", details: fieldErrors, status_code: "400" };
+
+  beforeEach(() => {
+    documents.push({ kind: "csf_pdf", storageKey: "csf", originalFileName: "csf.pdf" });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  it.each([[400, rejection], [422, fieldErrors]])(
+    "retries an explicit HTTP %i CSF rejection once in the same job",
+    async (status, response) => {
+      fetchMock
+        .mockResolvedValueOnce(Response.json(response, { status }))
+        .mockResolvedValueOnce(Response.json({ ticket_id: "accepted" }));
+
+      await tick();
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const [original, fallback] = fetchMock.mock.calls.map(([, init]) => init);
+      const { csf_pdf: csfPdf, ...originalFields } = JSON.parse(original.body);
+      expect(csfPdf).toBe(Buffer.from("%PDF-1.7").toString("base64"));
+      expect(JSON.parse(fallback.body)).toEqual(originalFields);
+      expect(original.headers["Idempotency-Key"]).toBe("original-key");
+      expect(fallback.headers["Idempotency-Key"]).toBe("ticket-1:without-csf");
+      expect(ticketState).toMatchObject({
+        status: "pending", providerRequestId: "accepted", idempotencyKey: "original-key",
+        submitRequest: { ...originalFields, file: "<base64 omitted: 8 chars>" },
+      });
+      expect(ticketState.submitRequest).not.toHaveProperty("csf_pdf");
+      expect(jobState).toMatchObject({ status: "completed", attempts: 1 });
+      expect(mocks.dispatch.mock.calls.map((call) => call[1])).toEqual(["ticket.processing"]);
+      expect(mocks.debit).not.toHaveBeenCalled();
+    }
+  );
+
+  it("reports the fallback response when the provider rejects it too", async () => {
+    fetchMock
+      .mockResolvedValueOnce(Response.json(rejection, { status: 400 }))
+      .mockResolvedValueOnce(Response.json({ details: { postal_code: ["Invalid."] } }, { status: 400 }));
+
+    await tick();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(ticketState).toMatchObject({
+      status: "failed", errorCode: "UPSTREAM_VALIDATION", errorMessage: "postal_code: Invalid.",
+    });
+    expect(mocks.dispatch.mock.calls.map((call) => call[1])).toEqual(["ticket.processing", "ticket.failed"]);
+  });
+
+  it.each([
+    [400, { details: { postal_code: ["Invalid."] } }],
+    [400, { ...rejection, ticket_id: "received" }],
+    [429, rejection],
+    [503, rejection],
+  ])("makes a single request when HTTP %i does not establish a retryable CSF rejection", async (status, response) => {
+    fetchMock.mockResolvedValueOnce(Response.json(response, { status }));
+
+    await tick();
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(ticketState.status).toBe("failed");
   });
 });
 
