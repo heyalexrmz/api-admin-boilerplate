@@ -163,6 +163,17 @@ describe.skipIf(!testDatabase)("webhook router with PostgreSQL", () => {
     expect(rows.find((row) => row.id === second.id)!.status).toBe("failed");
   });
 
+  it("matches a CSF fallback callback carrying only its provider idempotency key", async () => {
+    const fallback = await seedTicket();
+    await acceptRouterWebhook(request({
+      idempotency_key: `${fallback.id}:without-csf`,
+      status: "failed",
+      error_msg: "Expired",
+    }));
+    await tickRouterDelivery("local");
+    expect((await db.execute(sql`select status from ticket where id = ${fallback.id}`)).rows[0]!.status).toBe("failed");
+  });
+
   it("does not guess when an idempotency key is ambiguous", async () => {
     await seedTicket("org-first", "request-first", "same-key");
     await seedTicket("org-second", "request-second", "same-key");

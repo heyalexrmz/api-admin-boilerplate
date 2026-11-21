@@ -137,6 +137,15 @@ function firstFieldError(value: Record<string, unknown>): string | null {
   return null;
 }
 
+export function isCsfRejected(result: TocinoSubmitResult): boolean {
+  if (result.ok || (result.status !== 400 && result.status !== 422)) return false;
+  const raw = recordValue(result.raw);
+  if (tocinoTicketId(raw)) return false;
+  return [raw, recordValue(raw.details)].some((fields) =>
+    Array.isArray(fields.csf_pdf) && fields.csf_pdf.some((message) => stringValue(message))
+  );
+}
+
 export function mapTocinoError(
   phase: "submit" | "process",
   raw: unknown,
@@ -173,7 +182,7 @@ export function mapTocinoError(
     if (value?.message === "Insufficient balance") {
       return error("INSUFFICIENT_BALANCE", "balance", "Insufficient balance.");
     }
-    const fieldError = firstFieldError(recordValue(value));
+    const fieldError = firstFieldError(recordValue(value?.details)) ?? firstFieldError(recordValue(value));
     if (fieldError) return error("UPSTREAM_VALIDATION", "validation", fieldError);
     const detailMessage = firstDetailMessage(value?.detail);
     if (detailMessage && (status === undefined || status === 400 || status === 422)) {
