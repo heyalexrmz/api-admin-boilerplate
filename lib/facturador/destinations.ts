@@ -56,7 +56,7 @@ export async function listDestinations(organizationId: string) {
 
 export async function createDestination(input: {
   organizationId: string;
-  apiKeyId: string;
+  apiKeyId: string | null;
   body: z.infer<typeof DestinationCreateSchema>;
 }) {
   const urlError = await validateWebhookUrlForDelivery(input.body.url);

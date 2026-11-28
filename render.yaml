@@ -1,6 +1,10 @@
 services:
   - type: web
     name: taxo-timbre-web
+    domains:
+      - taxotimbre.com
+      - api.taxotimbre.com
+      - mcp.taxotimbre.com
     runtime: node
     plan: starter
     region: oregon
@@ -19,6 +23,8 @@ services:
         generateValue: true
       - key: DOCUMENT_SIGNING_SECRET
         generateValue: true
+      - key: MCP_RESOURCE_URL
+        value: https://mcp.taxotimbre.com
       - key: BETTER_AUTH_URL
         sync: false
       - key: NEXT_PUBLIC_APP_URL

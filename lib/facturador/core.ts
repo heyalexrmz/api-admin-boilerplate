@@ -574,7 +574,7 @@ async function documentsForTicket(ticketId: string) {
 
 export async function createTicketFromFormData(input: {
   organizationId: string;
-  apiKeyId: string;
+  apiKeyId: string | null;
   mode: "live" | "test";
   requestId: string;
   idempotencyKey?: string | null;
@@ -606,7 +606,7 @@ export async function createTicketFromFormData(input: {
 
 export async function createTicketFromJson(input: {
   organizationId: string;
-  apiKeyId: string;
+  apiKeyId: string | null;
   mode: "live" | "test";
   requestId: string;
   idempotencyKey?: string | null;
@@ -661,7 +661,7 @@ export async function createTicketFromJson(input: {
 
 async function createTicketFromFiles(input: {
   organizationId: string;
-  apiKeyId: string;
+  apiKeyId: string | null;
   mode: "live" | "test";
   requestId: string;
   idempotencyKey?: string | null;

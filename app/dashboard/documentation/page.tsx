@@ -1,990 +1,291 @@
-import { Download } from "lucide-react"
+import { ChevronDown, Download } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { productionMcpUrl } from "@/lib/mcp-config";
+import openapi from "@/public/openapi/taxo-timbre.json";
 
 export const metadata = {
   title: "Documentación · Taxo Timbre",
-  description: "Referencia para enviar y consultar tickets por API.",
-}
+  description: "Referencia de la API de facturación y del servidor MCP de Taxo Timbre.",
+};
 
-const postmanCollectionUrl = "/postman/taxo-timbre-api.postman_collection.json"
+type Schema = {
+  $ref?: string;
+  type?: string;
+  format?: string;
+  description?: string;
+  enum?: string[];
+  const?: unknown;
+  default?: unknown;
+  items?: Schema;
+  anyOf?: Schema[];
+  properties?: Record<string, Schema>;
+  additionalProperties?: Schema;
+  required?: string[];
+};
 
-const ticketStatuses = [
-  "received",
-  "queued",
-  "pending",
-  "processing",
-  "finalized",
-  "failed",
-  "not_invoiceable",
-  "cancelled",
-]
+type Media = { schema: Schema; example?: unknown };
+type Parameter = { name: string; in: string; required: boolean; description: string; schema: Schema };
+type Operation = {
+  summary: string;
+  description: string;
+  tags: string[];
+  deprecated?: boolean;
+  "x-api-scope"?: string;
+  parameters: (Parameter | { $ref: string })[];
+  requestBody?: { content: Record<string, Media> };
+  responses: Record<string, { description: string; content?: Record<string, Media> }>;
+};
 
-const createTicketFields = [
-  {
-    name: "tax_id",
-    location: "json body",
-    requirement: "Requerido",
-    type: "string",
-    description: "RFC del contribuyente que recibirá la factura.",
-  },
-  {
-    name: "taxpayer",
-    location: "json body",
-    requirement: "Condicional",
-    type: "string",
-    description: "Nombre completo o razón social. Para persona física, los nombres sencillos se separan automáticamente; los nombres ambiguos requieren los tres campos separados. Si se omite, se construye con nombre y apellidos.",
-  },
-  {
-    name: "taxpayer_name",
-    location: "json body",
-    requirement: "Condicional",
-    type: "string",
-    description: "Nombre(s) de persona física.",
-  },
-  {
-    name: "taxpayer_last_name",
-    location: "json body",
-    requirement: "Condicional",
-    type: "string",
-    description: "Primer apellido de persona física.",
-  },
-  {
-    name: "taxpayer_second_last_name",
-    location: "json body",
-    requirement: "Condicional",
-    type: "string",
-    description: "Segundo apellido de persona física.",
-  },
-  {
-    name: "postal_code",
-    location: "json body",
-    requirement: "Primera vez",
-    type: "string",
-    description: "Código postal fiscal del contribuyente.",
-  },
-  {
-    name: "invoice_fiscal_regimen",
-    location: "json body",
-    requirement: "Primera vez",
-    type: "string",
-    description: "Código SAT del régimen fiscal, por ejemplo 601, 603 o 612.",
-  },
-  {
-    name: "invoice_cfdi_use",
-    location: "json body",
-    requirement: "Primera vez",
-    type: "string",
-    description: "Código SAT de uso de CFDI, por ejemplo G03, I01 o D01.",
-  },
-  {
-    name: "file",
-    location: "json body",
-    requirement: "Requerido",
-    type: "base64 string",
-    description: "Imagen del ticket en JPG, JPEG o PNG codificada en base64. Tamaño máximo: 10 MB.",
-  },
-  {
-    name: "csf_pdf",
-    location: "json body",
-    requirement: "Opcional",
-    type: "base64 string",
-    description: "Constancia de situación fiscal en PDF codificada en base64.",
-  },
-  {
-    name: "Content-Type",
-    location: "header",
-    requirement: "Requerido",
-    type: "application/json",
-    description: "Indica que el cuerpo se envía como JSON.",
-  },
-  {
-    name: "Authorization",
-    location: "header",
-    requirement: "Requerido",
-    type: "Bearer token",
-    description: "Llave API activa con alcance write, admin o access.",
-  },
-  {
-    name: "Idempotency-Key",
-    location: "header",
-    requirement: "Requerido",
-    type: "UUID/string",
-    description: "Identificador único por ticket. Reutilízalo con el mismo cuerpo para reintentar después de un 503, un 5xx o un timeout: nunca crea un segundo ticket.",
-  },
-  {
-    name: "x-request-id",
-    location: "header",
-    requirement: "Opcional",
-    type: "string",
-    description: "Identificador propio para rastrear la solicitud en logs.",
-  },
-  {
-    name: "test_scenario",
-    location: "body",
-    requirement: "Opcional",
-    type: "success | failure",
-    description: "Solo para llaves de prueba. Fuerza webhooks de éxito o falla sin consumir créditos.",
-  },
-]
+const operations: { path: string; method: string; operation: Operation }[] =
+  Object.entries(openapi.paths).flatMap(([path, methods]) =>
+    Object.entries(methods as Record<string, Operation>).map(([method, operation]) =>
+      ({ path, method: method.toUpperCase(), operation })
+    )
+  );
+const schemas: Record<string, Schema> = openapi.components.schemas;
+const baseUrl = openapi.servers[0].url;
+const groups = [
+  { name: "Tickets", id: "tickets" },
+  { name: "Servicio y consumo", id: "servicio" },
+  { name: "Webhooks", id: "webhooks" },
+];
 
-const listTicketFields = [
-  {
-    name: "Authorization",
-    location: "header",
-    requirement: "Requerido",
-    type: "Bearer token",
-    description: "Llave API activa con alcance read, admin o access.",
-  },
-  {
-    name: "limit",
-    location: "query",
-    requirement: "Opcional",
-    type: "number",
-    description: "Cantidad de tickets a devolver. Predeterminado: 50. Rango: 1 a 200.",
-  },
-  {
-    name: "status",
-    location: "query",
-    requirement: "Opcional",
-    type: "string",
-    description: `Filtra por estado: ${ticketStatuses.join(", ")}.`,
-  },
-  {
-    name: "x-request-id",
-    location: "header",
-    requirement: "Opcional",
-    type: "string",
-    description: "Identificador propio para rastrear la solicitud en logs.",
-  },
-]
+const ticketExample = [
+  `curl -X POST ${baseUrl}/api/v1/tickets \\`,
+  '  -H "Authorization: Bearer $TAXO_API_KEY" \\',
+  '  -H "Idempotency-Key: $TICKET_IDEMPOTENCY_KEY" \\',
+  '  -F "tax_id=EKU9003173C9" \\',
+  '  -F "taxpayer=EMPRESA DEMO" \\',
+  '  -F "postal_code=01234" \\',
+  '  -F "invoice_fiscal_regimen=601" \\',
+  '  -F "invoice_cfdi_use=G03" \\',
+  '  -F "file=@ticket.jpg" \\',
+  '  -F "test_scenario=success"',
+].join("\n");
 
-const getTicketFields = [
-  {
-    name: "id",
-    location: "path",
-    requirement: "Requerido",
-    type: "uuid",
-    description: "Identificador del ticket devuelto por POST /api/v1/tickets.",
-  },
-  {
-    name: "Authorization",
-    location: "header",
-    requirement: "Requerido",
-    type: "Bearer token",
-    description: "Llave API activa con alcance read, admin o access.",
-  },
-]
-
-const createTicketExample = `curl -X POST https://api.taxotimbre.com/api/v1/tickets \\
-  -H "Authorization: Bearer tt_live_xxx" \\
-  -H "Content-Type: application/json" \\
-  -H "Idempotency-Key: 2f4f8c76-0a1b-4a2c-9233-ff2b9946d951" \\
-  -d '{
-    "tax_id": "DORA990310A30",
-    "taxpayer": "ALEJANDRO DOMINGUEZ RAMIREZ",
-    "taxpayer_name": "ALEJANDRO",
-    "taxpayer_last_name": "DOMINGUEZ",
-    "taxpayer_second_last_name": "RAMIREZ",
-    "postal_code": "03310",
-    "invoice_fiscal_regimen": "626",
-    "invoice_cfdi_use": "G03",
-    "file": "/9j/4AAQSkZJRgABAQAAAQABAAD...",
-    "csf_pdf": "JVBERi0xLjQKJcTl8uXr..."
-  }'`
-
-const createTicketResponse = `{
-  "object": "ticket",
-  "data": {
-    "object": "ticket",
-    "id": "4b96e5de-69de-4dc8-aad7-4d5045fa5b31",
-    "tax_id": "EKU9003173C9",
-    "status": "received",
-    "livemode": true,
-    "delayed": false,
-    "delay_reason": null,
-    "created_at": "2026-07-01T18:20:00.000Z"
-  },
-  "request_id": "req_123"
-}`
-
-const serviceUnavailableResponse = `HTTP/1.1 503 Service Unavailable
-Retry-After: 60
-
-{
-  "error": {
-    "code": "SERVICE_UNAVAILABLE",
-    "type": "unavailable",
-    "message": "El servicio de facturación no está disponible en este momento. Intenta de nuevo más tarde.",
-    "param": null,
-    "retryable": true
-  },
-  "request_id": "req_789"
-}`
-
-const statusExample = `curl https://api.taxotimbre.com/api/v1/status \\
-  -H "Authorization: Bearer tt_live_xxx"`
-
-const statusResponse = `{
-  "status": "down",
-  "components": {
-    "ingest": { "status": "operational", "reason": null },
-    "extraction": { "status": "down", "reason": "El procesamiento de tickets está detenido." },
-    "invoicing": { "status": "operational", "reason": null }
-  },
-  "retry_after_seconds": 60,
-  "livemode": true,
-  "updated_at": "2026-11-03T17:58:44.000Z",
-  "request_id": "req_321"
-}`
-
-const errorCatalog = [
-  { code: "SERVICE_UNAVAILABLE", retryable: "true", when: "POST rechazado con 503 porque el servicio está caído, o ticket que no avanzó de received/queued en 30 minutos (se devuelve el crédito)." },
-  { code: "UPSTREAM_UNAVAILABLE", retryable: "true / false", when: "true si el servicio de facturación respondió 5xx. false (type connection) si no respondió o el envío no terminó: revisa el ticket antes de reenviar." },
-  { code: "UPSTREAM_RATE_LIMITED", retryable: "true", when: "El servicio de facturación limitó solicitudes." },
-  { code: "PROVIDER_TIMEOUT", retryable: "false", when: "Un ticket aceptado (pending) no recibió resultado en 24 horas." },
-  { code: "NOT_INVOICEABLE", retryable: "false", when: "El comercio informó que el ticket no se puede facturar." },
-  { code: "Errores de datos", retryable: "false", when: "UPSTREAM_VALIDATION, TAX_ID_INVALID, FILE_REQUIRED y similares: corrige los datos antes de reenviar." },
-]
-
-const listTicketsExample = `curl "https://api.taxotimbre.com/api/v1/tickets?limit=25&status=finalized" \\
-  -H "Authorization: Bearer tt_live_xxx"`
-
-const getTicketExample = `curl https://api.taxotimbre.com/api/v1/tickets/4b96e5de-69de-4dc8-aad7-4d5045fa5b31 \\
-  -H "Authorization: Bearer tt_live_xxx"`
-
-const ticketResponseShape = `{
-  "object": "ticket",
-  "data": {
-    "object": "ticket",
-    "id": "4b96e5de-69de-4dc8-aad7-4d5045fa5b31",
-    "tax_id": "EKU9003173C9",
-    "status": "finalized",
-    "livemode": true,
-    "created_at": "2026-07-01T18:20:00.000Z",
-    "updated_at": "2026-07-01T18:22:10.000Z",
-    "finalized_at": "2026-07-01T18:22:10.000Z",
-    "error": null,
-    "invoice": {
-      "id": "inv_123",
-      "status": "finalized",
-      "uuid": "SAT-UUID",
-      "series": "A",
-      "folio": "1024",
-      "total": "249.00",
-      "invoice_date": "2026-07-01T18:22:10.000Z"
+const webhookExample = {
+  id: "evt_ticket_failed_00000000-0000-4000-8000-000000000002",
+  object: "event",
+  api_version: openapi.info.version,
+  type: "ticket.failed",
+  created: "2026-07-01T18:23:00.000Z",
+  livemode: true,
+  data: {
+    object: {
+      object: "ticket",
+      id: "00000000-0000-4000-8000-000000000001",
+      status: "not_invoiceable",
+      error: {
+        code: "NOT_INVOICEABLE",
+        type: "site",
+        message: "El comercio indicó que este ticket no se puede facturar.",
+        retryable: false,
+      },
     },
-    "documents": []
   },
-  "request_id": "req_456"
-}`
-
-const webhookHeaders = [
-  {
-    name: "Content-Type",
-    location: "header",
-    requirement: "Siempre",
-    type: "application/json",
-    description: "El payload se entrega como JSON.",
+  request: {
+    id: "00000000-0000-4000-8000-000000000001",
+    idempotency_key: "ticket-demo-001",
   },
-  {
-    name: "X-Webhook-Id",
-    location: "header",
-    requirement: "Siempre",
-    type: "string",
-    description: "Identificador del endpoint configurado en Webhooks.",
-  },
-  {
-    name: "X-Webhook-Event",
-    location: "header",
-    requirement: "Siempre",
-    type: "string",
-    description: "Mismo valor que payload.type para ruteo rápido.",
-  },
-  {
-    name: "X-Webhook-Timestamp",
-    location: "header",
-    requirement: "Siempre",
-    type: "unix seconds",
-    description: "Fecha de generación de la entrega.",
-  },
-  {
-    name: "X-Webhook-Signature",
-    location: "header",
-    requirement: "Siempre",
-    type: "sha256=<hex>",
-    description: "HMAC-SHA256 del body crudo usando el secreto del webhook.",
-  },
-]
-
-const webhookEventTypes = [
-  "ticket.created",
-  "ticket.processing",
-  "ticket.finalized",
-  "ticket.failed",
-  "invoice.finalized",
-  "invoice.failed",
-  "delivery.succeeded",
-  "delivery.failed",
-  "delivery.exhausted",
-  "service.degraded",
-  "service.down",
-  "service.recovered",
-]
-
-const serviceDownWebhook = `{
-  "id": "evt_service_down_6a2c1d4e-0b8f-4d43-9a37-1f0f7b2b5c10",
-  "object": "event",
-  "api_version": "2026-06-28",
-  "type": "service.down",
-  "created": "2026-11-03T17:58:44.000Z",
-  "livemode": true,
-  "data": {
-    "object": {
-      "object": "service_status",
-      "status": "down",
-      "previous_status": "operational",
-      "components": {
-        "ingest": { "status": "operational", "reason": null },
-        "extraction": { "status": "down", "reason": "El procesamiento de tickets está detenido." },
-        "invoicing": { "status": "operational", "reason": null }
-      },
-      "retry_after_seconds": 60,
-      "changed_at": "2026-11-03T17:58:44.000Z",
-      "updated_at": "2026-11-03T17:58:44.000Z"
-    }
-  },
-  "request": {
-    "id": null,
-    "idempotency_key": null
-  }
-}`
-
-const ticketCreatedWebhook = `{
-  "id": "evt_ticket_created_1fb6a3a2-7c29-4b9c-a775-f0c5e7bfe2a1",
-  "object": "event",
-  "api_version": "2026-06-28",
-  "type": "ticket.created",
-  "created": "2026-07-01T18:20:00.000Z",
-  "livemode": true,
-  "data": {
-    "object": {
-      "object": "ticket",
-      "id": "4b96e5de-69de-4dc8-aad7-4d5045fa5b31",
-      "tax_id": "EKU9003173C9",
-      "status": "received",
-      "livemode": true,
-      "created_at": "2026-07-01T18:20:00.000Z"
-    }
-  },
-  "request": {
-    "id": "4b96e5de-69de-4dc8-aad7-4d5045fa5b31",
-    "idempotency_key": "ticket-idempotency-key"
-  }
-}`
-
-const ticketFailedWebhook = `{
-  "id": "evt_ticket_failed_3f40b7f4-5bf2-489f-9ed9-dca9daff01aa",
-  "object": "event",
-  "api_version": "2026-06-28",
-  "type": "ticket.failed",
-  "created": "2026-07-01T18:23:00.000Z",
-  "livemode": true,
-  "data": {
-    "object": {
-      "object": "ticket",
-      "id": "4b96e5de-69de-4dc8-aad7-4d5045fa5b31",
-      "tax_id": "EKU9003173C9",
-      "status": "not_invoiceable",
-      "livemode": true,
-      "created_at": "2026-07-01T18:20:00.000Z",
-      "updated_at": "2026-07-01T18:23:00.000Z",
-      "finalized_at": null,
-      "error": {
-        "code": "NOT_INVOICEABLE",
-        "type": "site",
-        "message": "This ticket cannot be invoiced.",
-        "retryable": false
-      },
-      "invoice": null,
-      "documents": []
-    }
-  },
-  "request": {
-    "id": "4b96e5de-69de-4dc8-aad7-4d5045fa5b31",
-    "idempotency_key": "ticket-idempotency-key"
-  }
-}`
-
-const ticketProviderTimeoutWebhook = `{
-  "id": "evt_ticket_failed_f7a51617-8a89-4c89-a3ed-f10a311b0235",
-  "object": "event",
-  "api_version": "2026-06-28",
-  "type": "ticket.failed",
-  "created": "2026-07-03T14:55:17.851Z",
-  "livemode": true,
-  "data": {
-    "object": {
-      "object": "ticket",
-      "id": "ed6b3769-51b4-4b79-95d0-5f87adc06c2b",
-      "status": "failed",
-      "error": {
-        "code": "PROVIDER_TIMEOUT",
-        "type": "upstream",
-        "message": "No recibimos el resultado de la facturación a tiempo. Revisa si la factura se emitió antes de enviar el ticket otra vez.",
-        "retryable": false
-      }
-    }
-  },
-  "request": {
-    "id": "ed6b3769-51b4-4b79-95d0-5f87adc06c2b",
-    "idempotency_key": "ticket-idempotency-key"
-  }
-}`
-
-const invoiceFinalizedWebhook = `{
-  "id": "evt_invoice_finalized_2b4b3d3e-4452-4f36-b8ed-5cfd7dc81f11",
-  "object": "event",
-  "api_version": "2026-06-28",
-  "type": "invoice.finalized",
-  "created": "2026-07-01T18:24:00.000Z",
-  "livemode": true,
-  "data": {
-    "object": {
-      "object": "invoice",
-      "id": "inv_123",
-      "status": "finalized",
-      "ticket_id": "4b96e5de-69de-4dc8-aad7-4d5045fa5b31",
-      "livemode": true,
-      "uuid": "SAT-UUID",
-      "series": "A",
-      "folio": "1024",
-      "issuer_taxpayer": "Emisor Demo SA de CV",
-      "issuer_rfc": "EKU9003173C9",
-      "total": "249.00",
-      "invoice_date": "2026-07-01T18:22:10.000Z",
-      "documents": [
-        {
-          "id": "doc_pdf_123",
-          "kind": "invoice_pdf",
-          "content_type": "application/pdf",
-          "bytes": 39122,
-          "url": "https://facturador-invoices.s3.us-east-1.amazonaws.com/organizations/org_123/taxpayers/EKU9003173C9/tickets/4b96e5de-69de-4dc8-aad7-4d5045fa5b31/doc_pdf_123-invoice.pdf",
-          "created_at": "2026-07-01T18:24:00.000Z"
-        },
-        {
-          "id": "doc_xml_123",
-          "kind": "invoice_xml",
-          "content_type": "application/xml",
-          "bytes": 9421,
-          "url": "https://facturador-invoices.s3.us-east-1.amazonaws.com/organizations/org_123/taxpayers/EKU9003173C9/tickets/4b96e5de-69de-4dc8-aad7-4d5045fa5b31/doc_xml_123-invoice.xml",
-          "created_at": "2026-07-01T18:24:00.000Z"
-        }
-      ]
-    }
-  },
-  "request": {
-    "id": "4b96e5de-69de-4dc8-aad7-4d5045fa5b31",
-    "idempotency_key": "ticket-idempotency-key"
-  }
-}`
-
-const deliveryFailedWebhook = `{
-  "id": "evt_delivery_failed_0d3d7d43-bd36-48a3-9a7d-c6ffbd04e972",
-  "object": "event",
-  "api_version": "2026-06-28",
-  "type": "delivery.failed",
-  "created": "2026-07-01T18:25:00.000Z",
-  "livemode": true,
-  "data": {
-    "object": {
-      "object": "delivery",
-      "id": "del_123",
-      "event_id": "evt_invoice_finalized_2b4b3d3e-4452-4f36-b8ed-5cfd7dc81f11",
-      "event_type": "invoice.finalized",
-      "status": "failed",
-      "http_status": 500,
-      "attempt_count": 1,
-      "latency_ms": 842,
-      "response_body": "Internal Server Error"
-    }
-  },
-  "request": {
-    "id": null,
-    "idempotency_key": null
-  }
-}`
-
-function MethodBadge({ method }: { method: "GET" | "POST" }) {
-  return (
-    <Badge variant={method === "POST" ? "default" : "secondary"}>
-      {method}
-    </Badge>
-  )
-}
+};
 
 function CodeBlock({ code }: { code: string }) {
   return (
-    <pre className="overflow-x-auto rounded-lg bg-muted p-4 text-xs leading-relaxed text-foreground">
+    <pre className="overflow-x-auto rounded-lg bg-muted p-4 text-xs leading-relaxed">
       <code>{code}</code>
     </pre>
-  )
+  );
 }
 
-function FieldsTable({
-  fields,
-}: {
-  fields: {
-    name: string
-    location: string
-    requirement: string
-    type: string
-    description: string
-  }[]
-}) {
+function schemaLabel(schema: Schema): string {
+  if (schema.$ref) return schema.$ref.split("/").at(-1)!;
+  if (schema.anyOf) return schema.anyOf.map(schemaLabel).join(" | ");
+  if (schema.const !== undefined) return JSON.stringify(schema.const);
+  if (schema.enum) return schema.enum.join(" | ");
+  if (schema.items) return `${schemaLabel(schema.items)}[]`;
+  return schema.format ?? schema.type ?? "JSON";
+}
+
+function Fields({ fields }: { fields: { name: string; description?: string; schema: Schema; required?: boolean }[] }) {
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Valor</TableHead>
-          <TableHead>Ubicación</TableHead>
-          <TableHead>Uso</TableHead>
-          <TableHead>Tipo</TableHead>
-          <TableHead>Notas</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {fields.map((field) => (
-          <TableRow key={`${field.location}-${field.name}`}>
-            <TableCell className="font-mono text-xs">{field.name}</TableCell>
-            <TableCell>{field.location}</TableCell>
-            <TableCell>
-              <Badge
-                variant={field.requirement === "Requerido" ? "default" : "outline"}
-              >
-                {field.requirement}
-              </Badge>
-            </TableCell>
-            <TableCell className="font-mono text-xs">{field.type}</TableCell>
-            <TableCell className="whitespace-normal text-muted-foreground">
-              {field.description}
-            </TableCell>
-          </TableRow>
+    <dl className="divide-y rounded-lg border">
+      {fields.map(({ name, description, schema, required }) => (
+        <div key={name} className="grid gap-1 px-3 py-2 text-sm sm:grid-cols-[minmax(11rem,1fr)_2fr]">
+          <dt className="break-all font-mono text-xs">
+            {name}
+            {required && <span className="ml-2 font-sans text-muted-foreground">Requerido</span>}
+          </dt>
+          <dd className="min-w-0 space-y-1">
+            <span className="block break-words font-mono text-xs text-muted-foreground">
+              {schemaLabel(schema)}
+              {schema.default !== undefined && ` · predeterminado: ${schema.default}`}
+            </span>
+            {description && <p>{description}</p>}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function SchemaFields({ schema }: { schema: Schema }) {
+  const actual = schema.$ref ? schemas[schemaLabel(schema)] : schema;
+  if (!actual?.properties) return <code className="text-xs">{schemaLabel(schema)}</code>;
+  return <Fields fields={Object.entries(actual.properties).map(([name, field]) => ({
+    name,
+    schema: field,
+    description: field.description,
+    required: actual.required?.includes(name),
+  }))} />;
+}
+
+function Endpoint({ path, method, operation }: (typeof operations)[number]) {
+  const parameters = operation.parameters.map((parameter) => "$ref" in parameter
+    ? openapi.components.parameters.RequestId
+    : parameter);
+  return (
+    <details id={method.toLowerCase() + path.replace(/[^a-z0-9]+/g, "-")} className="group rounded-lg border bg-card">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 p-4 [&::-webkit-details-marker]:hidden">
+        <Badge variant={method === "GET" ? "secondary" : "outline"}>{method}</Badge>
+        <code className="min-w-0 break-all text-xs">{path}</code>
+        <span className="text-sm font-medium">{operation.summary}</span>
+        {operation.deprecated && <Badge variant="outline">Reservada</Badge>}
+        <ChevronDown aria-hidden className="ml-auto size-4 text-muted-foreground group-open:rotate-180" />
+      </summary>
+      <div className="space-y-4 border-t px-4 py-4">
+        <p className="text-sm">{operation.description}</p>
+        <p className="text-sm text-muted-foreground">
+          {operation["x-api-scope"] ? `Alcance ${operation["x-api-scope"]}` : "Acceso por URL firmada"}
+        </p>
+        {parameters.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Parámetros</h3>
+            <Fields fields={parameters.map((parameter) => ({
+              ...parameter,
+              name: `${parameter.name} (${parameter.in})`,
+            }))} />
+          </div>
+        )}
+        {Object.entries(operation.requestBody?.content ?? {}).map(([format, { schema, example }]) => (
+          <div key={format} className="space-y-2">
+            <h3 className="text-sm font-semibold">Cuerpo <code>{format}</code></h3>
+            <SchemaFields schema={schema} />
+            {example !== undefined && <CodeBlock code={JSON.stringify(example, null, 2)} />}
+          </div>
         ))}
-      </TableBody>
-    </Table>
-  )
-}
-
-function ApiReferenceContent() {
-  return (
-    <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Autenticación</CardTitle>
-          <CardDescription>
-            Todas las solicitudes usan una llave API activa en el header Authorization.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <CodeBlock code={`Authorization: Bearer tt_live_xxx`} />
-          <p className="text-sm text-muted-foreground">
-            Las llaves de prueba crean tickets en modo sandbox. Las llaves live crean
-            tickets reales y consumen créditos. Las solicitudes con llaves de prueba
-            no descuentan créditos y pueden usar test_scenario para disparar flujos
-            de éxito o falla.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center gap-2">
-            <MethodBadge method="POST" />
-            <CardTitle>/api/v1/tickets</CardTitle>
-          </div>
-          <CardDescription>
-            Envía un ticket para procesamiento. La solicitud debe ser JSON con la
-            imagen del ticket codificada en base64.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          <FieldsTable fields={createTicketFields} />
-          <p className="text-sm text-muted-foreground">
-            Para RFC de persona física, si solo envías taxpayer, se intenta separar
-            el nombre completo ignorando los conectores DE, DEL, LA, LAS y LOS,
-            tomando las dos últimas palabras restantes como apellidos y comprobando
-            sus iniciales contra el RFC. Los RFC genéricos se excluyen. Es una
-            inferencia, no una validación de identidad ante el SAT. Los nombres con
-            otras partículas, con un solo apellido o con iniciales que no coinciden
-            requieren datos explícitos. Envía los tres campos juntos:
-            taxpayer_name, taxpayer_last_name y taxpayer_second_last_name.
-            Si ya están completos, se conservan sin inferir otros valores.
-          </p>
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Ejemplo</h3>
-            <CodeBlock code={createTicketExample} />
-          </div>
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Respuesta 201</h3>
-            <CodeBlock code={createTicketResponse} />
-            <p className="text-sm text-muted-foreground">
-              Un 201 significa que el ticket entra a procesamiento. Si el servicio
-              está degradado, el ticket se acepta con delayed: true y delay_reason
-              explica el motivo; el procesamiento tardará más de lo normal.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Respuesta 503: servicio no disponible</h3>
-            <CodeBlock code={serviceUnavailableResponse} />
-            <p className="text-sm text-muted-foreground">
-              Cuando la extracción o la facturación están caídas, la solicitud se
-              rechaza en el momento: no se crea el ticket ni se descuenta crédito.
-              Espera los segundos de Retry-After y reintenta con el mismo
-              Idempotency-Key y el mismo cuerpo.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 text-sm text-muted-foreground">
-            <h3 className="font-medium text-foreground">Reintentos idempotentes</h3>
-            <p>
-              Reintentar POST /api/v1/tickets con el mismo Idempotency-Key y el mismo
-              cuerpo después de un 503, un 5xx o un timeout nunca crea un segundo
-              ticket ni cobra dos veces. Si el primer intento sí creó el ticket, se
-              devuelve ese mismo ticket con HTTP 201 y el header
-              Idempotent-Replayed: true. Las solicitudes simultáneas con la misma
-              llave se serializan y devuelven el mismo ticket. Reutilizar la llave
-              con un cuerpo distinto responde HTTP 409 idempotency_key_reused.
-            </p>
-            <p>
-              Todos los errores incluyen error.retryable. Es true cuando repetir la
-              misma solicitud puede funcionar (5xx, 429, 503) y false cuando hay que
-              corregir algo (4xx).
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center gap-2">
-            <MethodBadge method="GET" />
-            <CardTitle>/api/v1/status</CardTitle>
-          </div>
-          <CardDescription>
-            Disponibilidad actual de la recepción (ingest), el procesamiento de
-            tickets (extraction) y la facturación (invoicing) para el modo de la llave.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Ejemplo</h3>
-            <CodeBlock code={statusExample} />
-          </div>
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Respuesta</h3>
-            <CodeBlock code={statusResponse} />
-          </div>
-          <div className="flex flex-col gap-3 text-sm text-muted-foreground">
-            <p>
-              El estado se calcula con resultados reales, no con un ping:
-              extraction queda down si el procesador de tickets deja de reportar
-              actividad por 90 segundos o un ticket espera más de 5 minutos en la
-              cola (degraded a partir de 1 minuto). invoicing usa los resultados de
-              los últimos 10 minutos: down si al menos la mitad de los intentos
-              (mínimo 3) fallaron por indisponibilidad del servicio, degraded a
-              partir del 20 % o si el servicio está limitando solicitudes.
-            </p>
-            <p>
-              status es el peor de los componentes. Cuando es down, POST
-              /api/v1/tickets responde 503. Un 5xx o timeout de este endpoint
-              también debe tratarse como down. Con llaves de prueba solo aplican
-              los incidentes declarados para el sandbox.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center gap-2">
-            <MethodBadge method="GET" />
-            <CardTitle>/api/v1/tickets</CardTitle>
-          </div>
-          <CardDescription>
-            Consulta tickets recientes de la organización asociada a la llave API.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          <FieldsTable fields={listTicketFields} />
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Ejemplo</h3>
-            <CodeBlock code={listTicketsExample} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center gap-2">
-            <MethodBadge method="GET" />
-            <CardTitle>/api/v1/tickets/:id</CardTitle>
-          </div>
-          <CardDescription>
-            Obtiene un ticket específico, incluyendo factura y documentos cuando ya
-            estén disponibles.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          <FieldsTable fields={getTicketFields} />
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Ejemplo</h3>
-            <CodeBlock code={getTicketExample} />
-          </div>
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Respuesta</h3>
-            <CodeBlock code={ticketResponseShape} />
-          </div>
-          <div className="flex flex-col gap-3 text-sm text-muted-foreground">
-            <h3 className="font-medium text-foreground">Tiempo máximo por estado (SLA)</h3>
-            <p>
-              Ningún ticket se queda activo indefinidamente. Si no avanza de
-              received o queued en 30 minutos, pasa a failed con
-              SERVICE_UNAVAILABLE (retryable: true) y se devuelve el crédito,
-              porque nunca se envió a facturar. Si queda en processing 30 minutos,
-              pasa a failed con UPSTREAM_UNAVAILABLE de tipo connection
-              (retryable: false), porque el servicio pudo haberlo recibido. Un
-              ticket pending (aceptado por el servicio de facturación) falla con
-              PROVIDER_TIMEOUT si no hay resultado en 24 horas. En todos los casos
-              se emite ticket.failed.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Códigos de error del ticket</h3>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>error.code</TableHead>
-                  <TableHead>retryable</TableHead>
-                  <TableHead>Cuándo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {errorCatalog.map((row) => (
-                  <TableRow key={row.code}>
-                    <TableCell className="font-mono text-xs">{row.code}</TableCell>
-                    <TableCell className="font-mono text-xs">{row.retryable}</TableCell>
-                    <TableCell className="whitespace-normal text-muted-foreground">{row.when}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <p className="text-sm text-muted-foreground">
-              error.message está en español y puede mostrarse al usuario final; no
-              menciona proveedores internos. Toma decisiones con error.code y
-              error.retryable, no con el texto.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 text-sm text-muted-foreground">
-            <h3 className="font-medium text-foreground">Rechazos y errores de facturación</h3>
-            <p>
-              Los errores de procesamiento marcan el ticket como failed. Un rechazo
-              con código NOT_INVOICEABLE lo marca como not_invoiceable (No facturable).
-              Ambos emiten ticket.failed con error.code, error.type y error.message
-              en cuanto se recibe la respuesta. No se reenvía automáticamente el ticket.
-            </p>
-            <p>
-              HTTP 429 se clasifica como UPSTREAM_RATE_LIMITED de tipo quota.
-              Aunque el rechazo indique un tiempo de espera, el ticket queda fallido
-              y el motivo se informa de inmediato. Los errores de datos, acceso,
-              conexión y servidor se clasifican por separado.
-            </p>
-            <p>
-              En GET /api/v1/stats, tickets.success_rate y tickets.error_rate usan
-              como denominador los tickets finalized + failed. Los tickets
-              not_invoiceable, activos y cancelados quedan excluidos. Las tasas
-              son fracciones entre 0 y 1; ambas son 0 si no hay resultados evaluables.
-              tickets.total y tickets.by_status incluyen todos los estados.
-            </p>
-            <p>
-              La respuesta inicial HTTP 201 confirma la recepción del ticket.
-              El resultado de la facturación se consulta en este endpoint o se recibe
-              por webhook. Las respuestas públicas usan nombres neutrales y no
-              exponen la identidad del servicio externo ni su respuesta cruda.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function WebhookExamplesContent() {
-  return (
-    <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Entrega de webhooks</CardTitle>
-          <CardDescription>
-            Cada evento se envía como POST firmado al endpoint configurado.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          <FieldsTable fields={webhookHeaders} />
-          <p className="text-sm text-muted-foreground">
-            Para validar la firma, calcula HMAC-SHA256 sobre el body crudo con
-            el secreto del webhook y compara el resultado con X-Webhook-Signature.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Tipos de evento</CardTitle>
-          <CardDescription>
-            Usa payload.type para enrutar cada evento y payload.data.object para mapear
-            la entidad recibida.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {webhookEventTypes.map((eventType) => (
-            <Badge key={eventType} variant="outline">
-              {eventType}
-            </Badge>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>ticket.created</CardTitle>
-          <CardDescription>
-            Se emite cuando la API recibe el ticket y crea el registro inicial.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CodeBlock code={ticketCreatedWebhook} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>ticket.failed</CardTitle>
-          <CardDescription>
-            Se emite cuando el ticket no puede procesarse o facturarse. El estado
-            not_invoiceable distingue un ticket no facturable de una falla técnica
-            (failed). invoice.failed conserva su formato actual.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CodeBlock code={ticketFailedWebhook} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>ticket.failed por timeout</CardTitle>
-          <CardDescription>
-            Si el proveedor no confirma éxito o fallo en 24 horas, el ticket falla
-            automáticamente con PROVIDER_TIMEOUT.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CodeBlock code={ticketProviderTimeoutWebhook} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>service.degraded, service.down y service.recovered</CardTitle>
-          <CardDescription>
-            Se emiten una vez por cambio de estado de GET /api/v1/status, firmados
-            igual que los demás eventos, para avisar a tus usuarios y pausar envíos
-            sin esperar a que fallen tickets. service.recovered indica que el
-            estado volvió a operational. Suscríbete a ellos en Webhooks.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CodeBlock code={serviceDownWebhook} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>invoice.finalized</CardTitle>
-          <CardDescription>
-            Se emite cuando la factura queda lista e incluye enlaces a XML/PDF.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CodeBlock code={invoiceFinalizedWebhook} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>delivery.failed</CardTitle>
-          <CardDescription>
-            Se emite cuando una entrega a webhook falla y debe revisarse.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CodeBlock code={deliveryFailedWebhook} />
-        </CardContent>
-      </Card>
-    </div>
-  )
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold">Respuestas</h3>
+          <dl className="space-y-2">
+            {Object.entries(operation.responses).map(([status, response]) => {
+              const media = response.content?.["application/json"];
+              return (
+                <div key={status} className="space-y-2 rounded-md border px-3 py-2">
+                  <div className="flex gap-2 text-sm">
+                    <dt className="font-mono">{status}</dt>
+                    <dd>{response.description}</dd>
+                  </div>
+                  {media && status.startsWith("2") && (
+                    media.example === undefined
+                      ? <SchemaFields schema={media.schema} />
+                      : <CodeBlock code={JSON.stringify(media.example, null, 2)} />
+                  )}
+                </div>
+              );
+            })}
+          </dl>
+        </div>
+      </div>
+    </details>
+  );
 }
 
 export default function DocumentationPage() {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Importa la colección en Postman para probar tickets, consultas y payloads
-          de webhooks con variables reutilizables.
-        </p>
-        <Button asChild variant="outline">
-          <a href={postmanCollectionUrl} download>
-            <Download data-icon="inline-start" />
-            Descargar colección Postman
-          </a>
-        </Button>
-      </div>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-6 sm:px-6">
+      <header className="space-y-4 border-b pb-6">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-semibold tracking-tight">Documentación de la API</h1>
+          <p className="text-sm text-muted-foreground">Taxo Timbre · {openapi.info.version}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild>
+            <a href="/openapi/taxo-timbre.json" download><Download /> OpenAPI</a>
+          </Button>
+          <Button variant="outline" asChild>
+            <a href="/postman/taxo-timbre-api.postman_collection.json" download><Download /> Postman</a>
+          </Button>
+        </div>
+        <nav aria-label="Secciones de la documentación" className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+          {[{ id: "inicio", name: "Inicio rápido" }, ...groups, { id: "formatos", name: "Esquemas" }, { id: "mcp", name: "MCP" }].map(({ id, name }) => (
+            <a key={id} href={`#${id}`} className="underline underline-offset-4">{name}</a>
+          ))}
+        </nav>
+      </header>
 
-      <Tabs defaultValue="tickets" className="gap-6">
-        <TabsList>
-          <TabsTrigger value="tickets">Tickets API</TabsTrigger>
-          <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
-        </TabsList>
-        <TabsContent value="tickets">
-          <ApiReferenceContent />
-        </TabsContent>
-        <TabsContent value="webhooks">
-          <WebhookExamplesContent />
-        </TabsContent>
-      </Tabs>
+      <section id="inicio" className="scroll-mt-6 space-y-3 text-sm">
+        <h2 className="text-xl font-semibold">Inicio rápido</h2>
+        <p>Usa <code>{baseUrl}</code> y envía <code>Authorization: Bearer &lt;llave&gt;</code>. Cada operación indica su alcance. <code>admin</code> y <code>access</code> incluyen todos los alcances. Puedes enviar <code>X-Request-Id</code> para rastrear la solicitud.</p>
+        <p>Crea una llave de prueba, configura <code>TAXO_API_KEY</code> y guarda un valor único en <code>TICKET_IDEMPOTENCY_KEY</code> antes del primer envío. Usa <code>success</code> o <code>failure</code> para simular el resultado sin consumir créditos.</p>
+        <CodeBlock code={ticketExample} />
+        <p>El <code>201</code> confirma la recepción. Guarda <code>data.id</code> y consulta el ticket o suscríbete a webhooks para obtener el resultado. <code>received</code>, <code>queued</code>, <code>processing</code> y <code>pending</code> representan un ticket en curso. <code>finalized</code>, <code>failed</code>, <code>not_invoiceable</code> y <code>cancelled</code> representan resultados finales.</p>
+        <p>Después de un timeout o error HTTP reintentable, repite el envío con la misma llave de idempotencia y el mismo cuerpo. Respeta <code>Retry-After</code> cuando aparezca. Una respuesta recuperada devuelve <code>Idempotent-Replayed: true</code>. Un ticket existente se consulta usando su ID.</p>
+        <p>Si el envío ya tiene un resultado, revisa <code>data.error</code>. <code>NOT_INVOICEABLE</code> llega con estado <code>not_invoiceable</code> y eventos <code>ticket.failed</code> e <code>invoice.failed</code>. <code>UPSTREAM_UNAVAILABLE</code> de tipo <code>connection</code> y <code>PROVIDER_TIMEOUT</code> requieren verificar si hubo facturación antes de volver a enviar.</p>
+      </section>
+
+      {groups.map(({ name, id }) => (
+        <section key={id} id={id} className="scroll-mt-6 space-y-3">
+          <h2 className="text-xl font-semibold">{name}</h2>
+          {id === "tickets" && (
+            <div className="space-y-2 text-sm">
+              <p>Envía el RFC, nombre fiscal o razón social y la imagen. Incluye código postal fiscal, régimen y uso de CFDI para facturar. Para persona física puedes enviar los tres campos de nombre por separado. La inferencia de nombres conserva los conectores <code>DE</code>, <code>DEL</code>, <code>LA</code>, <code>LAS</code> y <code>LOS</code> y requiere iniciales compatibles con el RFC. Si recibes <code>ambiguous_taxpayer_name</code>, completa los tres campos separados.</p>
+              <p>Si el servicio de facturación rechaza específicamente el PDF de la constancia fiscal y no confirma la recepción, Taxo Timbre intenta el envío una vez más sin ese PDF, en el mismo ticket y sin otro cargo. Los enlaces firmados del detalle duran 15 minutos. Los de <code>invoice.finalized</code> duran 7 días.</p>
+              <p>El panel permite reintentar ciertas fallas de envío previas a la confirmación. El reintento conserva el ticket y el crédito original. Los estados <code>received</code>, <code>queued</code> y <code>processing</code> tienen un límite de 30 minutos. Un ticket en <code>pending</code> puede esperar hasta 24 horas por el resultado.</p>
+            </div>
+          )}
+          {id === "servicio" && (
+            <p className="text-sm">Consulta <code>/api/v1/status</code> con una llave del modo que vas a usar. Con <code>degraded</code>, la API acepta el ticket con <code>delayed: true</code>. Con <code>down</code>, los envíos nuevos devuelven <code>503 SERVICE_UNAVAILABLE</code>, sin crear un ticket ni consumir crédito.</p>
+          )}
+          {id === "webhooks" && (
+            <div className="space-y-2 text-sm">
+              <p>Suscribe un destino a <code>ticket.finalized</code>, <code>ticket.failed</code> e <code>invoice.finalized</code> para recibir resultados y documentos. Usa <code>service.degraded</code>, <code>service.down</code> y <code>service.recovered</code> para incidentes. Se incluyen eventos de ambos modos. Usa <code>livemode</code> para distinguirlos.</p>
+              <p>Verifica <code>X-Webhook-Signature</code> comparando <code>sha256=&lt;hex&gt;</code> con el HMAC-SHA256 de los bytes crudos del cuerpo, usando el secreto del destino. <code>X-Webhook-Id</code> identifica el destino y <code>X-Webhook-Event</code> indica el tipo. <code>X-Webhook-Timestamp</code> registra el intento en segundos Unix.</p>
+              <p>Responde con HTTP 2xx dentro de 10 segundos y deduplica usando el <code>id</code> del evento. Si la entrega falla, se programan hasta cuatro reintentos con esperas de 1, 5, 30 y 120 minutos.</p>
+              <details className="space-y-2 rounded-lg border p-3">
+                <summary className="cursor-pointer">Ejemplo de <code>ticket.failed</code></summary>
+                <CodeBlock code={JSON.stringify(webhookExample, null, 2)} />
+              </details>
+            </div>
+          )}
+          {operations.filter(({ operation }) => operation.tags.includes(name)).map((endpoint) => (
+            <Endpoint key={endpoint.method + endpoint.path} {...endpoint} />
+          ))}
+        </section>
+      ))}
+
+      <section id="formatos" className="scroll-mt-6 space-y-3">
+        <h2 className="text-xl font-semibold">Esquemas</h2>
+        <p className="text-sm text-muted-foreground">Consulta los tipos citados en las operaciones. OpenAPI incluye las definiciones completas.</p>
+        {Object.entries(schemas).filter(([name]) => !name.startsWith("TicketCreate")).map(([name, schema]) => (
+          <details key={name} className="rounded-lg border bg-card">
+            <summary className="cursor-pointer p-3 font-mono text-xs">{name}</summary>
+            <div className="px-3 pb-3"><SchemaFields schema={schema} /></div>
+          </details>
+        ))}
+      </section>
+
+      <section id="mcp" className="scroll-mt-6 space-y-3 text-sm">
+        <h2 className="text-xl font-semibold">Servidor MCP</h2>
+        <p>Conecta un cliente compatible con Streamable HTTP y OAuth a <code>{productionMcpUrl}</code>. Inicia sesión en Taxo Timbre y autoriza la organización que aparece en pantalla.</p>
+        <p>Los miembros pueden consultar datos. Los propietarios y administradores también pueden consultar créditos y enviar tickets. Usa el modo test para simular. Cada ticket nuevo en modo live consume un crédito.</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li><code>list_tickets</code>, <code>get_ticket</code> y <code>create_ticket</code> para el flujo de facturación.</li>
+          <li><code>get_service_status</code>, <code>get_stats</code> y <code>get_usage</code> para disponibilidad y consumo.</li>
+          <li><code>list_webhook_destinations</code>, <code>list_webhook_event_types</code> y <code>list_webhook_deliveries</code> para consultar webhooks.</li>
+        </ul>
+        <p><code>create_ticket</code> usa JSON, una imagen en base64 y un argumento obligatorio <code>idempotency_key</code>. <code>get_ticket</code> devuelve enlaces firmados para los documentos. Los resultados incluyen el HTTP de la API y su respuesta, con <code>request_id</code> para rastreo.</p>
+      </section>
     </div>
-  )
+  );
 }

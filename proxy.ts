@@ -1,11 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
+import { mcpResourceUrl } from "@/lib/mcp-config";
 
 const protectedPrefixes = ["/dashboard", "/onboarding"];
 const authPages = ["/", "/signup"];
 
 export default async function proxy(req: NextRequest) {
+  const resource = new URL(mcpResourceUrl());
   const path = req.nextUrl.pathname;
+  if (path === "/" && resource.pathname === "/" && req.headers.get("host") === resource.host) {
+    const target = req.nextUrl.clone();
+    target.pathname = "/api/mcp";
+    return NextResponse.rewrite(target);
+  }
   const isProtected = protectedPrefixes.some((p) => path === p || path.startsWith(p + "/"));
   const isAuthPage = authPages.includes(path);
   if (!isProtected && !isAuthPage) return NextResponse.next();

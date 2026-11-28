@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Taxo Timbre API",
-    "description": "Postman collection for submitting tickets and reading ticket status.",
+    "description": "Referencia de Taxo Timbre API v1. Usa una llave test para probar los envíos.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -12,7 +12,7 @@
     },
     {
       "key": "api_key",
-      "value": "tt_live_xxx",
+      "value": "sk_test_xxx",
       "type": "string"
     },
     {
@@ -22,17 +22,17 @@
     },
     {
       "key": "tax_id",
-      "value": "EKU9003173C9",
+      "value": "DORA990310A30",
       "type": "string"
     },
     {
       "key": "ticket_image_base64",
-      "value": "/9j/4AAQSkZJRgABAQAAAQABAAD...",
+      "value": "",
       "type": "string"
     },
     {
       "key": "csf_pdf_base64",
-      "value": "JVBERi0xLjQKJcTl8uXr...",
+      "value": "",
       "type": "string"
     },
     {
@@ -84,6 +84,21 @@
       "key": "create_ticket_payload",
       "value": "{}",
       "type": "string"
+    },
+    {
+      "key": "idempotency_key",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "destination_id",
+      "value": "00000000-0000-4000-8000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "document_url",
+      "value": "",
+      "type": "string"
     }
   ],
   "auth": {
@@ -108,6 +123,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "if (!pm.variables.get('idempotency_key')) {",
+                  "  throw new Error('Set idempotency_key to a stable value before submitting.');",
+                  "}",
+                  "",
                   "const taxpayerType = pm.collectionVariables.get('taxpayer_type') || 'persona_fisica';",
                   "",
                   "const payload = {",
@@ -153,7 +172,7 @@
               },
               {
                 "key": "Idempotency-Key",
-                "value": "{{$guid}}"
+                "value": "{{idempotency_key}}"
               }
             ],
             "body": {
@@ -171,7 +190,7 @@
                 "tickets"
               ]
             },
-            "description": "Submit a ticket image with JSON/base64. Set taxpayer_type to persona_fisica or persona_moral; the pre-request script builds the correct payload for the same POST /api/v1/tickets endpoint."
+            "description": "Acepta la imagen para facturación asíncrona. Un envío nuevo en modo live consume un crédito. En modo test se simula el resultado. Con el servicio degradado, la respuesta incluye delayed: true. Ajusta taxpayer_type y los datos fiscales. Genera idempotency_key una vez por ticket y úsala de nuevo al reintentar."
           },
           "description": "Single create-ticket endpoint for persona fisica and persona moral RFCs. Change taxpayer_type to persona_fisica or persona_moral before sending."
         },
@@ -286,24 +305,179 @@
           }
         },
         {
-          "name": "Get service status",
+          "name": "Registrar solicitud de actualización",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/v1/tickets/{{ticket_id}}/refresh",
+            "description": "Ruta reservada. Responde 202 y registra un trabajo sin actualizar el ticket. Usa la consulta del ticket para recuperar el estado actual."
+          }
+        },
+        {
+          "name": "Registrar solicitud de reentrega",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/v1/tickets/{{ticket_id}}/redeliver",
+            "description": "Ruta reservada. Responde 202 y registra un trabajo sin reenviar el webhook."
+          }
+        },
+        {
+          "name": "Descargar un documento",
           "request": {
             "method": "GET",
             "header": [],
-            "url": {
-              "raw": "{{base_url}}/api/v1/status",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "status"
-              ]
-            },
-            "description": "Measured availability of ingest, extraction and invoicing (operational, degraded or down). When status is down, POST /api/v1/tickets answers 503 with Retry-After. Requires a read, admin, or access API key."
-          },
-          "response": []
+            "url": "{{document_url}}",
+            "description": "Usa la URL firmada completa devuelta en el ticket o webhook. Al vencer, consulta el ticket para obtener otra.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Servicio y consumo",
+      "item": [
+        {
+          "name": "Consultar disponibilidad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/status",
+            "description": "Devuelve el peor estado medido de ingest, extraction e invoicing para el modo de la llave. Un resultado down todavía devuelve HTTP 200. Trata un timeout o 5xx como indisponibilidad."
+          }
+        },
+        {
+          "name": "Consultar estadísticas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/stats",
+            "description": "Agrupa los tickets de ambos modos por fecha de creación y estado. Las tasas usan finalized + failed como denominador y son 0 si no hay resultados evaluables. El conteo incluye not_invoiceable y los demás estados."
+          }
+        },
+        {
+          "name": "Consultar consumo y créditos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/usage",
+            "description": "Devuelve métricas del mes UTC actual, plan, saldo y fechas de recarga. Una métrica puede omitirse cuando todavía no se registra para el periodo."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Listar destinos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/destinations",
+            "description": "Devuelve los destinos de la organización, incluidos los desactivados."
+          }
+        },
+        {
+          "name": "Crear un destino",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/destinations",
+            "description": "Registra un destino activo y devuelve su secreto de firma. Guárdalo al recibir la respuesta.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Facturas\",\n  \"url\": \"https://example.com/webhooks/taxo\",\n  \"events\": [\n    \"ticket.finalized\",\n    \"ticket.failed\",\n    \"invoice.finalized\"\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Consultar tipos de evento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/destinations/event-types",
+            "description": "Devuelve el catálogo de valores admitidos al suscribir un destino."
+          }
+        },
+        {
+          "name": "Consultar un destino",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/destinations/{{destination_id}}",
+            "description": "Devuelve la configuración y la vista parcial del secreto."
+          }
+        },
+        {
+          "name": "Actualizar un destino",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/destinations/{{destination_id}}",
+            "description": "Modifica los campos enviados. Usa active: true para reactivar un destino.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"events\": [\n    \"ticket.finalized\",\n    \"ticket.failed\",\n    \"service.down\",\n    \"service.recovered\"\n  ],\n  \"active\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Desactivar un destino",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/api/v1/destinations/{{destination_id}}",
+            "description": "Desactiva el destino. Su configuración y su historial siguen disponibles."
+          }
+        },
+        {
+          "name": "Rotar secreto de firma",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/v1/destinations/{{destination_id}}/rotate-secret",
+            "description": "Reemplaza el secreto de firma y devuelve el nuevo. Actualiza el receptor para verificar los próximos envíos."
+          }
+        },
+        {
+          "name": "Enviar un evento de prueba",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/v1/destinations/{{destination_id}}/test",
+            "description": "Intenta entregar ticket.finalized con data.object.test: true. La respuesta indica el estado de entrega y el HTTP del receptor."
+          }
+        },
+        {
+          "name": "Listar entregas de un destino",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/destinations/{{destination_id}}/deliveries",
+            "description": "Incluye el payload del evento y la respuesta registrada del receptor. Un destino sin entregas devuelve una lista vacía."
+          }
+        },
+        {
+          "name": "Listar entregas recientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/deliveries",
+            "description": "Devuelve hasta 200 resúmenes de entregas de la organización, de la más reciente a la más antigua."
+          }
         }
       ]
     }

@@ -5,3 +5,4 @@ export * from "./webhooks";
 export * from "./facturador";
 export * from "./webhook-router";
 export * from "./service-health";
+export * from "./oauth";
