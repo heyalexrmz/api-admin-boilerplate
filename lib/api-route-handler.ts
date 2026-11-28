@@ -1,7 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import type { NextRequest } from "next/server";
+import { NextRequest } from "next/server";
 
 import type { HttpMethod } from "@/app/lib/definitions";
 import { ApiError, errorResponse, internalErrorResponse } from "@/lib/api-contracts";
@@ -16,11 +16,28 @@ import {
 
 export type ApiScope = "read" | "write" | "admin" | "billing";
 
-export type ApiRouteContext = ApiKeyAuthSuccess & {
+export type ApiRouteIdentity = Omit<ApiKeyAuthSuccess, "key"> & {
+  key: Omit<ApiKeyAuthSuccess["key"], "id"> & { id: string | null };
+};
+
+export type ApiRouteContext = ApiRouteIdentity & {
   requestId: string;
   mode: "live" | "test";
   livemode: boolean;
 };
+
+// Only the exact server-created request carries an authenticated MCP identity.
+const delegatedIdentities = new WeakMap<NextRequest, ApiRouteIdentity>();
+
+export function createDelegatedApiRequest(
+  url: URL,
+  init: ConstructorParameters<typeof NextRequest>[1],
+  identity: ApiRouteIdentity
+): NextRequest {
+  const request = new NextRequest(url, init);
+  delegatedIdentities.set(request, identity);
+  return request;
+}
 
 type HandlerParams = {
   req: NextRequest;
@@ -58,7 +75,7 @@ export async function handleApiRoute({
   let response: Response;
 
   try {
-    const auth = await authenticateApiKey(req);
+    const auth = delegatedIdentities.get(req) ?? await authenticateApiKey(req);
     if (!auth.ok) {
       response = errorResponse(
         new ApiError({

@@ -37,10 +37,12 @@ export function PasswordAuthForm({
   mode,
   callbackURL = "/dashboard",
   alternateLink,
+  oauth = false,
 }: {
   mode: "sign-in" | "sign-up"
   callbackURL?: string
   alternateLink?: React.ReactNode
+  oauth?: boolean
 }) {
   const emailId = useId()
   const passwordId = useId()
@@ -102,6 +104,16 @@ export function PasswordAuthForm({
       setError(friendlyAuthError(result.error.code))
       setTurnstileToken(null)
       setTurnstileResetKey((key) => key + 1)
+      return
+    }
+
+    if (oauth) {
+      if (result.data && "url" in result.data && typeof result.data.url === "string") {
+        window.location.assign(result.data.url)
+        return
+      }
+      setLoading(false)
+      setError("No pudimos continuar la autorización. Vuelve a iniciar la conexión en tu cliente MCP.")
       return
     }
 

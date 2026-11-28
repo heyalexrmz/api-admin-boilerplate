@@ -116,13 +116,17 @@ Sign in with your email, click the magic link from the server console (or your i
 
 ### 5. Try the API
 
-Create an API key in **Dashboard → API Keys**, then:
+Create a test API key in **Dashboard → API Keys**, then check availability:
 
 ```bash
-curl -H "Authorization: Bearer YOUR_KEY" http://localhost:3000/api/ping
+curl -H "Authorization: Bearer $TAXO_API_KEY" http://localhost:3000/api/v1/status
 ```
 
-POST with a JSON body to echo payload; add `?error=true` or `"simulate_error": true` in the body to generate 500s for testing logs and charts.
+- Open `/dashboard/documentation` for the Spanish API guide and endpoint reference.
+- Import the [OpenAPI specification](public/openapi/taxo-timbre.json) or the [Postman collection](public/postman/taxo-timbre-api.postman_collection.json).
+- Consult the [error catalog](docs/catalogo-de-errores.md) for ticket outcomes, availability and retry behavior.
+- Connect an MCP client to `https://mcp.taxotimbre.com` through OAuth. The [MCP setup guide](docs/mcp.md) includes tools, workspace permissions, and local setup.
+- Use the [webhook router runbook](docs/webhook-router.md) for upstream callback operations.
 
 ## Scripts
 

@@ -1,6 +1,8 @@
+import { oauthProvider } from "@better-auth/oauth-provider";
 import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { captcha, organization } from "better-auth/plugins";
+import { captcha, jwt, organization } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
@@ -8,6 +10,8 @@ import * as schema from "@/lib/db/schema";
 import { sendPasswordResetEmail } from "@/lib/email/resend";
 import { randomOrgColor } from "@/lib/org-branding";
 import { ensureCreditAccount } from "@/lib/credits";
+import { isMcpResource, mcpAuthorizationIssuer, mcpResourceUrl, mcpScope, mcpScopes } from "@/lib/mcp-config";
+import { mcpWorkspace } from "@/lib/mcp-workspace";
 
 const turnstileEnabled =
   process.env.NODE_ENV === "production" &&
@@ -46,7 +50,51 @@ export const auth = betterAuth({
     },
     deleteUser: { enabled: true },
   },
+  disabledPaths: ["/token"],
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/oauth2/token") {
+        if (!isMcpResource(ctx.body?.resource)) {
+          throw new APIError("BAD_REQUEST", { error: "invalid_target", error_description: "Use the Taxo Timbre MCP resource URL." });
+        }
+        ctx.body.resource = mcpResourceUrl();
+      }
+      if (ctx.path !== "/oauth2/consent" || ctx.body?.accept !== true) return;
+      const current = await getSessionFromCtx(ctx);
+      const workspace = current && await mcpWorkspace(current.user.id, current.session.activeOrganizationId);
+      if (!workspace || ctx.headers?.get("x-taxo-organization") !== workspace.organizationId) {
+        throw new APIError("FORBIDDEN", { message: "The workspace changed. Restart authorization." });
+      }
+    }),
+  },
   plugins: [
+    jwt({
+      disableSettingJwtHeader: true,
+      jwt: { issuer: mcpAuthorizationIssuer(), audience: mcpResourceUrl() },
+    }),
+    oauthProvider({
+      loginPage: "/oauth/login",
+      consentPage: "/oauth/consent",
+      scopes: [...mcpScopes],
+      validAudiences: [mcpResourceUrl()],
+      grantTypes: ["authorization_code", "refresh_token"],
+      allowDynamicClientRegistration: true,
+      allowUnauthenticatedClientRegistration: true,
+      clientRegistrationDefaultScopes: [...mcpScopes],
+      accessTokenExpiresIn: 900,
+      silenceWarnings: { oauthAuthServerConfig: true },
+      postLogin: {
+        page: "/oauth/consent",
+        shouldRedirect: () => false,
+        consentReferenceId: async ({ user, session }) => {
+          const workspace = await mcpWorkspace(user.id, session.activeOrganizationId);
+          if (!workspace) throw new APIError("FORBIDDEN", { message: "A workspace is required." });
+          return workspace.organizationId;
+        },
+      },
+      customAccessTokenClaims: ({ user, referenceId, scopes }) =>
+        user && referenceId && scopes.includes(mcpScope) ? { taxo_organization_id: referenceId } : {},
+    }),
     ...(turnstileEnabled
       ? [
           captcha({

@@ -6,7 +6,7 @@ export function AuthShell({
   footer,
 }: {
   children: React.ReactNode
-  footer: React.ReactNode
+  footer?: React.ReactNode
 }) {
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
@@ -21,9 +21,11 @@ export function AuthShell({
 
           {children}
 
-          <p className="mt-6 text-center text-xs text-pretty text-muted-foreground">
-            {footer}
-          </p>
+          {footer && (
+            <p className="mt-6 text-center text-xs text-pretty text-muted-foreground">
+              {footer}
+            </p>
+          )}
         </div>
       </main>
 

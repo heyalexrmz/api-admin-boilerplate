@@ -1,0 +1,3966 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Taxo Timbre API",
+    "version": "2026-06-28",
+    "description": "API de facturación de tickets, documentos, disponibilidad, créditos y webhooks. Usa Authorization: Bearer <llave>. Los alcances admin y access incluyen los alcances indicados en cada operación."
+  },
+  "servers": [
+    {
+      "url": "https://api.taxotimbre.com"
+    }
+  ],
+  "security": [
+    {
+      "apiKeyBearer": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Tickets"
+    },
+    {
+      "name": "Servicio y consumo"
+    },
+    {
+      "name": "Webhooks"
+    }
+  ],
+  "paths": {
+    "/api/v1/tickets": {
+      "post": {
+        "operationId": "createTicket",
+        "summary": "Crear un ticket",
+        "description": "Acepta la imagen para facturación asíncrona. Un envío nuevo en modo live consume un crédito. En modo test se simula el resultado. Con el servicio degradado, la respuesta incluye delayed: true.",
+        "tags": [
+          "Tickets"
+        ],
+        "x-api-scope": "write",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Identificador estable por envío y organización. Si se omite, el servidor genera uno. Envíalo para poder recuperar un intento.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Recurso creado o respuesta de recepción recuperada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "Idempotent-Replayed": {
+                "$ref": "#/components/headers/Idempotent-Replayed"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "ticket"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/TicketReceived"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "request_id"
+                  ]
+                },
+                "example": {
+                  "object": "ticket",
+                  "data": {
+                    "object": "ticket",
+                    "id": "00000000-0000-4000-8000-000000000001",
+                    "tax_id": "EKU9003173C9",
+                    "status": "received",
+                    "livemode": false,
+                    "delayed": false,
+                    "delay_reason": null,
+                    "created_at": "2026-07-01T18:20:00.000Z"
+                  },
+                  "request_id": "req_ejemplo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de entrada inválidos.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Créditos insuficientes.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La llave de idempotencia corresponde a otro cuerpo.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "La imagen supera los 10 MiB.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Servicio caído. Espera el intervalo indicado y conserva la llave de idempotencia.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketCreateJson"
+              },
+              "example": {
+                "tax_id": "EKU9003173C9",
+                "taxpayer": "EMPRESA DEMO",
+                "postal_code": "01234",
+                "invoice_fiscal_regimen": "601",
+                "invoice_cfdi_use": "G03",
+                "file": "BASE64_DE_LA_IMAGEN"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketCreateMultipart"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listTickets",
+        "summary": "Listar tickets",
+        "description": "Devuelve los tickets más recientes de la organización en ambos modos. Consulta el detalle para obtener la factura y los documentos. La lista no admite cursor.",
+        "tags": [
+          "Tickets"
+        ],
+        "x-api-scope": "read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Cantidad máxima.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filtra por estado.",
+            "schema": {
+              "$ref": "#/components/schemas/TicketStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "list"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Ticket"
+                      }
+                    },
+                    "has_more": {
+                      "const": false
+                    },
+                    "next_cursor": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "has_more",
+                    "next_cursor",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tickets/{id}": {
+      "get": {
+        "operationId": "getTicket",
+        "summary": "Consultar un ticket",
+        "description": "Incluye estado, error público, factura si existe y documentos con enlaces temporales.",
+        "tags": [
+          "Tickets"
+        ],
+        "x-api-scope": "read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del recurso.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "ticket"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Ticket"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso no encontrado.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tickets/{id}/refresh": {
+      "post": {
+        "operationId": "refreshTicket",
+        "summary": "Registrar solicitud de actualización",
+        "description": "Ruta reservada. Responde 202 y registra un trabajo sin actualizar el ticket. Usa la consulta del ticket para recuperar el estado actual.",
+        "tags": [
+          "Tickets"
+        ],
+        "deprecated": true,
+        "x-api-scope": "write",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del recurso.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Trabajo registrado en la cola.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "ticket_refresh"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/QueuedTicketJob"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tickets/{id}/redeliver": {
+      "post": {
+        "operationId": "redeliverTicket",
+        "summary": "Registrar solicitud de reentrega",
+        "description": "Ruta reservada. Responde 202 y registra un trabajo sin reenviar el webhook.",
+        "tags": [
+          "Tickets"
+        ],
+        "deprecated": true,
+        "x-api-scope": "write",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del recurso.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "destination_id",
+            "in": "query",
+            "required": false,
+            "description": "Destino registrado en el trabajo.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Trabajo registrado en la cola.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "ticket_redelivery"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/QueuedTicketJob"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{id}/download": {
+      "get": {
+        "operationId": "downloadDocument",
+        "summary": "Descargar un documento",
+        "description": "Usa la URL firmada completa devuelta en el ticket o webhook. Al vencer, consulta el ticket para obtener otra.",
+        "tags": [
+          "Tickets"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del recurso.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "exp",
+            "in": "query",
+            "required": true,
+            "description": "Caducidad de la firma en segundos Unix.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "sig",
+            "in": "query",
+            "required": true,
+            "description": "Firma incluida en el enlace.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Nombre del archivo adjunto."
+              }
+            },
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/status": {
+      "get": {
+        "operationId": "getServiceStatus",
+        "summary": "Consultar disponibilidad",
+        "description": "Devuelve el peor estado medido de ingest, extraction e invoicing para el modo de la llave. Un resultado down todavía devuelve HTTP 200. Trata un timeout o 5xx como indisponibilidad.",
+        "tags": [
+          "Servicio y consumo"
+        ],
+        "x-api-scope": "read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceStatus"
+                },
+                "example": {
+                  "status": "down",
+                  "components": {
+                    "ingest": {
+                      "status": "operational",
+                      "reason": null
+                    },
+                    "extraction": {
+                      "status": "down",
+                      "reason": "El procesamiento de tickets está detenido."
+                    },
+                    "invoicing": {
+                      "status": "operational",
+                      "reason": null
+                    }
+                  },
+                  "retry_after_seconds": 60,
+                  "livemode": true,
+                  "updated_at": "2026-07-01T18:20:00.000Z",
+                  "request_id": "req_ejemplo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stats": {
+      "get": {
+        "operationId": "getStats",
+        "summary": "Consultar estadísticas",
+        "description": "Agrupa los tickets de ambos modos por fecha de creación y estado. Las tasas usan finalized + failed como denominador y son 0 si no hay resultados evaluables. El conteo incluye not_invoiceable y los demás estados.",
+        "tags": [
+          "Servicio y consumo"
+        ],
+        "x-api-scope": "read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "description": "Ventana en días.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365,
+              "default": 30
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "stats"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Stats"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/usage": {
+      "get": {
+        "operationId": "getUsage",
+        "summary": "Consultar consumo y créditos",
+        "description": "Devuelve métricas del mes UTC actual, plan, saldo y fechas de recarga. Una métrica puede omitirse cuando todavía no se registra para el periodo.",
+        "tags": [
+          "Servicio y consumo"
+        ],
+        "x-api-scope": "billing",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "usage"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Usage"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/destinations": {
+      "get": {
+        "operationId": "listDestinations",
+        "summary": "Listar destinos",
+        "description": "Devuelve los destinos de la organización, incluidos los desactivados.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-api-scope": "read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "list"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Destination"
+                      }
+                    },
+                    "has_more": {
+                      "const": false
+                    },
+                    "next_cursor": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "has_more",
+                    "next_cursor",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDestination",
+        "summary": "Crear un destino",
+        "description": "Registra un destino activo y devuelve su secreto de firma. Guárdalo al recibir la respuesta.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-api-scope": "write",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Recurso creado o respuesta de recepción recuperada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "destination"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DestinationWithSecret"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de entrada inválidos.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DestinationCreate"
+              },
+              "example": {
+                "name": "Facturas",
+                "url": "https://example.com/webhooks/taxo",
+                "events": [
+                  "ticket.finalized",
+                  "ticket.failed",
+                  "invoice.finalized"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/destinations/event-types": {
+      "get": {
+        "operationId": "listDestinationEventTypes",
+        "summary": "Consultar tipos de evento",
+        "description": "Devuelve el catálogo de valores admitidos al suscribir un destino.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-api-scope": "read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "event_type_catalog"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/EventCatalog"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/destinations/{id}": {
+      "get": {
+        "operationId": "getDestination",
+        "summary": "Consultar un destino",
+        "description": "Devuelve la configuración y la vista parcial del secreto.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-api-scope": "read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del recurso.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "destination"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Destination"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso no encontrado.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateDestination",
+        "summary": "Actualizar un destino",
+        "description": "Modifica los campos enviados. Usa active: true para reactivar un destino.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-api-scope": "write",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del recurso.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "destination"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Destination"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de entrada inválidos.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso no encontrado.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DestinationUpdate"
+              },
+              "example": {
+                "events": [
+                  "ticket.finalized",
+                  "ticket.failed",
+                  "service.down",
+                  "service.recovered"
+                ],
+                "active": true
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deactivateDestination",
+        "summary": "Desactivar un destino",
+        "description": "Desactiva el destino. Su configuración y su historial siguen disponibles.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-api-scope": "write",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del recurso.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "destination"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Destination"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso no encontrado.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/destinations/{id}/rotate-secret": {
+      "post": {
+        "operationId": "rotateDestinationSecret",
+        "summary": "Rotar secreto de firma",
+        "description": "Reemplaza el secreto de firma y devuelve el nuevo. Actualiza el receptor para verificar los próximos envíos.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-api-scope": "write",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del recurso.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "destination_secret"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DestinationSecret"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso no encontrado.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/destinations/{id}/test": {
+      "post": {
+        "operationId": "testDestination",
+        "summary": "Enviar un evento de prueba",
+        "description": "Intenta entregar ticket.finalized con data.object.test: true. La respuesta indica el estado de entrega y el HTTP del receptor.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-api-scope": "write",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del recurso.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "delivery"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DeliveryTest"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso no encontrado.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/destinations/{id}/deliveries": {
+      "get": {
+        "operationId": "listDestinationDeliveries",
+        "summary": "Listar entregas de un destino",
+        "description": "Incluye el payload del evento y la respuesta registrada del receptor. Un destino sin entregas devuelve una lista vacía.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-api-scope": "read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador del recurso.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "list"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DeliveryDetail"
+                      }
+                    },
+                    "has_more": {
+                      "const": false
+                    },
+                    "next_cursor": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "has_more",
+                    "next_cursor",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/deliveries": {
+      "get": {
+        "operationId": "listDeliveries",
+        "summary": "Listar entregas recientes",
+        "description": "Devuelve hasta 200 resúmenes de entregas de la organización, de la más reciente a la más antigua.",
+        "tags": [
+          "Webhooks"
+        ],
+        "x-api-scope": "read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación completada.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "list"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Delivery"
+                      }
+                    },
+                    "has_more": {
+                      "const": false
+                    },
+                    "next_cursor": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "example": "req_ejemplo"
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "has_more",
+                    "next_cursor",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Falta una llave API válida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permisos insuficientes o firma inválida.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {
+    "eventDelivery": {
+      "post": {
+        "summary": "Entrega de un evento a un destino",
+        "description": "Verifica X-Webhook-Signature sobre los bytes del cuerpo JSON y procesa cada id de evento una sola vez.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-Webhook-Id",
+            "in": "header",
+            "required": true,
+            "description": "ID del destino.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Webhook-Event",
+            "in": "header",
+            "required": true,
+            "description": "Tipo de evento.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "api_key.created",
+                "api_key.rotated",
+                "api_key.revoked",
+                "member.invited",
+                "member.removed",
+                "taxpayer.created",
+                "taxpayer.updated",
+                "ticket.created",
+                "ticket.processing",
+                "ticket.finalized",
+                "ticket.failed",
+                "invoice.created",
+                "invoice.finalized",
+                "invoice.failed",
+                "document.created",
+                "document.attached",
+                "document.failed",
+                "delivery.created",
+                "delivery.succeeded",
+                "delivery.failed",
+                "delivery.exhausted",
+                "service.degraded",
+                "service.down",
+                "service.recovered"
+              ]
+            }
+          },
+          {
+            "name": "X-Webhook-Timestamp",
+            "in": "header",
+            "required": true,
+            "description": "Hora del intento en segundos Unix.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "X-Webhook-Signature",
+            "in": "header",
+            "required": true,
+            "description": "HMAC-SHA256 del cuerpo JSON crudo con el secreto del destino.",
+            "schema": {
+              "type": "string",
+              "pattern": "^sha256=[a-f0-9]{64}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookEvent"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "Entrega confirmada por el receptor."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKeyBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Llave API de la organización."
+      }
+    },
+    "parameters": {
+      "RequestId": {
+        "name": "X-Request-Id",
+        "in": "header",
+        "required": false,
+        "description": "Identificador opcional para rastrear una solicitud.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "headers": {
+      "X-Request-Id": {
+        "schema": {
+          "type": "string"
+        },
+        "description": "Identificador de la solicitud."
+      },
+      "Retry-After": {
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "description": "Segundos recomendados antes de volver a intentar."
+      },
+      "Idempotent-Replayed": {
+        "schema": {
+          "type": "string",
+          "const": "true"
+        },
+        "description": "Presente cuando se recupera una respuesta de recepción guardada."
+      }
+    },
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "authentication_error",
+                  "authorization_error",
+                  "validation_error",
+                  "conflict_error",
+                  "rate_limit_error",
+                  "processing_error",
+                  "unavailable",
+                  "internal_error"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "param": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "type",
+              "message",
+              "param",
+              "retryable"
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "example": "req_ejemplo"
+          }
+        },
+        "required": [
+          "error",
+          "request_id"
+        ]
+      },
+      "TicketStatus": {
+        "type": "string",
+        "enum": [
+          "received",
+          "queued",
+          "pending",
+          "processing",
+          "finalized",
+          "failed",
+          "not_invoiceable",
+          "cancelled"
+        ]
+      },
+      "TicketError": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "type",
+          "message",
+          "retryable"
+        ]
+      },
+      "TicketCreateJson": {
+        "type": "object",
+        "properties": {
+          "tax_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "RFC del receptor de la factura."
+          },
+          "taxpayer": {
+            "type": "string",
+            "description": "Razón social o nombre completo. Para persona física se puede inferir el nombre y los apellidos si el RFC corrobora la separación."
+          },
+          "taxpayer_name": {
+            "type": "string",
+            "description": "Nombre(s) de persona física. Si envías cualquiera de los tres campos separados, completa los tres."
+          },
+          "taxpayer_last_name": {
+            "type": "string",
+            "description": "Primer apellido de persona física."
+          },
+          "taxpayer_second_last_name": {
+            "type": "string",
+            "description": "Segundo apellido de persona física."
+          },
+          "postal_code": {
+            "type": "string",
+            "description": "Código postal fiscal. Conserva los ceros iniciales."
+          },
+          "invoice_fiscal_regimen": {
+            "type": "string",
+            "description": "Clave SAT de régimen fiscal. Alias: fiscal_regimen_code."
+          },
+          "invoice_cfdi_use": {
+            "type": "string",
+            "description": "Clave SAT de uso de CFDI. Alias: cfdi_use_code."
+          },
+          "fiscal_regimen_code": {
+            "type": "string",
+            "description": "Alias de invoice_fiscal_regimen. Si se envían ambos, prevalece invoice_fiscal_regimen."
+          },
+          "cfdi_use_code": {
+            "type": "string",
+            "description": "Alias de invoice_cfdi_use. Si se envían ambos, prevalece invoice_cfdi_use."
+          },
+          "street_address_1": {
+            "type": "string",
+            "description": "Calle y dirección principal."
+          },
+          "ext_num": {
+            "type": "string",
+            "description": "Número exterior."
+          },
+          "int_num": {
+            "type": "string",
+            "description": "Número interior."
+          },
+          "street_address_2": {
+            "type": "string",
+            "description": "Complemento de la dirección."
+          },
+          "city": {
+            "type": "string",
+            "description": "Ciudad."
+          },
+          "state": {
+            "type": "string",
+            "description": "Estado."
+          },
+          "country": {
+            "type": "string",
+            "default": "México"
+          },
+          "test_scenario": {
+            "type": "string",
+            "default": "success",
+            "description": "Para llaves test. Usa success o failure para simular el resultado."
+          },
+          "scenario": {
+            "type": "string",
+            "description": "Alias de test_scenario."
+          },
+          "file": {
+            "type": "string",
+            "description": "JPEG o PNG en base64 o data URL base64. Máximo 10 MiB decodificados."
+          },
+          "file_name": {
+            "type": "string",
+            "description": "Nombre de la imagen con extensión .jpg, .jpeg o .png."
+          },
+          "file_content_type": {
+            "type": "string",
+            "enum": [
+              "image/jpeg",
+              "image/png"
+            ]
+          },
+          "csf_pdf": {
+            "type": "string",
+            "description": "Constancia de situación fiscal en PDF, codificada como base64 o data URL base64."
+          },
+          "csf_pdf_file_name": {
+            "type": "string",
+            "description": "Nombre del archivo PDF."
+          },
+          "csf_pdf_content_type": {
+            "type": "string",
+            "const": "application/pdf"
+          }
+        },
+        "required": [
+          "tax_id",
+          "file"
+        ]
+      },
+      "TicketCreateMultipart": {
+        "type": "object",
+        "properties": {
+          "tax_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "RFC del receptor de la factura."
+          },
+          "taxpayer": {
+            "type": "string",
+            "description": "Razón social o nombre completo. Para persona física se puede inferir el nombre y los apellidos si el RFC corrobora la separación."
+          },
+          "taxpayer_name": {
+            "type": "string",
+            "description": "Nombre(s) de persona física. Si envías cualquiera de los tres campos separados, completa los tres."
+          },
+          "taxpayer_last_name": {
+            "type": "string",
+            "description": "Primer apellido de persona física."
+          },
+          "taxpayer_second_last_name": {
+            "type": "string",
+            "description": "Segundo apellido de persona física."
+          },
+          "postal_code": {
+            "type": "string",
+            "description": "Código postal fiscal. Conserva los ceros iniciales."
+          },
+          "invoice_fiscal_regimen": {
+            "type": "string",
+            "description": "Clave SAT de régimen fiscal. Alias: fiscal_regimen_code."
+          },
+          "invoice_cfdi_use": {
+            "type": "string",
+            "description": "Clave SAT de uso de CFDI. Alias: cfdi_use_code."
+          },
+          "fiscal_regimen_code": {
+            "type": "string",
+            "description": "Alias de invoice_fiscal_regimen. Si se envían ambos, prevalece invoice_fiscal_regimen."
+          },
+          "cfdi_use_code": {
+            "type": "string",
+            "description": "Alias de invoice_cfdi_use. Si se envían ambos, prevalece invoice_cfdi_use."
+          },
+          "street_address_1": {
+            "type": "string",
+            "description": "Calle y dirección principal."
+          },
+          "ext_num": {
+            "type": "string",
+            "description": "Número exterior."
+          },
+          "int_num": {
+            "type": "string",
+            "description": "Número interior."
+          },
+          "street_address_2": {
+            "type": "string",
+            "description": "Complemento de la dirección."
+          },
+          "city": {
+            "type": "string",
+            "description": "Ciudad."
+          },
+          "state": {
+            "type": "string",
+            "description": "Estado."
+          },
+          "country": {
+            "type": "string",
+            "default": "México"
+          },
+          "test_scenario": {
+            "type": "string",
+            "default": "success",
+            "description": "Para llaves test. Usa success o failure para simular el resultado."
+          },
+          "scenario": {
+            "type": "string",
+            "description": "Alias de test_scenario."
+          },
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "Imagen JPEG o PNG de hasta 10 MiB."
+          },
+          "csf_pdf": {
+            "type": "string",
+            "format": "binary",
+            "description": "Archivo PDF con la constancia de situación fiscal."
+          }
+        },
+        "required": [
+          "tax_id",
+          "file"
+        ]
+      },
+      "TicketReceived": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "ticket"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tax_id": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TicketStatus"
+          },
+          "livemode": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "delayed": {
+            "type": "boolean"
+          },
+          "delay_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "object",
+          "id",
+          "tax_id",
+          "status",
+          "livemode",
+          "created_at",
+          "delayed",
+          "delay_reason"
+        ]
+      },
+      "Ticket": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "ticket"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tax_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/TicketStatus"
+          },
+          "livemode": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finalized_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TicketError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "invoice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Invoice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            }
+          }
+        },
+        "required": [
+          "object",
+          "id",
+          "tax_id",
+          "status",
+          "livemode",
+          "created_at",
+          "updated_at",
+          "finalized_at",
+          "error",
+          "invoice",
+          "documents"
+        ]
+      },
+      "Invoice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "finalized",
+              "failed"
+            ]
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "series": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "folio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "invoice_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "uuid",
+          "series",
+          "folio",
+          "total",
+          "invoice_date"
+        ]
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ticket_image",
+              "csf_pdf",
+              "invoice_pdf",
+              "invoice_xml",
+              "supporting_document"
+            ]
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "bytes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "content_type",
+          "bytes",
+          "url",
+          "created_at"
+        ]
+      },
+      "QueuedTicketJob": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "queued": {
+            "const": true
+          }
+        },
+        "required": [
+          "ticket_id",
+          "queued"
+        ]
+      },
+      "ServiceComponent": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "operational",
+              "degraded",
+              "down"
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "reason"
+        ]
+      },
+      "ServiceStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "operational",
+              "degraded",
+              "down"
+            ]
+          },
+          "components": {
+            "type": "object",
+            "properties": {
+              "ingest": {
+                "$ref": "#/components/schemas/ServiceComponent"
+              },
+              "extraction": {
+                "$ref": "#/components/schemas/ServiceComponent"
+              },
+              "invoicing": {
+                "$ref": "#/components/schemas/ServiceComponent"
+              }
+            },
+            "required": [
+              "ingest",
+              "extraction",
+              "invoicing"
+            ]
+          },
+          "retry_after_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "livemode": {
+            "type": "boolean"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "request_id": {
+            "type": "string",
+            "example": "req_ejemplo"
+          }
+        },
+        "required": [
+          "status",
+          "components",
+          "retry_after_seconds",
+          "livemode",
+          "updated_at",
+          "request_id"
+        ]
+      },
+      "Stats": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "stats"
+          },
+          "window_days": {
+            "type": "number"
+          },
+          "tickets": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "by_status": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "error_rate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "success_rate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "total",
+              "by_status",
+              "error_rate",
+              "success_rate"
+            ]
+          }
+        },
+        "required": [
+          "object",
+          "window_days",
+          "tickets"
+        ]
+      },
+      "Usage": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "usage"
+          },
+          "period": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}$"
+          },
+          "metrics": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "plan": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "ticket_credit_allowance": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "refill_frequency": {
+                "type": "string",
+                "enum": [
+                  "daily",
+                  "weekly",
+                  "monthly",
+                  "yearly"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "ticket_credit_allowance",
+              "refill_frequency"
+            ]
+          },
+          "credits": {
+            "type": "object",
+            "properties": {
+              "balance": {
+                "type": "integer"
+              },
+              "next_refill_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "last_refill_at": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "balance",
+              "next_refill_at",
+              "last_refill_at"
+            ]
+          }
+        },
+        "required": [
+          "object",
+          "period",
+          "metrics",
+          "plan",
+          "credits"
+        ]
+      },
+      "Destination": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "destination"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL HTTPS pública en producción."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 240
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "has_secret": {
+            "type": "boolean"
+          },
+          "secret_preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_fired_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "object",
+          "id",
+          "name",
+          "url",
+          "description",
+          "events",
+          "active",
+          "has_secret",
+          "secret_preview",
+          "created_at",
+          "updated_at",
+          "last_fired_at"
+        ]
+      },
+      "DestinationWithSecret": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "destination"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL HTTPS pública en producción."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 240
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "has_secret": {
+            "type": "boolean"
+          },
+          "secret_preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_fired_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "secret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object",
+          "id",
+          "name",
+          "url",
+          "description",
+          "events",
+          "active",
+          "has_secret",
+          "secret_preview",
+          "created_at",
+          "updated_at",
+          "last_fired_at",
+          "secret"
+        ]
+      },
+      "DestinationCreate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL HTTPS pública en producción."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 240
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "api_key.created",
+                "api_key.rotated",
+                "api_key.revoked",
+                "member.invited",
+                "member.removed",
+                "taxpayer.created",
+                "taxpayer.updated",
+                "ticket.created",
+                "ticket.processing",
+                "ticket.finalized",
+                "ticket.failed",
+                "invoice.created",
+                "invoice.finalized",
+                "invoice.failed",
+                "document.created",
+                "document.attached",
+                "document.failed",
+                "delivery.created",
+                "delivery.succeeded",
+                "delivery.failed",
+                "delivery.exhausted",
+                "service.degraded",
+                "service.down",
+                "service.recovered"
+              ]
+            },
+            "minItems": 1,
+            "description": "Eventos de la suscripción. Al crear se usan ticket.finalized y ticket.failed si se omite."
+          },
+          "secret": {
+            "type": "string",
+            "minLength": 16,
+            "description": "Se genera automáticamente si se omite."
+          }
+        },
+        "required": [
+          "name",
+          "url"
+        ]
+      },
+      "DestinationUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL HTTPS pública en producción."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 240
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "api_key.created",
+                "api_key.rotated",
+                "api_key.revoked",
+                "member.invited",
+                "member.removed",
+                "taxpayer.created",
+                "taxpayer.updated",
+                "ticket.created",
+                "ticket.processing",
+                "ticket.finalized",
+                "ticket.failed",
+                "invoice.created",
+                "invoice.finalized",
+                "invoice.failed",
+                "document.created",
+                "document.attached",
+                "document.failed",
+                "delivery.created",
+                "delivery.succeeded",
+                "delivery.failed",
+                "delivery.exhausted",
+                "service.degraded",
+                "service.down",
+                "service.recovered"
+              ]
+            },
+            "minItems": 1,
+            "description": "Eventos de la suscripción. Al crear se usan ticket.finalized y ticket.failed si se omite."
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": []
+      },
+      "DestinationSecret": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "secret": {
+            "type": "string"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/Destination"
+          }
+        },
+        "required": [
+          "id",
+          "secret",
+          "destination"
+        ]
+      },
+      "EventCatalog": {
+        "type": "object",
+        "properties": {
+          "event_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "api_key.created",
+                "api_key.rotated",
+                "api_key.revoked",
+                "member.invited",
+                "member.removed",
+                "taxpayer.created",
+                "taxpayer.updated",
+                "ticket.created",
+                "ticket.processing",
+                "ticket.finalized",
+                "ticket.failed",
+                "invoice.created",
+                "invoice.finalized",
+                "invoice.failed",
+                "document.created",
+                "document.attached",
+                "document.failed",
+                "delivery.created",
+                "delivery.succeeded",
+                "delivery.failed",
+                "delivery.exhausted",
+                "service.degraded",
+                "service.down",
+                "service.recovered"
+              ]
+            }
+          }
+        },
+        "required": [
+          "event_types"
+        ]
+      },
+      "Delivery": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "delivery"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failed",
+              "pending",
+              "retrying"
+            ]
+          },
+          "http_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "delivered_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "object",
+          "id",
+          "event_id",
+          "event_type",
+          "status",
+          "http_status",
+          "attempts",
+          "created_at",
+          "delivered_at"
+        ]
+      },
+      "DeliveryDetail": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "delivery"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failed",
+              "pending",
+              "retrying"
+            ]
+          },
+          "http_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "delivered_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "payload": {
+            "$ref": "#/components/schemas/WebhookEvent"
+          },
+          "response_body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "object",
+          "id",
+          "event_id",
+          "event_type",
+          "status",
+          "http_status",
+          "attempts",
+          "created_at",
+          "delivered_at",
+          "latency_ms",
+          "payload",
+          "response_body"
+        ]
+      },
+      "DeliveryTest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failed",
+              "pending",
+              "retrying"
+            ]
+          },
+          "http_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "event_id",
+          "status",
+          "http_status"
+        ]
+      },
+      "WebhookEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "const": "event"
+          },
+          "api_version": {
+            "type": "string",
+            "const": "2026-06-28"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "api_key.created",
+              "api_key.rotated",
+              "api_key.revoked",
+              "member.invited",
+              "member.removed",
+              "taxpayer.created",
+              "taxpayer.updated",
+              "ticket.created",
+              "ticket.processing",
+              "ticket.finalized",
+              "ticket.failed",
+              "invoice.created",
+              "invoice.finalized",
+              "invoice.failed",
+              "document.created",
+              "document.attached",
+              "document.failed",
+              "delivery.created",
+              "delivery.succeeded",
+              "delivery.failed",
+              "delivery.exhausted",
+              "service.degraded",
+              "service.down",
+              "service.recovered"
+            ]
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "livemode": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "object"
+            ]
+          },
+          "request": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "idempotency_key": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "idempotency_key"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "api_version",
+          "type",
+          "created",
+          "livemode",
+          "data",
+          "request"
+        ]
+      }
+    }
+  }
+}

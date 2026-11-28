@@ -5,7 +5,7 @@
 **Audiencia:** integradores, soporte y equipo de producto.
 **Alcance:** API v1, recepción de tickets, procesamiento de facturación y notificaciones de falla. Describe el código local revisado; su aplicación en producción requiere desplegar la aplicación y el worker.
 
-Taxo Timbre comunica cada falla mediante un código estable, una categoría y un motivo legible. **Los errores de procesamiento dejan el ticket en `failed`; los rechazos con código `NOT_INVOICEABLE` lo dejan en `not_invoiceable` (No facturable). En ambos casos se emite `ticket.failed` en cuanto se procesa el resultado. No se espera una ventana de disponibilidad ni se reenvía automáticamente el ticket.** Esta regla también aplica a los límites temporales de solicitudes.
+Taxo Timbre comunica cada falla mediante un código estable, una categoría y un motivo legible. **Los errores de procesamiento dejan el ticket en `failed`; los rechazos con código `NOT_INVOICEABLE` lo dejan en `not_invoiceable` (No facturable). En ambos casos se emite `ticket.failed` en cuanto se procesa el resultado. Los límites temporales de solicitudes se comunican como fallas y requieren una acción del usuario.** La recuperación del envío con una constancia fiscal rechazada se describe más abajo.
 
 **La API informa la disponibilidad en el momento de la llamada.** Si la extracción o la facturación están caídas, `POST /api/v1/tickets` responde HTTP 503 con `Retry-After` y no crea el ticket. `GET /api/v1/status` expone el estado medido, y los webhooks `service.degraded`, `service.down` y `service.recovered` avisan cada cambio. Ningún ticket queda activo indefinidamente: el SLA está en [Tiempo máximo por estado](#tiempo-máximo-por-estado-sla).
 
@@ -14,7 +14,7 @@ Taxo Timbre comunica cada falla mediante un código estable, una categoría y un
 - Las pantallas, respuestas de API, webhooks y documentos públicos utilizan «servicio de facturación» o «comercio». Nunca muestran el nombre comercial del proveedor externo.
 - Se conserva el motivo útil para corregir el problema. Los nombres, enlaces e identificadores internos del servicio externo se omiten de los mensajes públicos.
 - El cliente recibe `error.code`, `error.type` y `error.message`. Debe tomar decisiones con el código y el estado; el texto puede variar o venir en distintos idiomas.
-- Un rechazo explícito se comunica como falla desde el primer intento. Que su causa sea temporal no convierte el ticket en una solicitud pendiente.
+- Un rechazo explícito se comunica como falla cuando termina el envío. La constancia fiscal rechazada puede dar lugar a un segundo intento dentro del mismo envío.
 - Una falla de conexión o una respuesta sin confirmación también deja el ticket fallido. En estos casos debe revisarse el resultado antes de crear otro envío, porque no hay certeza de si el servicio recibió la solicitud.
 - La respuesta cruda y el HTTP del servicio externo se conservan para diagnóstico interno; no forman parte del error público.
 
@@ -47,6 +47,8 @@ El reintento conserva el ticket, los archivos, los datos fiscales y la llave de 
 La lista y el detalle abierto actualizan el estado mientras hay tickets activos. Si el nuevo envío falla, vuelve a quedar `failed`: cualquier intento adicional requiere otra acción manual.
 
 En los envíos nuevos y los reintentos se intenta separar `taxpayer` cuando el RFC tiene formato de persona física y faltan los tres campos de nombre. La inferencia ignora los conectores `DE`, `DEL`, `LA`, `LAS` y `LOS`, toma las dos últimas palabras restantes como apellidos (cada una conserva los conectores que la anteceden), excluye los RFC genéricos y requiere iniciales compatibles con el RFC. No valida la identidad ante el SAT. Los nombres con otras partículas (por ejemplo `SAN`, `MAC`, `VAN` o `Y`), con un solo apellido, signos no reconocidos o iniciales incompatibles requieren los campos separados; si se proporciona alguno, deben enviarse los tres completos. Las peticiones nuevas ambiguas reciben HTTP 400 antes de consumir un crédito. Para un ticket histórico, el worker conserva los datos originales, lo deja en `failed` con tipo `validation`, emite `ticket.failed` y no contacta al servicio externo ni repite el trabajo automáticamente.
+
+Si se adjunta una constancia fiscal y el servicio de facturación devuelve un error HTTP 400 o 422 específico de `csf_pdf` sin confirmar la recepción, el worker intenta el envío una vez más sin el PDF. Se conserva el ticket original y se cobra un solo crédito. El estado y los eventos reflejan el resultado de ese segundo envío.
 
 ## Formato de los errores de API
 
